@@ -1,5 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.starter;
 
+import io.github.dmitriyiliyov.oncebox.starter.consumer.OutboxConsumerProperties;
+import io.github.dmitriyiliyov.oncebox.starter.publisher.OutboxPublisherProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
@@ -62,31 +64,14 @@ public final class OutboxDatabasePopulatorFactory {
         Objects.requireNonNull(properties, "properties cannot be null");
         Objects.requireNonNull(dataSource, "dataSource cannot be null");
 
-        List<Resource> scripts = new ArrayList<>();
+        List<Resource> scripts;
         DatabaseType databaseType;
         try {
             String dbProductName = JdbcUtils.extractDatabaseMetaData(
                     dataSource, DatabaseMetaData::getDatabaseProductName
             );
             databaseType = DatabaseType.fromString(dbProductName);
-            Map<TableSupplierType, Supplier<Resource>> suppliers = OUTBOX_TABLE_SUPPLIERS.get(databaseType);
-
-            Supplier<Resource> outboxSupplier = suppliers.get(TableSupplierType.OUTBOX);
-            scripts.add(outboxSupplier.get());
-
-            if (properties.getPublisher().getDlq() != null && properties.getPublisher().getDlq().isEnabled()) {
-                Supplier<Resource> dlqSupplier = suppliers.get(TableSupplierType.OUTBOX_DLQ);
-                scripts.add(dlqSupplier.get());
-            }
-
-            if (properties.getConsumer() != null && properties.getConsumer().isEnabled()) {
-                Supplier<Resource> consumedSupplier = suppliers.get(TableSupplierType.CONSUMED_OUTBOX);
-                scripts.add(consumedSupplier.get());
-            }
-
-            Supplier<Resource> outboxJobsSupplier = suppliers.get(TableSupplierType.OUTBOX_JOBS);
-            scripts.add(outboxJobsSupplier.get());
-
+            scripts = resolveScripts(properties, databaseType);
         } catch (MetaDataAccessException e) {
             log.error("Error when getting access to database metadata, ", e);
             throw new RuntimeException(e);
@@ -101,6 +86,57 @@ public final class OutboxDatabasePopulatorFactory {
             populator.setSeparator("/");
         }
         return populator;
+    }
+
+    /**
+     * Selects the SQL scripts to run, so that an application only gets the tables it actually uses:
+     * a consumer-only application must not end up with an empty {@code outbox_events} table, and a
+     * publisher-only application must not end up with an empty {@code outbox_consumed_events} one.
+     * <p>
+     * Table ownership:
+     * <ul>
+     *   <li>{@code outbox_events}/{@code outbox_dlq_events} - written by the publisher</li>
+     *   <li>{@code outbox_consumed_events} - written by the consumer</li>
+     *   <li>{@code outbox_jobs} - holds the distributed locks taken by the clean-up schedulers only</li>
+     * </ul>
+     *
+     * @param properties    the outbox configuration properties.
+     * @param databaseType  the detected database type.
+     * @return              the scripts required by the enabled features, may be empty.
+     */
+    static List<Resource> resolveScripts(OutboxProperties properties, DatabaseType databaseType) {
+        Map<TableSupplierType, Supplier<Resource>> suppliers = OUTBOX_TABLE_SUPPLIERS.get(databaseType);
+        List<Resource> scripts = new ArrayList<>();
+
+        OutboxPublisherProperties publisher = properties.getPublisher();
+        boolean isPublisherEnabled = publisher != null && Boolean.TRUE.equals(publisher.isEnabled());
+        if (isPublisherEnabled) {
+            scripts.add(suppliers.get(TableSupplierType.OUTBOX).get());
+            if (publisher.getDlq() != null && Boolean.TRUE.equals(publisher.getDlq().isEnabled())) {
+                scripts.add(suppliers.get(TableSupplierType.OUTBOX_DLQ).get());
+            }
+        }
+
+        OutboxConsumerProperties consumer = properties.getConsumer();
+        boolean isConsumerEnabled = consumer != null && Boolean.TRUE.equals(consumer.isEnabled());
+        if (isConsumerEnabled) {
+            scripts.add(suppliers.get(TableSupplierType.CONSUMED_OUTBOX).get());
+        }
+
+        if (isAnyCleanUpEnabled(publisher, isPublisherEnabled, consumer, isConsumerEnabled)) {
+            scripts.add(suppliers.get(TableSupplierType.OUTBOX_JOBS).get());
+        }
+        return scripts;
+    }
+
+    private static boolean isAnyCleanUpEnabled(OutboxPublisherProperties publisher, boolean isPublisherEnabled,
+                                               OutboxConsumerProperties consumer, boolean isConsumerEnabled) {
+        if (isPublisherEnabled && publisher.getCleanUp() != null
+                && Boolean.TRUE.equals(publisher.getCleanUp().isEnabled())) {
+            return true;
+        }
+        return isConsumerEnabled && consumer.getCleanUp() != null
+                && Boolean.TRUE.equals(consumer.getCleanUp().isEnabled());
     }
 
     private static final class PostgreSqlOutboxTableSqlResourceSupplier implements Supplier<Resource> {
