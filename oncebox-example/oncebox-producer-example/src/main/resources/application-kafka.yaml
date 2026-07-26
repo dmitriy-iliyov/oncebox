@@ -1,3 +1,6 @@
+spring:
+  kafka:
+    bootstrap-servers: oncebox-kafka:9092
 oncebox:
   publisher:
     sender:

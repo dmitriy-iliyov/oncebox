@@ -16,7 +16,7 @@ import static io.gatling.javaapi.http.HttpDsl.status;
 public class OrderSimulation extends Simulation {
 
     private static final String PROTOCOL = prop("targetProtocol", "http");
-    private static final String HOST = prop("targetHost", "outbox-producer-app");
+    private static final String HOST = prop("targetHost", "oncebox-producer-app");
     private static final int PORT = intProp("targetPort", 8080);
     private static final String ROOT = prop("targetRoot", "/api/orders");
 

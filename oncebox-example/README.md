@@ -57,7 +57,8 @@ The system consists of three main components:
 5. Consumer processes events idempotently
 
 ## Run
-From the project root:
+From the `oncebox-example` directory (the build context is the repository root, so the library
+itself is built from source):
 
 1. Build
 ```bash
