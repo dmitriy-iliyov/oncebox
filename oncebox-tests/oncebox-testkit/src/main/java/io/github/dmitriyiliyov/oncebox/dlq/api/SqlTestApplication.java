@@ -21,10 +21,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
                 @ComponentScan.Filter(
                         type = FilterType.ANNOTATION,
                         classes = {RestController.class, Controller.class, ControllerAdvice.class, RestControllerAdvice.class}
-                ),
-                @ComponentScan.Filter(
-                        type = FilterType.ASSIGNABLE_TYPE,
-                        classes = {WebTestApplication.class}
                 )
         }
 )
@@ -33,6 +29,4 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
         ClockConfig.class,
         BaseIntegrationTestsConfig.class
 })
-// Dialect-specific configs (Postgres/MySql/Oracle) are imported directly by each dialect
-// module's own Base*IntegrationTests, since they now live in those modules, not here.
 public class SqlTestApplication { }

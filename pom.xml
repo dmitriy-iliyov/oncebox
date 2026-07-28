@@ -41,6 +41,7 @@
 
     <modules>
         <module>oncebox-core</module>
+        <module>oncebox-tests/oncebox-testkit</module>
         <module>oncebox-postgresql</module>
         <module>oncebox-mysql</module>
         <module>oncebox-oracle</module>
@@ -159,22 +160,8 @@
                 <extensions>true</extensions>
                 <configuration>
                     <publishingServerId>central</publishingServerId>
-                    <!--
-                        The test-jars of oncebox-core and oncebox-dlq-api exist only to share
-                        integration-test fixtures with the dialect modules inside the reactor / local .m2.
-                        They are still built and installed locally, but must NOT be published to Maven Central.
-                    -->
                     <excludeArtifacts>
-                        <artifact>
-                            <groupId>io.github.dmitriy-iliyov</groupId>
-                            <artifactId>oncebox-core</artifactId>
-                            <classifier>tests</classifier>
-                        </artifact>
-                        <artifact>
-                            <groupId>io.github.dmitriy-iliyov</groupId>
-                            <artifactId>oncebox-dlq-api</artifactId>
-                            <classifier>tests</classifier>
-                        </artifact>
+                        <artifact>oncebox-testkit</artifact>
                     </excludeArtifacts>
                 </configuration>
             </plugin>

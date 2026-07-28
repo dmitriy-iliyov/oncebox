@@ -50,17 +50,8 @@
 
         <dependency>
             <groupId>io.github.dmitriy-iliyov</groupId>
-            <artifactId>oncebox-core</artifactId>
+            <artifactId>oncebox-testkit</artifactId>
             <version>1.1.2</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>io.github.dmitriy-iliyov</groupId>
-            <artifactId>oncebox-dlq-api</artifactId>
-            <version>1.1.2</version>
-            <type>test-jar</type>
             <scope>test</scope>
         </dependency>
 

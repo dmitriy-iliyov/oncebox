@@ -1,7 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.dlq.api;
 
 
-import io.github.dmitriyiliyov.oncebox.dlq.api.it.config.ClockConfig;
 import io.github.dmitriyiliyov.oncebox.dlq.api.it.config.WebTestsConfig;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
@@ -12,8 +11,5 @@ import org.springframework.context.annotation.Import;
         DataSourceAutoConfiguration.class,
         DataSourceTransactionManagerAutoConfiguration.class
 })
-@Import({
-        ClockConfig.class,
-        WebTestsConfig.class
-})
+@Import(WebTestsConfig.class)
 public class WebTestApplication { }
