@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.metrics.it_config;
 
-import io.github.dmitriyiliyov.oncebox.tests.utils.MySqlTestContainerSingleton;
+import io.github.dmitriyiliyov.oncebox.tests.fixtures.MySqlTestContainerSingleton;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;

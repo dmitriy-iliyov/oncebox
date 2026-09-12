@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.tests.integration;
 
-import io.github.dmitriyiliyov.oncebox.tests.utils.PostgresTestContainerSingleton;
+import io.github.dmitriyiliyov.oncebox.tests.fixtures.PostgresTestContainerSingleton;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 public class PostgresDatabaseContainer implements DatabaseContainer {

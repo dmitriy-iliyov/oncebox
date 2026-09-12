@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.tests.integration;
 
-import io.github.dmitriyiliyov.oncebox.tests.utils.OracleTestContainerSingleton;
+import io.github.dmitriyiliyov.oncebox.tests.fixtures.OracleTestContainerSingleton;
 import org.testcontainers.oracle.OracleContainer;
 
 public class OracleDatabaseContainer implements DatabaseContainer {

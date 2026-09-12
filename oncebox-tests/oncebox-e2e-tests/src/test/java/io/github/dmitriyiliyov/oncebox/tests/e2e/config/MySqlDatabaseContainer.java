@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.tests.e2e.config;
 
-import io.github.dmitriyiliyov.oncebox.tests.utils.MySqlTestContainerSingleton;
+import io.github.dmitriyiliyov.oncebox.tests.fixtures.MySqlTestContainerSingleton;
 import org.testcontainers.containers.MySQLContainer;
 
 public class MySqlDatabaseContainer implements DatabaseContainer {

@@ -23,3 +23,15 @@ SET @sql := IF(@exists = 0,
     'SELECT 1'
     );
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @exists := (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS
+    WHERE table_schema = DATABASE()
+    AND table_name = 'outbox_dlq_events'
+    AND index_name = 'idx_outbox_dlq_by_status_and_moved_at'
+    );
+SET @sql := IF(@exists = 0,
+    'CREATE INDEX idx_outbox_dlq_by_status_and_moved_at ON outbox_dlq_events(dlq_status, moved_at)',
+    'SELECT 1'
+    );
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;

@@ -2,7 +2,7 @@ package io.github.dmitriyiliyov.oncebox.starter.publisher.dlq;
 
 import io.github.dmitriyiliyov.oncebox.dlq.api.*;
 import io.github.dmitriyiliyov.oncebox.metrics.publisher.dlq.OutboxDlqApiServiceMetricsDecorator;
-import io.github.dmitriyiliyov.oncebox.tests.utils.PostgresTestContainerSingleton;
+import io.github.dmitriyiliyov.oncebox.tests.fixtures.PostgresTestContainerSingleton;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.DisplayName;

@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.starter.publisher;
 
-import io.github.dmitriyiliyov.oncebox.tests.utils.MySqlTestContainerSingleton;
+import io.github.dmitriyiliyov.oncebox.tests.fixtures.MySqlTestContainerSingleton;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

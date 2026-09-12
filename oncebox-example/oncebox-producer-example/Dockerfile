@@ -4,7 +4,6 @@ WORKDIR /app
 
 # build lib
 COPY . .
-RUN mvn -f oncebox-tests/oncebox-test-utils/pom.xml clean install -DskipTests
 RUN mvn clean install -DskipTests -Dgpg.skip=true
 
 # build producer

@@ -40,6 +40,7 @@
     </scm>
 
     <modules>
+        <module>oncebox-tests/oncebox-test-fixtures</module>
         <module>oncebox-core</module>
         <module>oncebox-tests/oncebox-testkit</module>
         <module>oncebox-postgresql</module>
@@ -161,6 +162,7 @@
                 <configuration>
                     <publishingServerId>central</publishingServerId>
                     <excludeArtifacts>
+                        <artifact>oncebox-test-fixtures</artifact>
                         <artifact>oncebox-testkit</artifact>
                     </excludeArtifacts>
                 </configuration>

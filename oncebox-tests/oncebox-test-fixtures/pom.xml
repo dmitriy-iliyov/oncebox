@@ -1,15 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>io.github.dmitriy-iliyov</groupId>
-    <artifactId>oncebox-test-utils</artifactId>
-    <version>1.1.2</version>
+    <parent>
+        <groupId>io.github.dmitriy-iliyov</groupId>
+        <artifactId>oncebox-parent</artifactId>
+        <version>1.1.2</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>oncebox-test-fixtures</artifactId>
+    <packaging>jar</packaging>
+    <name>oncebox-test-fixtures</name>
+    <description>
+        Test infrastructure shared by the library modules and the standalone test modules: the
+        Testcontainers singletons (PostgreSQL, MySQL, Oracle, Redis) and the DDL used to create the
+        outbox schema in tests. Internal build artifact: it is installed into the local repository so
+        the other modules can depend on it inside the reactor, but it is never published to Maven
+        Central (see the excludeArtifacts entry of central-publishing-maven-plugin in the parent pom).
+    </description>
 
     <properties>
+        <!-- Not published, so no need to build/sign the release-only artifacts. -->
         <maven.deploy.skip>true</maven.deploy.skip>
+        <maven.source.skip>true</maven.source.skip>
+        <maven.javadoc.skip>true</maven.javadoc.skip>
+        <gpg.skip>true</gpg.skip>
         <testcontainers.version>1.20.6</testcontainers.version>
     </properties>
 

@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.metrics.it_config;
 
-import io.github.dmitriyiliyov.oncebox.tests.utils.PostgresTestContainerSingleton;
+import io.github.dmitriyiliyov.oncebox.tests.fixtures.PostgresTestContainerSingleton;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;

@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.consumer.cache;
 
-import io.github.dmitriyiliyov.oncebox.tests.utils.RedisTestContainerSingleton;
+import io.github.dmitriyiliyov.oncebox.tests.fixtures.RedisTestContainerSingleton;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;

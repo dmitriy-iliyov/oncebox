@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.mysql;
 
 import io.github.dmitriyiliyov.oncebox.core.it.BaseIntegrationTests;
-import io.github.dmitriyiliyov.oncebox.tests.utils.MySqlTestContainerSingleton;
+import io.github.dmitriyiliyov.oncebox.tests.fixtures.MySqlTestContainerSingleton;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;

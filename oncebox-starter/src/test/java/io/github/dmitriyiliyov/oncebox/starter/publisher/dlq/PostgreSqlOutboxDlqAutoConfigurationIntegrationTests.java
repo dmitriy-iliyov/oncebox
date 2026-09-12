@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.starter.publisher.dlq;
 
-import io.github.dmitriyiliyov.oncebox.tests.utils.PostgresTestContainerSingleton;
+import io.github.dmitriyiliyov.oncebox.tests.fixtures.PostgresTestContainerSingleton;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

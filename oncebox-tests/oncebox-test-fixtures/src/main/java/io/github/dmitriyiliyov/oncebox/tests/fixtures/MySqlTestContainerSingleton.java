@@ -1,4 +1,4 @@
-package io.github.dmitriyiliyov.oncebox.tests.utils;
+package io.github.dmitriyiliyov.oncebox.tests.fixtures;
 
 import org.testcontainers.containers.MySQLContainer;
 

@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.postgresql;
 
 import io.github.dmitriyiliyov.oncebox.dlq.api.it.BaseIntegrationTests;
-import io.github.dmitriyiliyov.oncebox.tests.utils.PostgresTestContainerSingleton;
+import io.github.dmitriyiliyov.oncebox.tests.fixtures.PostgresTestContainerSingleton;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
