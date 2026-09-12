@@ -1,6 +1,10 @@
 spring:
   application:
     name: oncebox-producer-example
+  datasource:
+    hikari:
+      maximum-pool-size: 32
+      minimum-idle: 8
   jpa:
     properties:
       hibernate:
@@ -8,8 +12,8 @@ spring:
           batch_size: 100
         order_inserts: true
         order_updates: true
-        generate_statistics: true
-        format_sql: true
+        generate_statistics: false
+        format_sql: false
     hibernate:
       ddl-auto: none
     open-in-view: false
@@ -20,7 +24,7 @@ spring:
 logging:
   level:
     root: info
-    io.github.dmitriyiliyov.oncebox: debug
+    io.github.dmitriyiliyov.oncebox: info
 oncebox:
   thread-pool-size: 7
   tables:
