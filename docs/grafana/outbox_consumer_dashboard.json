@@ -2,22 +2,7 @@
   "apiVersion": "dashboard.grafana.app/v2",
   "kind": "Dashboard",
   "metadata": {
-    "name": "admxxn2",
-    "namespace": "default",
-    "uid": "b532490f-0eef-4663-a456-23d67b37bb21",
-    "resourceVersion": "1778513409968014",
-    "generation": 4,
-    "creationTimestamp": "2026-05-11T15:27:58Z",
-    "labels": {
-      "grafana.app/deprecatedInternalID": "218238494171136"
-    },
-    "annotations": {
-      "grafana.app/createdBy": "user:aflr3ulq101dse",
-      "grafana.app/folder": "",
-      "grafana.app/saved-from-ui": "Grafana v13.0.1 (a100054f)",
-      "grafana.app/updatedBy": "user:aflr3ulq101dse",
-      "grafana.app/updatedTimestamp": "2026-05-11T15:30:09Z"
-    }
+    "name": "admxxn2"
   },
   "spec": {
     "annotations": [
@@ -63,7 +48,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "cflr41soa21vkd"
+                        "name": "${datasource}"
                       },
                       "spec": {
                         "editorMode": "builder",
@@ -84,7 +69,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "cflr41soa21vkd"
+                        "name": "${datasource}"
                       },
                       "spec": {
                         "editorMode": "builder",
@@ -203,7 +188,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "cflr41soa21vkd"
+                        "name": "${datasource}"
                       },
                       "spec": {
                         "editorMode": "builder",
@@ -224,7 +209,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "cflr41soa21vkd"
+                        "name": "${datasource}"
                       },
                       "spec": {
                         "editorMode": "builder",
@@ -246,7 +231,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "cflr41soa21vkd"
+                        "name": "${datasource}"
                       },
                       "spec": {
                         "editorMode": "builder",
@@ -268,7 +253,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "cflr41soa21vkd"
+                        "name": "${datasource}"
                       },
                       "spec": {
                         "editorMode": "builder",
@@ -354,7 +339,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "cflr41soa21vkd"
+                        "name": "${datasource}"
                       },
                       "spec": {
                         "editorMode": "builder",
@@ -375,7 +360,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "cflr41soa21vkd"
+                        "name": "${datasource}"
                       },
                       "spec": {
                         "editorMode": "builder",
@@ -547,7 +532,28 @@
       "fiscalYearStartMonth": 0
     },
     "title": "outbox-consumer",
-    "variables": [],
+    "variables": [
+      {
+        "kind": "DatasourceVariable",
+        "spec": {
+          "name": "datasource",
+          "label": "Data source",
+          "pluginId": "prometheus",
+          "refresh": "load",
+          "regex": "",
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "options": [],
+          "multi": false,
+          "includeAll": false,
+          "hide": "",
+          "skipUrlSync": false,
+          "allowCustomValue": false
+        }
+      }
+    ],
     "preferences": {
       "layout": {
         "kind": "GridLayout",

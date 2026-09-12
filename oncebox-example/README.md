@@ -77,3 +77,13 @@ COMPOSE_PROFILES=rabbit,postgres,test docker compose up
 
 > [!NOTE]
 > For test with other database use `mysql` or `oracle`. The profile `test` using for enable traffic generator and observability container.  
+
+## Dashboards
+
+Grafana comes provisioned: the Prometheus datasource is pinned to the `oncebox-prometheus` uid and
+the dashboards in [`docs/grafana`](../docs/grafana) are loaded from disk on start. Open
+<http://localhost:3000> (`admin` / `admin`) and they are already there — nothing to import by hand.
+
+The dashboards pick their datasource through a `datasource` variable instead of a hardcoded uid, so
+the same files can also be imported into any other Grafana; pick the Prometheus instance from the
+dropdown at the top of the dashboard.

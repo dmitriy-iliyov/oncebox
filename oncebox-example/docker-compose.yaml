@@ -181,6 +181,10 @@ services:
       - oncebox-prometheus
     networks:
       - default
+    volumes:
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ../docs/grafana:/var/lib/grafana/dashboards
     ports:
       - "3000:3000"
 
