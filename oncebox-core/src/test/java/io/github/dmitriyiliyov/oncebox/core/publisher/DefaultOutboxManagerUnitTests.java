@@ -452,4 +452,46 @@ public class DefaultOutboxManagerUnitTests {
         // then
         verifyNoInteractions(repository);
     }
+
+    @Test
+    @DisplayName("UT save() should hand the event to the repository")
+    void save_shouldDelegateToRepository() {
+        // given
+        OutboxEvent event = mock(OutboxEvent.class);
+
+        // when
+        tested.save(event);
+
+        // then
+        verify(repository).save(event);
+    }
+
+    @Test
+    @DisplayName("UT saveBatch() should hand the batch to the repository")
+    void saveBatch_shouldDelegateToRepository() {
+        // given
+        List<OutboxEvent> batch = List.of(mock(OutboxEvent.class));
+
+        // when
+        tested.saveBatch(batch);
+
+        // then
+        verify(repository).saveBatch(batch);
+    }
+
+    @Test
+    @DisplayName("UT deleteProcessedBatch() should delete PROCESSED events updated before now minus ttl")
+    void deleteProcessedBatch_shouldDeleteProcessedOlderThanTtl() {
+        // given
+        Instant now = Instant.parse("2026-09-24T10:00:00Z");
+        when(clock.instant()).thenReturn(now);
+        when(repository.deleteBatchByStatusAndThreshold(EventStatus.PROCESSED, now.minus(Duration.ofHours(24)), 100))
+                .thenReturn(7);
+
+        // when
+        int deleted = tested.deleteProcessedBatch(Duration.ofHours(24), 100);
+
+        // then
+        assertThat(deleted).isEqualTo(7);
+    }
 }

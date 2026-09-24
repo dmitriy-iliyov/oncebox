@@ -1,39 +1,43 @@
 package io.github.dmitriyiliyov.oncebox.starter;
 
-import io.github.dmitriyiliyov.oncebox.starter.consumer.OutboxConsumerProperties;
-import io.github.dmitriyiliyov.oncebox.starter.publisher.OutboxPublisherProperties;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.util.Map;
+import static org.assertj.core.api.Assertions.assertThat;
 
-public class LogUtilsUnitTests {
+class LogUtilsUnitTests {
 
     @Test
-    public void prettyPrint_test() {
-        OutboxProperties properties = new OutboxProperties();
+    @DisplayName("UT prettyPrint() should break at braces and commas and indent one tab per nesting level")
+    void prettyPrint_shouldBreakAndIndentByNesting() {
+        // given
+        Object properties = new ToStringOf("Outbox{enabled=true, sender=Sender{type=KAFKA}}");
 
-        OutboxPublisherProperties publisherProperties = new OutboxPublisherProperties();
-        publisherProperties.setEnabled(true);
+        // when
+        String printed = LogUtils.prettyPrint(properties);
 
-        OutboxPublisherProperties.SenderProperties senderProperties = new OutboxPublisherProperties.SenderProperties();
-        senderProperties.setType(TransportType.KAFKA);
+        // then
+        assertThat(printed).isEqualTo("""
+                Outbox{
+                \t enabled=true,
+                \t sender=Sender{
+                \t\t type=KAFKA
+                \t }
+                 }""");
+    }
 
-        publisherProperties.setSender(senderProperties);
-        publisherProperties.setEvents(Map.of());
+    @Test
+    @DisplayName("UT prettyPrint() when the text has no braces or commas should return it unchanged")
+    void prettyPrint_whenNoStructure_shouldReturnUnchanged() {
+        // when / then
+        assertThat(LogUtils.prettyPrint(new ToStringOf("plain value"))).isEqualTo("plain value");
+    }
 
-        OutboxConsumerProperties consumerProperties = new OutboxConsumerProperties();
-        consumerProperties.setEnabled(true);
+    private record ToStringOf(String text) {
 
-        OutboxConsumerProperties.SourceProperties source = new OutboxConsumerProperties.SourceProperties();
-        source.setType(TransportType.KAFKA);
-
-        consumerProperties.setSource(source);
-
-        properties.setPublisher(publisherProperties);
-        properties.setConsumer(consumerProperties);
-
-        properties.applyDefaults();
-
-        System.out.println(LogUtils.prettyPrint(properties));
+        @Override
+        public String toString() {
+            return text;
+        }
     }
 }

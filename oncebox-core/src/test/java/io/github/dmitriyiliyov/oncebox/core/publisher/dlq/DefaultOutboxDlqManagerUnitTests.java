@@ -159,4 +159,18 @@ public class DefaultOutboxDlqManagerUnitTests {
 
         verifyNoInteractions(repository);
     }
+
+    @Test
+    @DisplayName("UT loadAndLockBatch() should lock events of the given DLQ status as IN_PROCESS")
+    void loadAndLockBatch_shouldLockEventsOfStatusAsInProcess() {
+        // given
+        List<OutboxDlqEvent> locked = List.of(mock(OutboxDlqEvent.class));
+        when(repository.findAndLockBatchByStatus(DlqStatus.TO_RETRY, 50, DlqStatus.IN_PROCESS)).thenReturn(locked);
+
+        // when
+        List<OutboxDlqEvent> result = tested.loadAndLockBatch(DlqStatus.TO_RETRY, 50);
+
+        // then
+        assertThat(result).isSameAs(locked);
+    }
 }

@@ -5,37 +5,43 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.ConfirmListener;
 import io.github.dmitriyiliyov.oncebox.core.publisher.domain.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.publisher.domain.SenderResult;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
 import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.rabbit.core.ChannelCallback;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+/**
+ * The broker's confirms are delivered on the calling thread, right after the channel callback has published
+ * every event and before the sender starts waiting for them - the order a real broker cannot guarantee is not
+ * what these cases are about, and no case waits on a timer except the two that are about the timeout itself.
+ */
 @ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT)
 class RabbitOutboxSenderUnitTests {
 
     private static final String EXCHANGE = "test-exchange";
     private static final long TIMEOUT_SECONDS = 5;
-
-    private static ExecutorService executor;
+    private static final Instant CREATED_AT = Instant.parse("2026-09-24T10:00:00Z");
+    private static final OutboxEvent FIRST = event("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "type1", "payload1");
+    private static final OutboxEvent SECOND = event("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", "type2", "payload2");
+    private static final OutboxEvent THIRD = event("cccccccc-cccc-cccc-cccc-cccccccccccc", "type3", "payload3");
 
     @Mock
     private RabbitTemplate rabbitTemplate;
@@ -43,386 +49,254 @@ class RabbitOutboxSenderUnitTests {
     @Mock
     private Channel channel;
 
-    private RabbitOutboxSender rabbitOutboxSender;
-
-    @BeforeAll
-    static void beforeAll() {
-        executor = Executors.newSingleThreadExecutor();
-    }
-
-    @AfterAll
-    static void afterAll() {
-        executor.shutdown();
-    }
-
-    @BeforeEach
-    void setUp() {
-        rabbitOutboxSender = new RabbitOutboxSender(rabbitTemplate, TIMEOUT_SECONDS);
-
-        doAnswer(invocation -> {
-            ChannelCallback<Void> callback = invocation.getArgument(0);
-            return callback.doInRabbit(channel);
-        }).when(rabbitTemplate).execute(any(ChannelCallback.class));
-    }
-
     @Test
     @DisplayName("UT constructor when rabbitTemplate is null should throw NullPointerException")
     void constructor_whenRabbitTemplateIsNull_shouldThrowNullPointerException() {
+        // when / then
         assertThatThrownBy(() -> new RabbitOutboxSender(null, TIMEOUT_SECONDS))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("rabbitTemplate cannot be null");
     }
 
     @Test
-    @DisplayName("UT sendEvents(), when events is null, should return empty sender result")
-    void sendEvents_withNullEvents_shouldReturnEmptyResult() {
-        SenderResult result = rabbitOutboxSender.sendEvents(EXCHANGE, null);
+    @DisplayName("UT sendEvents() when events is null should return an empty result without touching the broker")
+    void sendEvents_whenEventsIsNull_shouldReturnEmptyResult() {
+        // when
+        SenderResult result = new RabbitOutboxSender(rabbitTemplate, TIMEOUT_SECONDS).sendEvents(EXCHANGE, null);
 
+        // then
         assertThat(result.processedIds()).isEmpty();
         assertThat(result.failedIds()).isEmpty();
         verifyNoInteractions(rabbitTemplate);
     }
 
     @Test
-    @DisplayName("UT sendEvents(), when events is empty, should return empty sender result")
-    void sendEvents_withEmptyEvents_shouldReturnEmptyResult() {
-        SenderResult result = rabbitOutboxSender.sendEvents(EXCHANGE, Collections.emptyList());
+    @DisplayName("UT sendEvents() when events is empty should return an empty result without touching the broker")
+    void sendEvents_whenEventsIsEmpty_shouldReturnEmptyResult() {
+        // when
+        SenderResult result = new RabbitOutboxSender(rabbitTemplate, TIMEOUT_SECONDS)
+                .sendEvents(EXCHANGE, Collections.emptyList());
 
+        // then
         assertThat(result.processedIds()).isEmpty();
         assertThat(result.failedIds()).isEmpty();
         verifyNoInteractions(rabbitTemplate);
     }
 
     @Test
-    @DisplayName("UT sendEvents(), when all events are acked individually, should return all in processedIds")
-    void sendEvents_shouldSucceedWhenAllEventsAreAckedIndividually() throws Exception {
-        OutboxEvent event1 = new OutboxEvent(UUID.randomUUID(), "type1", "application/json", "payload1", Instant.now());
-        OutboxEvent event2 = new OutboxEvent(UUID.randomUUID(), "type2", "application/json", "payload2", Instant.now());
-        List<OutboxEvent> events = List.of(event1, event2);
+    @DisplayName("UT sendEvents() should publish each event persistently, routed by its type, with the outbox headers")
+    void sendEvents_shouldPublishPersistentlyWithOutboxHeaders() throws Exception {
+        // given
+        RabbitOutboxSender sender = senderConfirming(1, listener -> listener.handleAck(1L, false));
 
-        when(channel.getNextPublishSeqNo()).thenReturn(1L, 2L);
+        // when
+        sender.sendEvents(EXCHANGE, List.of(FIRST));
 
-        doAnswer(invocation -> {
-            ConfirmListener listener = invocation.getArgument(0);
-            executor.submit(() -> {
-                try {
-                    Thread.sleep(50);
-                    listener.handleAck(1L, false);
-                    listener.handleAck(2L, false);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            });
-            return null;
-        }).when(channel).addConfirmListener(any(ConfirmListener.class));
+        // then
+        ArgumentCaptor<AMQP.BasicProperties> properties = ArgumentCaptor.forClass(AMQP.BasicProperties.class);
+        verify(channel).basicPublish(eq(EXCHANGE), eq("type1"), eq(false), properties.capture(),
+                eq("payload1".getBytes(StandardCharsets.UTF_8)));
+        assertThat(properties.getValue().getDeliveryMode()).isEqualTo(2);
+        assertThat(properties.getValue().getHeaders())
+                .containsEntry("outbox_event_id", FIRST.getId().toString())
+                .containsEntry("outbox_event_type", "type1")
+                .containsEntry("outbox_event_payload_type", "application/json");
+    }
 
-        SenderResult result = rabbitOutboxSender.sendEvents(EXCHANGE, events);
+    @Test
+    @DisplayName("UT sendEvents() when every event is acked one by one should report all as processed")
+    void sendEvents_whenAllAckedIndividually_shouldReportAllProcessed() throws Exception {
+        // given
+        RabbitOutboxSender sender = senderConfirming(2, listener -> {
+            listener.handleAck(1L, false);
+            listener.handleAck(2L, false);
+        });
 
-        verify(channel, times(2)).basicPublish(eq(EXCHANGE), anyString(), anyBoolean(), any(AMQP.BasicProperties.class), any(byte[].class));
-        assertThat(result.processedIds()).containsExactlyInAnyOrder(event1.getId(), event2.getId());
+        // when
+        SenderResult result = sender.sendEvents(EXCHANGE, List.of(FIRST, SECOND));
+
+        // then
+        verify(channel).confirmSelect();
+        assertThat(result.processedIds()).containsExactlyInAnyOrder(FIRST.getId(), SECOND.getId());
         assertThat(result.failedIds()).isEmpty();
     }
 
     @Test
-    @DisplayName("UT sendEvents(), when all events are acked with multiple flag, should return all in processedIds")
-    void sendEvents_shouldSucceedWhenAllEventsAreAckedMultiple() throws Exception {
-        OutboxEvent event1 = new OutboxEvent(UUID.randomUUID(), "type1", "application/json", "payload1", Instant.now());
-        OutboxEvent event2 = new OutboxEvent(UUID.randomUUID(), "type2", "application/json", "payload2", Instant.now());
-        List<OutboxEvent> events = List.of(event1, event2);
+    @DisplayName("UT sendEvents() when the last tag is acked with multiple should report every earlier event as processed")
+    void sendEvents_whenAckedWithMultiple_shouldReportAllProcessed() throws Exception {
+        // given
+        RabbitOutboxSender sender = senderConfirming(2, listener -> listener.handleAck(2L, true));
 
-        when(channel.getNextPublishSeqNo()).thenReturn(1L, 2L);
+        // when
+        SenderResult result = sender.sendEvents(EXCHANGE, List.of(FIRST, SECOND));
 
-        doAnswer(invocation -> {
-            ConfirmListener listener = invocation.getArgument(0);
-            executor.submit(() -> {
-                try {
-                    Thread.sleep(50);
-                    listener.handleAck(2L, true);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            });
-            return null;
-        }).when(channel).addConfirmListener(any(ConfirmListener.class));
-
-        SenderResult result = rabbitOutboxSender.sendEvents(EXCHANGE, events);
-
-        assertThat(result.processedIds()).containsExactlyInAnyOrder(event1.getId(), event2.getId());
+        // then
+        assertThat(result.processedIds()).containsExactlyInAnyOrder(FIRST.getId(), SECOND.getId());
         assertThat(result.failedIds()).isEmpty();
     }
 
     @Test
-    @DisplayName("UT sendEvents(), when all events are nacked individually, should return all in failedIds")
-    void sendEvents_shouldFailWhenAllEventsAreNackedIndividually() throws Exception {
-        OutboxEvent event1 = new OutboxEvent(UUID.randomUUID(), "type1", "application/json", "payload1", Instant.now());
-        OutboxEvent event2 = new OutboxEvent(UUID.randomUUID(), "type2", "application/json", "payload2", Instant.now());
-        List<OutboxEvent> events = List.of(event1, event2);
+    @DisplayName("UT sendEvents() when every event is nacked one by one should report all as failed")
+    void sendEvents_whenAllNackedIndividually_shouldReportAllFailed() throws Exception {
+        // given
+        RabbitOutboxSender sender = senderConfirming(2, listener -> {
+            listener.handleNack(1L, false);
+            listener.handleNack(2L, false);
+        });
 
-        when(channel.getNextPublishSeqNo()).thenReturn(1L, 2L);
+        // when
+        SenderResult result = sender.sendEvents(EXCHANGE, List.of(FIRST, SECOND));
 
-        doAnswer(invocation -> {
-            ConfirmListener listener = invocation.getArgument(0);
-            executor.submit(() -> {
-                try {
-                    Thread.sleep(50);
-                    listener.handleNack(1L, false);
-                    listener.handleNack(2L, false);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            });
-            return null;
-        }).when(channel).addConfirmListener(any(ConfirmListener.class));
-
-        SenderResult result = rabbitOutboxSender.sendEvents(EXCHANGE, events);
-
-        assertThat(result.failedIds()).containsExactlyInAnyOrder(event1.getId(), event2.getId());
+        // then
+        assertThat(result.failedIds()).containsExactlyInAnyOrder(FIRST.getId(), SECOND.getId());
         assertThat(result.processedIds()).isEmpty();
     }
 
     @Test
-    @DisplayName("UT sendEvents(), when all events are nacked with multiple flag, should return all in failedIds")
-    void sendEvents_shouldFailWhenAllEventsAreNackedMultiple() throws Exception {
-        OutboxEvent event1 = new OutboxEvent(UUID.randomUUID(), "type1", "application/json", "payload1", Instant.now());
-        OutboxEvent event2 = new OutboxEvent(UUID.randomUUID(), "type2", "application/json", "payload2", Instant.now());
-        List<OutboxEvent> events = List.of(event1, event2);
+    @DisplayName("UT sendEvents() when the last tag is nacked with multiple should report every earlier event as failed")
+    void sendEvents_whenNackedWithMultiple_shouldReportAllFailed() throws Exception {
+        // given
+        RabbitOutboxSender sender = senderConfirming(2, listener -> listener.handleNack(2L, true));
 
-        when(channel.getNextPublishSeqNo()).thenReturn(1L, 2L);
+        // when
+        SenderResult result = sender.sendEvents(EXCHANGE, List.of(FIRST, SECOND));
 
-        doAnswer(invocation -> {
-            ConfirmListener listener = invocation.getArgument(0);
-            executor.submit(() -> {
-                try {
-                    Thread.sleep(50);
-                    listener.handleNack(2L, true);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            });
-            return null;
-        }).when(channel).addConfirmListener(any(ConfirmListener.class));
-
-        SenderResult result = rabbitOutboxSender.sendEvents(EXCHANGE, events);
-
-        assertThat(result.failedIds()).containsExactlyInAnyOrder(event1.getId(), event2.getId());
+        // then
+        assertThat(result.failedIds()).containsExactlyInAnyOrder(FIRST.getId(), SECOND.getId());
         assertThat(result.processedIds()).isEmpty();
     }
 
     @Test
-    @DisplayName("UT sendEvents(), when some events acked and some nacked, should split into processedIds and failedIds")
-    void sendEvents_shouldHandleMixOfAcksAndNacks() throws Exception {
-        OutboxEvent event1 = new OutboxEvent(UUID.randomUUID(), "type1", "application/json", "payload1", Instant.now());
-        OutboxEvent event2 = new OutboxEvent(UUID.randomUUID(), "type2", "application/json", "payload2", Instant.now());
-        List<OutboxEvent> events = List.of(event1, event2);
+    @DisplayName("UT sendEvents() when one event is acked and one nacked should split them by their confirms")
+    void sendEvents_whenAckAndNack_shouldSplitByConfirm() throws Exception {
+        // given
+        RabbitOutboxSender sender = senderConfirming(2, listener -> {
+            listener.handleAck(1L, false);
+            listener.handleNack(2L, false);
+        });
 
-        when(channel.getNextPublishSeqNo()).thenReturn(1L, 2L);
+        // when
+        SenderResult result = sender.sendEvents(EXCHANGE, List.of(FIRST, SECOND));
 
-        doAnswer(invocation -> {
-            ConfirmListener listener = invocation.getArgument(0);
-            executor.submit(() -> {
-                try {
-                    Thread.sleep(50);
-                    listener.handleAck(1L, false);
-                    listener.handleNack(2L, false);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            });
-            return null;
-        }).when(channel).addConfirmListener(any(ConfirmListener.class));
-
-        SenderResult result = rabbitOutboxSender.sendEvents(EXCHANGE, events);
-
-        assertThat(result.processedIds()).containsExactly(event1.getId());
-        assertThat(result.failedIds()).containsExactly(event2.getId());
+        // then
+        assertThat(result.processedIds()).containsExactly(FIRST.getId());
+        assertThat(result.failedIds()).containsExactly(SECOND.getId());
     }
 
     @Test
-    @DisplayName("UT sendEvents(), when publish throws exception for one event, should mark that event as failed")
-    void sendEvents_shouldMarkEventAsFailedWhenPublishThrowsException() throws Exception {
-        OutboxEvent event1 = new OutboxEvent(UUID.randomUUID(), "type1", "application/json", "payload1", Instant.now());
-        OutboxEvent event2 = new OutboxEvent(UUID.randomUUID(), "type2", "application/json", "payload2", Instant.now());
-        List<OutboxEvent> events = List.of(event1, event2);
+    @DisplayName("UT sendEvents() when publishing one event throws should report that event as failed and the rest by their confirms")
+    void sendEvents_whenPublishThrowsForOne_shouldReportItFailed() throws Exception {
+        // given
+        RabbitOutboxSender sender = senderConfirming(2, listener -> listener.handleAck(1L, false));
+        lenient().doThrow(new IOException("Publish failed")).when(channel)
+                .basicPublish(eq(EXCHANGE), eq("type2"), anyBoolean(), any(AMQP.BasicProperties.class), any(byte[].class));
 
-        when(channel.getNextPublishSeqNo()).thenReturn(1L, 2L);
+        // when
+        SenderResult result = sender.sendEvents(EXCHANGE, List.of(FIRST, SECOND));
 
-        doThrow(new IOException("Publish failed"))
-                .when(channel).basicPublish(eq(EXCHANGE), eq(event2.getEventType()), anyBoolean(), any(AMQP.BasicProperties.class), any(byte[].class));
-
-        doAnswer(invocation -> {
-            ConfirmListener listener = invocation.getArgument(0);
-            executor.submit(() -> {
-                try {
-                    Thread.sleep(50);
-                    listener.handleAck(1L, false);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            });
-            return null;
-        }).when(channel).addConfirmListener(any(ConfirmListener.class));
-
-        SenderResult result = rabbitOutboxSender.sendEvents(EXCHANGE, events);
-
-        assertThat(result.processedIds()).containsExactly(event1.getId());
-        assertThat(result.failedIds()).containsExactly(event2.getId());
+        // then
+        assertThat(result.processedIds()).containsExactly(FIRST.getId());
+        assertThat(result.failedIds()).containsExactly(SECOND.getId());
     }
 
     @Test
-    @DisplayName("UT sendEvents(), when rabbitTemplate execute throws exception, should mark all events as failed")
-    void sendEvents_shouldMarkAllAsFailedWhenExecuteThrowsException() {
-        OutboxEvent event1 = new OutboxEvent(UUID.randomUUID(), "type1", "application/json", "payload1", Instant.now());
-        List<OutboxEvent> events = List.of(event1);
-
+    @DisplayName("UT sendEvents() when the template cannot open a channel should report the whole batch as failed")
+    void sendEvents_whenExecuteThrows_shouldReportAllFailed() {
+        // given
         doThrow(new AmqpException("Connection failed")).when(rabbitTemplate).execute(any(ChannelCallback.class));
 
-        SenderResult result = rabbitOutboxSender.sendEvents(EXCHANGE, events);
+        // when
+        SenderResult result = new RabbitOutboxSender(rabbitTemplate, TIMEOUT_SECONDS).sendEvents(EXCHANGE, List.of(FIRST));
 
-        assertThat(result.failedIds()).containsExactlyInAnyOrder(event1.getId());
+        // then
+        assertThat(result.failedIds()).containsExactly(FIRST.getId());
         assertThat(result.processedIds()).isEmpty();
     }
 
     @Test
-    @DisplayName("UT sendEvents(), when timeout expires before all confirms, should mark unconfirmed events as failed")
-    void sendEvents_shouldMarkUnconfirmedAsFailedOnTimeout() throws Exception {
-        rabbitOutboxSender = new RabbitOutboxSender(rabbitTemplate, 1);
-        OutboxEvent event1 = new OutboxEvent(UUID.randomUUID(), "type1", "application/json", "payload1", Instant.now());
-        OutboxEvent event2 = new OutboxEvent(UUID.randomUUID(), "type2", "application/json", "payload2", Instant.now());
-        List<OutboxEvent> events = List.of(event1, event2);
+    @DisplayName("UT sendEvents() when the timeout expires before every confirm should report the unconfirmed events as failed")
+    void sendEvents_whenTimeoutExpires_shouldReportUnconfirmedFailed() throws Exception {
+        // given
+        RabbitOutboxSender sender = senderConfirming(2, 1, listener -> listener.handleAck(1L, false));
 
-        when(channel.getNextPublishSeqNo()).thenReturn(1L, 2L);
+        // when
+        SenderResult result = sender.sendEvents(EXCHANGE, List.of(FIRST, SECOND));
 
-        doAnswer(invocation -> {
-            ConfirmListener listener = invocation.getArgument(0);
-            executor.submit(() -> {
-                try {
-                    Thread.sleep(50);
-                    listener.handleAck(1L, false);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            });
-            return null;
-        }).when(channel).addConfirmListener(any(ConfirmListener.class));
-
-        SenderResult result = rabbitOutboxSender.sendEvents(EXCHANGE, events);
-
-        assertThat(result.processedIds()).containsExactly(event1.getId());
-        assertThat(result.failedIds()).containsExactly(event2.getId());
+        // then
+        assertThat(result.processedIds()).containsExactly(FIRST.getId());
+        assertThat(result.failedIds()).containsExactly(SECOND.getId());
     }
 
     @Test
-    @DisplayName("UT sendEvents(), timeout with mixed event states (processed, failed, unconfirmed)")
-    void sendEvents_timeoutWithMixedStates() throws Exception {
-        rabbitOutboxSender = new RabbitOutboxSender(rabbitTemplate, 1);
-        OutboxEvent eventProcessed = new OutboxEvent(UUID.randomUUID(), "type1", "application/json", "payload1", Instant.now());
-        OutboxEvent eventFailedOnPublish = new OutboxEvent(UUID.randomUUID(), "type2", "application/json", "payload2", Instant.now());
-        OutboxEvent eventUnconfirmed = new OutboxEvent(UUID.randomUUID(), "type3", "application/json", "payload3", Instant.now());
-        List<OutboxEvent> events = List.of(eventProcessed, eventFailedOnPublish, eventUnconfirmed);
+    @DisplayName("UT sendEvents() when the timeout expires with a publish failure among them should report both unfinished events as failed")
+    void sendEvents_whenTimeoutExpiresWithPublishFailure_shouldReportBothFailed() throws Exception {
+        // given
+        RabbitOutboxSender sender = senderConfirming(3, 1, listener -> listener.handleAck(1L, false));
+        lenient().doThrow(new IOException("Publish failed")).when(channel)
+                .basicPublish(eq(EXCHANGE), eq("type2"), anyBoolean(), any(AMQP.BasicProperties.class), any(byte[].class));
 
-        when(channel.getNextPublishSeqNo()).thenReturn(1L, 2L, 3L);
+        // when
+        SenderResult result = sender.sendEvents(EXCHANGE, List.of(FIRST, SECOND, THIRD));
 
-        doThrow(new IOException("Publish failed"))
-                .when(channel).basicPublish(eq(EXCHANGE), eq("type2"), anyBoolean(), any(AMQP.BasicProperties.class), any(byte[].class));
-
-        doAnswer(invocation -> {
-            ConfirmListener listener = invocation.getArgument(0);
-            executor.submit(() -> {
-                try {
-                    Thread.sleep(50);
-                    listener.handleAck(1L, false);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            });
-            return null;
-        }).when(channel).addConfirmListener(any(ConfirmListener.class));
-
-        SenderResult result = rabbitOutboxSender.sendEvents(EXCHANGE, events);
-
-        assertThat(result.processedIds()).containsExactly(eventProcessed.getId());
-        assertThat(result.failedIds()).containsExactlyInAnyOrder(eventFailedOnPublish.getId(), eventUnconfirmed.getId());
+        // then
+        assertThat(result.processedIds()).containsExactly(FIRST.getId());
+        assertThat(result.failedIds()).containsExactlyInAnyOrder(SECOND.getId(), THIRD.getId());
     }
 
     @Test
-    @DisplayName("UT sendEvents(), listener branches coverage: unknown tag and already processed multiple")
-    void sendEvents_listenerBranchCoverage() throws Exception {
-        OutboxEvent event1 = new OutboxEvent(UUID.randomUUID(), "type1", "application/json", "payload1", Instant.now());
-        OutboxEvent event2 = new OutboxEvent(UUID.randomUUID(), "type2", "application/json", "payload2", Instant.now());
+    @DisplayName("UT sendEvents() when a confirm names an unknown tag or repeats one should count each event once")
+    void sendEvents_whenUnknownOrRepeatedConfirm_shouldCountEachEventOnce() throws Exception {
+        // given
+        RabbitOutboxSender sender = senderConfirming(2, listener -> {
+            listener.handleAck(999L, false);
+            listener.handleAck(1L, false);
+            listener.handleAck(1L, false);
+            listener.handleAck(2L, true);
+        });
 
-        when(channel.getNextPublishSeqNo()).thenReturn(1L, 2L);
+        // when
+        SenderResult result = sender.sendEvents(EXCHANGE, List.of(FIRST, SECOND));
 
-        doAnswer(invocation -> {
-            ConfirmListener listener = invocation.getArgument(0);
-            executor.submit(() -> {
-                try {
-                    Thread.sleep(50);
-                    listener.handleAck(999L, false);
-                    listener.handleAck(1L, false);
-                    listener.handleAck(2L, true);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            });
-            return null;
-        }).when(channel).addConfirmListener(any(ConfirmListener.class));
-
-        SenderResult result = rabbitOutboxSender.sendEvents(EXCHANGE, List.of(event1, event2));
-
-        assertThat(result.processedIds()).containsExactlyInAnyOrder(event1.getId(), event2.getId());
+        // then
+        assertThat(result.processedIds()).containsExactlyInAnyOrder(FIRST.getId(), SECOND.getId());
         assertThat(result.failedIds()).isEmpty();
     }
 
-    @Test
-    @DisplayName("UT sendEvents(), when single event is acked, should return it in processedIds")
-    void sendEvents_singleEvent_ackedIndividually_shouldSucceed() throws Exception {
-        OutboxEvent event = new OutboxEvent(UUID.randomUUID(), "type1", "application/json", "payload1", Instant.now());
-
-        when(channel.getNextPublishSeqNo()).thenReturn(1L);
-
-        doAnswer(invocation -> {
-            ConfirmListener listener = invocation.getArgument(0);
-            executor.submit(() -> {
-                try {
-                    Thread.sleep(50);
-                    listener.handleAck(1L, false);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            });
-            return null;
-        }).when(channel).addConfirmListener(any(ConfirmListener.class));
-
-        SenderResult result = rabbitOutboxSender.sendEvents(EXCHANGE, List.of(event));
-
-        assertThat(result.processedIds()).containsExactly(event.getId());
-        assertThat(result.failedIds()).isEmpty();
+    private RabbitOutboxSender senderConfirming(int events, Confirms confirms) throws IOException {
+        return senderConfirming(events, TIMEOUT_SECONDS, confirms);
     }
 
-    @Test
-    @DisplayName("UT sendEvents(), when same delivery tag is acked twice, should not process it twice")
-    void sendEvents_shouldNotProcessSameTagTwice() throws Exception {
-        OutboxEvent event = new OutboxEvent(UUID.randomUUID(), "type1", "application/json", "payload1", Instant.now());
-
-        when(channel.getNextPublishSeqNo()).thenReturn(1L);
-
+    /**
+     * Runs the channel callback against the mocked channel and then delivers {@code confirms} to the listener the
+     * sender registered, still inside {@code execute} - so they arrive after every publish and before the wait.
+     */
+    private RabbitOutboxSender senderConfirming(int events, long timeoutSeconds, Confirms confirms)
+            throws IOException {
+        Long[] tags = new Long[events - 1];
+        for (int i = 0; i < tags.length; i++) {
+            tags[i] = (long) i + 2;
+        }
+        when(channel.getNextPublishSeqNo()).thenReturn(1L, tags);
+        AtomicReference<ConfirmListener> listener = new AtomicReference<>();
         doAnswer(invocation -> {
-            ConfirmListener listener = invocation.getArgument(0);
-            executor.submit(() -> {
-                try {
-                    Thread.sleep(50);
-                    listener.handleAck(1L, false);
-                    listener.handleAck(1L, false);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            });
+            listener.set(invocation.getArgument(0));
             return null;
         }).when(channel).addConfirmListener(any(ConfirmListener.class));
+        doAnswer(invocation -> {
+            ChannelCallback<?> callback = invocation.getArgument(0);
+            Object result = callback.doInRabbit(channel);
+            confirms.deliver(listener.get());
+            return result;
+        }).when(rabbitTemplate).execute(any(ChannelCallback.class));
+        return new RabbitOutboxSender(rabbitTemplate, timeoutSeconds);
+    }
 
-        SenderResult result = rabbitOutboxSender.sendEvents(EXCHANGE, List.of(event));
+    private static OutboxEvent event(String id, String eventType, String payload) {
+        return new OutboxEvent(UUID.fromString(id), eventType, "application/json", payload, CREATED_AT);
+    }
 
-        assertThat(result.processedIds()).containsExactly(event.getId());
-        assertThat(result.failedIds()).isEmpty();
+    @FunctionalInterface
+    private interface Confirms {
+        void deliver(ConfirmListener listener) throws IOException;
     }
 }

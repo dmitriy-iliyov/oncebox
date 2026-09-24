@@ -13,6 +13,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -21,7 +23,9 @@ import java.util.function.Function;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.eq;
 
 @ExtendWith(MockitoExtension.class)
 class DefaultOutboxProcessorUnitTests {
@@ -170,5 +174,39 @@ class DefaultOutboxProcessorUnitTests {
 
         verify(manager).loadBatch(eventType, batchSize);
         verifyNoMoreInteractions(manager, sender);
+    }
+
+    @Test
+    @DisplayName("UT process() when batch fails should make each retry wait multiplier times the previous one")
+    void process_whenBatchFails_shouldGrowRetryDelayByMultiplier() {
+        // given
+        Function<Integer, Instant> nextRetryAt = captureNextRetryAt(3.0, 10L);
+
+        // when
+        Duration first = Duration.between(NOW, nextRetryAt.apply(1));
+        Duration second = Duration.between(NOW, nextRetryAt.apply(2));
+
+        // then
+        assertThat(first).isPositive();
+        assertThat(second).isEqualTo(first.multipliedBy(3));
+    }
+
+    private static final Instant NOW = Instant.parse("2026-09-24T10:00:00Z");
+
+    @SuppressWarnings("unchecked")
+    private Function<Integer, Instant> captureNextRetryAt(double multiplier, long delay) {
+        OutboxEvent event = mock(OutboxEvent.class);
+        when(event.getId()).thenReturn(UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"));
+        when(manager.loadBatch(eventType, batchSize)).thenReturn(List.of(event));
+        when(sender.sendEvents(topic, List.of(event))).thenThrow(new RuntimeException("broker down"));
+        when(properties.backoffMultiplier()).thenReturn(multiplier);
+        when(properties.backoffDelay()).thenReturn(delay);
+        when(clock.instant()).thenReturn(NOW);
+
+        tested.process(properties);
+
+        ArgumentCaptor<Function<Integer, Instant>> captor = ArgumentCaptor.forClass(Function.class);
+        verify(manager).finalizeBatch(anyList(), any(), anySet(), anyInt(), captor.capture());
+        return captor.getValue();
     }
 }
