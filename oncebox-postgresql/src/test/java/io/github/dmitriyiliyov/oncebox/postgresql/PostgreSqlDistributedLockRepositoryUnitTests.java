@@ -28,7 +28,7 @@ class PostgreSqlDistributedLockRepositoryUnitTests {
 
     @BeforeEach
     void setUp() {
-        repository = new PostgreSqlDistributedLockRepository(jdbcTemplate, new PostgreSqlIdHelper());
+        repository = new PostgreSqlDistributedLockRepository(jdbcTemplate, new PostgreSqlUuidHelper());
     }
 
     @Test

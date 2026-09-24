@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.postgresql;
 
 import io.github.dmitriyiliyov.oncebox.core.locks.DistributedLockRepository;
-import io.github.dmitriyiliyov.oncebox.core.utils.SqlIdHelper;
+import io.github.dmitriyiliyov.oncebox.core.utils.SqlUuidHelper;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.Objects;
@@ -10,11 +10,11 @@ import java.util.UUID;
 public class PostgreSqlDistributedLockRepository implements DistributedLockRepository {
 
     private final JdbcTemplate jdbcTemplate;
-    private final SqlIdHelper idHelper;
+    private final SqlUuidHelper uuidHelper;
 
-    public PostgreSqlDistributedLockRepository(JdbcTemplate jdbcTemplate, SqlIdHelper idHelper) {
+    public PostgreSqlDistributedLockRepository(JdbcTemplate jdbcTemplate, SqlUuidHelper uuidHelper) {
         this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate, "jdbcTemplate cannot be null");
-        this.idHelper = Objects.requireNonNull(idHelper, "idHelper cannot be null");
+        this.uuidHelper = Objects.requireNonNull(uuidHelper, "uuidHelper cannot be null");
     }
 
     @Override
@@ -29,7 +29,7 @@ public class PostgreSqlDistributedLockRepository implements DistributedLockRepos
         return jdbcTemplate.update(
                 sql,
                 ps -> {
-                    idHelper.setIdToPs(ps, 1, workerId);
+                    uuidHelper.setToPs(ps, 1, workerId);
                     ps.setString(2, jobName);
                 }
         ) == 1;
@@ -49,7 +49,7 @@ public class PostgreSqlDistributedLockRepository implements DistributedLockRepos
                 sql,
                 ps -> {
                     ps.setString(1, jobName);
-                    idHelper.setIdToPs(ps, 2, workerId);
+                    uuidHelper.setToPs(ps, 2, workerId);
                 }
         );
     }

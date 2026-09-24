@@ -61,8 +61,8 @@ public class OutboxManagerMetricsDecorator implements OutboxManager {
     }
 
     @Override
-    public List<OutboxEvent> loadBatch(String eventType, int batchSize) {
-        return delegate.loadBatch(eventType, batchSize);
+    public List<OutboxEvent> loadBatch(String eventType, int batchSize, UUID lockToken) {
+        return delegate.loadBatch(eventType, batchSize, lockToken);
     }
 
     @Override
@@ -73,9 +73,13 @@ public class OutboxManagerMetricsDecorator implements OutboxManager {
     }
 
     @Override
-    public void finalizeBatch(List<OutboxEvent> events, Set<UUID> processedIds, Set<UUID> failedIds,
-                              int maxRetryCount, Function<Integer, Instant> nextRetryAtSupplier) {
-        delegate.finalizeBatch(events, processedIds, failedIds, maxRetryCount, nextRetryAtSupplier);
+    public void finalizeBatch(List<OutboxEvent> events,
+                              Set<UUID> processedIds,
+                              Set<UUID> failedIds,
+                              int maxRetryCount,
+                              Function<Integer, Instant> nextRetryAtSupplier,
+                              UUID lockToken) {
+        delegate.finalizeBatch(events, processedIds, failedIds, maxRetryCount, nextRetryAtSupplier, lockToken);
         if (!events.isEmpty()) {
             String eventType = events.getFirst().getEventType();
             if (eventType != null) {

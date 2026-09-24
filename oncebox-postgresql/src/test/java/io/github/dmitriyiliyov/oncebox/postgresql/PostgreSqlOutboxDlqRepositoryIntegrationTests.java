@@ -24,7 +24,7 @@ class PostgreSqlOutboxDlqRepositoryIntegrationTests extends BasePostgresSqlInteg
     private final OutboxDlqRepositoryVerifier delegate;
 
     private final JdbcTemplate jdbcTemplate;
-    private final PostgreSqlIdHelper postgreSqlIdHelper = new PostgreSqlIdHelper();
+    private final PostgreSqlUuidHelper postgreSqlUuidHelper = new PostgreSqlUuidHelper();
     private final DefaultResultSetMapper mapper = new DefaultResultSetMapper();
 
     public PostgreSqlOutboxDlqRepositoryIntegrationTests(
@@ -36,7 +36,7 @@ class PostgreSqlOutboxDlqRepositoryIntegrationTests extends BasePostgresSqlInteg
         this.delegate = new OutboxDlqRepositoryVerifier(
                 repository,
                 jdbcTemplate,
-                new PostgreSqlIdHelper(),
+                new PostgreSqlUuidHelper(),
                 new DefaultResultSetMapper()
         );
     }
@@ -44,7 +44,7 @@ class PostgreSqlOutboxDlqRepositoryIntegrationTests extends BasePostgresSqlInteg
     @Test
     @DisplayName("UT constructor when clock is null should throw NullPointerException")
     void constructor_whenClockIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new PostgreSqlOutboxDlqRepository(jdbcTemplate, postgreSqlIdHelper, mapper, null))
+        assertThatThrownBy(() -> new PostgreSqlOutboxDlqRepository(jdbcTemplate, postgreSqlUuidHelper, mapper, null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("clock cannot be null");
     }

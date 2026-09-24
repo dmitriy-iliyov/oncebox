@@ -5,7 +5,7 @@ import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.DlqStatus;
 import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.OutboxDlqEvent;
 import io.github.dmitriyiliyov.oncebox.core.publisher.domain.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.utils.BytesResultSetMapper;
-import io.github.dmitriyiliyov.oncebox.core.utils.BytesSqlIdHelper;
+import io.github.dmitriyiliyov.oncebox.core.utils.BytesSqlUuidHelper;
 import io.github.dmitriyiliyov.oncebox.core.utils.RepositoryUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -19,9 +19,9 @@ public class MySqlOutboxDlqRepository extends AbstractOutboxDlqRepository {
 
     private final Clock clock;
 
-    public MySqlOutboxDlqRepository(JdbcTemplate jdbcTemplate, BytesSqlIdHelper idHelper, BytesResultSetMapper mapper,
+    public MySqlOutboxDlqRepository(JdbcTemplate jdbcTemplate, BytesSqlUuidHelper uuidHelper, BytesResultSetMapper mapper,
                                     Clock clock) {
-        super(jdbcTemplate, idHelper, mapper);
+        super(jdbcTemplate, uuidHelper, mapper);
         this.clock = Objects.requireNonNull(clock, "clock cannot be null");
     }
 
@@ -62,7 +62,7 @@ public class MySqlOutboxDlqRepository extends AbstractOutboxDlqRepository {
                 ps -> {
                     ps.setString(1, lockStatus.name());
                     ps.setTimestamp(2, Timestamp.from(clock.instant()));
-                    idHelper.setIdsToPs(ps, 3, ids);
+                    uuidHelper.setToPs(ps, 3, ids);
                 }
         );
 

@@ -17,11 +17,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 public class OutboxManagerMetricsDecoratorUnitTests {
+
+    private static final UUID LOCK_TOKEN = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
 
     OutboxManager outboxManager;
     OutboxPublisherPropertiesHolder properties;
@@ -74,10 +77,10 @@ public class OutboxManagerMetricsDecoratorUnitTests {
         Set<UUID> failedIds = Set.of(UUID.randomUUID());
 
         // when
-        tested.finalizeBatch(events, processedIds, failedIds, 5, retry -> Instant.now());
+        tested.finalizeBatch(events, processedIds, failedIds, 5, retry -> Instant.now(), LOCK_TOKEN);
 
         // then
-        verify(outboxManager).finalizeBatch(eq(events), eq(processedIds), eq(failedIds), eq(5), any());
+        verify(outboxManager).finalizeBatch(eq(events), eq(processedIds), eq(failedIds), eq(5), any(), eq(LOCK_TOKEN));
         assertEquals(2.0, processedCounter.count(), "Processed counter should be incremented by 2");
     }
 
@@ -90,10 +93,10 @@ public class OutboxManagerMetricsDecoratorUnitTests {
         Set<UUID> failedIds = Set.of(UUID.randomUUID());
 
         // when
-        tested.finalizeBatch(events, processedIds, failedIds, 5, retry -> Instant.now());
+        tested.finalizeBatch(events, processedIds, failedIds, 5, retry -> Instant.now(), LOCK_TOKEN);
 
         // then
-        verify(outboxManager).finalizeBatch(eq(events), eq(processedIds), eq(failedIds), eq(5), any());
+        verify(outboxManager).finalizeBatch(eq(events), eq(processedIds), eq(failedIds), eq(5), any(), eq(LOCK_TOKEN));
         assertEquals(0, processedCounter.count(), "Processed counter should not be incremented");
     }
 
@@ -107,11 +110,28 @@ public class OutboxManagerMetricsDecoratorUnitTests {
         Set<UUID> failedIds = Set.of(UUID.randomUUID());
 
         // when
-        tested.finalizeBatch(events, processedIds, failedIds, 5, retry -> Instant.now());
+        tested.finalizeBatch(events, processedIds, failedIds, 5, retry -> Instant.now(), LOCK_TOKEN);
 
         // then
-        verify(outboxManager).finalizeBatch(eq(events), eq(processedIds), eq(failedIds), eq(5), any());
+        verify(outboxManager).finalizeBatch(eq(events), eq(processedIds), eq(failedIds), eq(5), any(), eq(LOCK_TOKEN));
         assertEquals(0, processedCounter.count(), "Processed counter should not be incremented");
+    }
+
+    @Test
+    @DisplayName("UT loadBatch(eventType, batchSize, lockToken) should delegate with the same lock token")
+    void loadBatch_shouldDelegateWithSameLockToken() {
+        // given
+        List<OutboxEvent> events = List.of(
+                new OutboxEvent(UUID.randomUUID(), "test-event-type", "payloadType", "{}", Instant.now())
+        );
+        when(outboxManager.loadBatch("test-event-type", 10, LOCK_TOKEN)).thenReturn(events);
+
+        // when
+        List<OutboxEvent> result = tested.loadBatch("test-event-type", 10, LOCK_TOKEN);
+
+        // then
+        assertThat(result).isSameAs(events);
+        verify(outboxManager).loadBatch("test-event-type", 10, LOCK_TOKEN);
     }
 
     @Test

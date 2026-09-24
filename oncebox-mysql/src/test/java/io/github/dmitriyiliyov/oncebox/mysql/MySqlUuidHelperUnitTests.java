@@ -1,4 +1,4 @@
-package io.github.dmitriyiliyov.oncebox.oracle;
+package io.github.dmitriyiliyov.oncebox.mysql;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -20,16 +20,16 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
-class OracleSqlIdHelperUnitTests {
+class MySqlUuidHelperUnitTests {
 
     @Mock
     private PreparedStatement ps;
 
-    private OracleSqlIdHelper helper;
+    private MySqlUuidHelper helper;
 
     @BeforeEach
     void setUp() {
-        helper = new OracleSqlIdHelper();
+        helper = new MySqlUuidHelper();
     }
 
     @Test
@@ -57,7 +57,7 @@ class OracleSqlIdHelperUnitTests {
         int parameterIndex = 1;
 
         // when
-        helper.setIdToPs(ps, parameterIndex, id);
+        helper.setToPs(ps, parameterIndex, id);
 
         // then
         verify(ps).setBytes(eq(parameterIndex), any(byte[].class));
@@ -71,7 +71,7 @@ class OracleSqlIdHelperUnitTests {
         int initialParameterIndex = 1;
 
         // when
-        helper.setIdsToPs(ps, initialParameterIndex, ids);
+        helper.setToPs(ps, initialParameterIndex, ids);
 
         // then
         verify(ps, times(2)).setBytes(any(Integer.class), any(byte[].class));

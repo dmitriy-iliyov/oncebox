@@ -13,8 +13,8 @@ import static org.mockito.Mockito.mock;
 class MySqlOutboxDlqApiRepositoryUnitTests {
 
     @Test
-    @DisplayName("UT constructor should throw NPE when idHelper is null")
-    void constructor_shouldThrowNPE_whenIdHelperIsNull() {
+    @DisplayName("UT constructor should throw NPE when uuidHelper is null")
+    void constructor_shouldThrowNPE_whenUuidHelperIsNull() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         BytesResultSetMapper mapper = mock(BytesResultSetMapper.class);
         Clock clock = mock(Clock.class);

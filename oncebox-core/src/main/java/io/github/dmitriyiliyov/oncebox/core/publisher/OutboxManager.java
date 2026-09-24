@@ -48,9 +48,11 @@ public interface OutboxManager {
      *
      * @param eventType the type of events to load.
      * @param batchSize the maximum number of events to load and lock.
+     * @param lockToken the token of this capture; the same token must be passed to
+     *                  {@link #finalizeBatch(List, Set, Set, int, Function, UUID)} for this batch.
      * @return          a list of locked outbox events ready for processing; empty list if none available.
      */
-    List<OutboxEvent> loadBatch(String eventType, int batchSize);
+    List<OutboxEvent> loadBatch(String eventType, int batchSize, UUID lockToken);
 
     /**
      * Loads and locks a batch of events with a specific status.
@@ -73,16 +75,23 @@ public interface OutboxManager {
      * <p>
      * If an ID appears in both {@code processedIds} and {@code failedIds}, it is treated as failed.
      * If both sets are null or empty, the method is a no-op.
+     * <p>
+     * Events captured again by another poller since {@code lockToken} was issued are left untouched.
      *
      * @param events              the original list of events in the batch.
      * @param processedIds        the IDs of successfully processed events.
      * @param failedIds           the IDs of failed events.
      * @param maxRetryCount       the maximum number of retries allowed; must be non-negative.
      * @param nextRetryAtSupplier a function that calculates the next retry time given the current retry count.
+     * @param lockToken           the token the batch was loaded with.
      * @throws IllegalArgumentException if {@code maxRetryCount} is negative.
      */
-    void finalizeBatch(List<OutboxEvent> events, Set<UUID> processedIds, Set<UUID> failedIds,
-                       int maxRetryCount, Function<Integer, Instant> nextRetryAtSupplier);
+    void finalizeBatch(List<OutboxEvent> events,
+                       Set<UUID> processedIds,
+                       Set<UUID> failedIds,
+                       int maxRetryCount,
+                       Function<Integer, Instant> nextRetryAtSupplier,
+                       UUID lockToken);
 
     /**
      * Recovers events stuck in {@link EventStatus#IN_PROCESS} state for longer than the given duration.

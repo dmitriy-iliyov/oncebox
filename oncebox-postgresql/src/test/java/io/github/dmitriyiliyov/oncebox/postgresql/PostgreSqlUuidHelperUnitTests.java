@@ -18,16 +18,16 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
-class PostgreSqlIdHelperUnitTests {
+class PostgreSqlUuidHelperUnitTests {
 
     @Mock
     private PreparedStatement ps;
 
-    private PostgreSqlIdHelper helper;
+    private PostgreSqlUuidHelper helper;
 
     @BeforeEach
     void setUp() {
-        helper = new PostgreSqlIdHelper();
+        helper = new PostgreSqlUuidHelper();
     }
 
     @Test
@@ -38,7 +38,7 @@ class PostgreSqlIdHelperUnitTests {
         int parameterIndex = 1;
 
         // when
-        helper.setIdToPs(ps, parameterIndex, id);
+        helper.setToPs(ps, parameterIndex, id);
 
         // then
         verify(ps).setObject(eq(parameterIndex), eq(id));
@@ -52,7 +52,7 @@ class PostgreSqlIdHelperUnitTests {
         int initialParameterIndex = 1;
 
         // when
-        helper.setIdsToPs(ps, initialParameterIndex, ids);
+        helper.setToPs(ps, initialParameterIndex, ids);
 
         // then
         verify(ps, times(2)).setObject(any(Integer.class), any(UUID.class));

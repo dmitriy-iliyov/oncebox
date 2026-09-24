@@ -2,7 +2,7 @@ package io.github.dmitriyiliyov.oncebox.oracle;
 
 import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.OutboxDlqEvent;
 import io.github.dmitriyiliyov.oncebox.core.utils.BytesResultSetMapper;
-import io.github.dmitriyiliyov.oncebox.core.utils.BytesSqlIdHelper;
+import io.github.dmitriyiliyov.oncebox.core.utils.BytesSqlUuidHelper;
 import io.github.dmitriyiliyov.oncebox.dlq.api.AbstractOutboxDlqApiRepository;
 import io.github.dmitriyiliyov.oncebox.dlq.api.DlqFilter;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -15,12 +15,12 @@ import java.util.UUID;
 
 public class OracleOutboxDlqApiRepository extends AbstractOutboxDlqApiRepository {
 
-    private final BytesSqlIdHelper localIdHelper;
+    private final BytesSqlUuidHelper localUuidHelper;
 
-    public OracleOutboxDlqApiRepository(JdbcTemplate jdbcTemplate, BytesSqlIdHelper idHelper, BytesResultSetMapper mapper,
+    public OracleOutboxDlqApiRepository(JdbcTemplate jdbcTemplate, BytesSqlUuidHelper uuidHelper, BytesResultSetMapper mapper,
                                         Clock clock) {
-        super(jdbcTemplate, idHelper, mapper, clock);
-        this.localIdHelper = Objects.requireNonNull(idHelper, "idHelper cannot be null");
+        super(jdbcTemplate, uuidHelper, mapper, clock);
+        this.localUuidHelper = Objects.requireNonNull(uuidHelper, "uuidHelper cannot be null");
     }
 
     @Override
@@ -50,6 +50,6 @@ public class OracleOutboxDlqApiRepository extends AbstractOutboxDlqApiRepository
 
     @Override
     protected Object convertIdParameter(UUID id) {
-        return localIdHelper.uuidToBytes(id);
+        return localUuidHelper.uuidToBytes(id);
     }
 }

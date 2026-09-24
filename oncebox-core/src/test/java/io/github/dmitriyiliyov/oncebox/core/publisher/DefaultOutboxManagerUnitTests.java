@@ -23,6 +23,8 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 public class DefaultOutboxManagerUnitTests {
 
+    private static final UUID LOCK_TOKEN = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+
     @Mock
     OutboxRepository repository;
 
@@ -60,11 +62,11 @@ public class DefaultOutboxManagerUnitTests {
         OutboxEvent event2 = mock(OutboxEvent.class);
         List<OutboxEvent> eventMocks = List.of(event1, event2);
 
-        when(repository.findAndLockBatchByEventTypeAndStatus(eventType, EventStatus.PENDING, batchSize, lockStatus))
+        when(repository.findAndLockBatchByEventTypeAndStatus(eventType, EventStatus.PENDING, batchSize, LOCK_TOKEN, lockStatus))
                 .thenReturn(eventMocks);
 
         // when
-        List<OutboxEvent> result = tested.loadBatch(eventType, batchSize);
+        List<OutboxEvent> result = tested.loadBatch(eventType, batchSize, LOCK_TOKEN);
 
         // then
         assertThat(result)
@@ -72,7 +74,7 @@ public class DefaultOutboxManagerUnitTests {
                 .containsExactly(event1, event2);
 
         verify(repository, times(1))
-                .findAndLockBatchByEventTypeAndStatus(eventType, EventStatus.PENDING, batchSize, lockStatus);
+                .findAndLockBatchByEventTypeAndStatus(eventType, EventStatus.PENDING, batchSize, LOCK_TOKEN, lockStatus);
         verifyNoMoreInteractions(repository);
     }
 
@@ -84,18 +86,41 @@ public class DefaultOutboxManagerUnitTests {
         int batchSize = 10;
         EventStatus lockStatus = EventStatus.IN_PROCESS;
 
-        when(repository.findAndLockBatchByEventTypeAndStatus(eventType, EventStatus.PENDING, batchSize, lockStatus))
+        when(repository.findAndLockBatchByEventTypeAndStatus(eventType, EventStatus.PENDING, batchSize, LOCK_TOKEN, lockStatus))
                 .thenReturn(List.of());
 
         // when
-        List<OutboxEvent> result = tested.loadBatch(eventType, batchSize);
+        List<OutboxEvent> result = tested.loadBatch(eventType, batchSize, LOCK_TOKEN);
 
         // then
         assertTrue(result.isEmpty());
 
         verify(repository, times(1))
-                .findAndLockBatchByEventTypeAndStatus(eventType, EventStatus.PENDING, batchSize, lockStatus);
+                .findAndLockBatchByEventTypeAndStatus(eventType, EventStatus.PENDING, batchSize, LOCK_TOKEN, lockStatus);
         verifyNoMoreInteractions(repository);
+    }
+
+    @Test
+    @DisplayName("UT loadBatch(String, int, UUID) when lockToken is null should throw and capture nothing")
+    void loadBatch_whenLockTokenIsNull_shouldThrowAndCaptureNothing() {
+        // when / then
+        assertThatThrownBy(() -> tested.loadBatch("event-type", 10, null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("lockToken cannot be null");
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    @DisplayName("UT finalizeBatch() when lockToken is null should throw and write nothing")
+    void finalizeBatch_whenLockTokenIsNull_shouldThrowAndWriteNothing() {
+        // given
+        Set<UUID> processedIds = Set.of(UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"));
+
+        // when / then
+        assertThatThrownBy(() -> tested.finalizeBatch(List.of(), processedIds, null, 3, i -> Instant.now(), null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("lockToken cannot be null");
+        verifyNoInteractions(repository);
     }
 
     @Test
@@ -156,13 +181,13 @@ public class DefaultOutboxManagerUnitTests {
         Set<UUID> failedIds = new HashSet<>(Set.of(idFailed));
 
         // when
-        tested.finalizeBatch(events, processedIds, failedIds, 3, i -> Instant.now().plusSeconds(60));
+        tested.finalizeBatch(events, processedIds, failedIds, 3, i -> Instant.now().plusSeconds(60), LOCK_TOKEN);
 
         // then
-        verify(repository, times(1)).updateBatchStatus(processedIds, EventStatus.PROCESSED);
+        verify(repository, times(1)).updateBatchStatusByLockToken(processedIds, LOCK_TOKEN, EventStatus.PROCESSED);
 
         ArgumentCaptor<List<OutboxEvent>> failedCaptor = ArgumentCaptor.forClass(List.class);
-        verify(repository, times(1)).partiallyUpdateBatch(failedCaptor.capture());
+        verify(repository, times(1)).partiallyUpdateBatchByLockToken(failedCaptor.capture(), eq(LOCK_TOKEN));
         assertThat(failedCaptor.getValue()).hasSize(1);
         assertThat(failedCaptor.getValue().get(0).getId()).isEqualTo(idFailed);
 
@@ -179,11 +204,11 @@ public class DefaultOutboxManagerUnitTests {
         List<OutboxEvent> events = List.of(failedEvent);
 
         // when
-        tested.finalizeBatch(events, null, Set.of(idFailed), 2, i -> Instant.now());
+        tested.finalizeBatch(events, null, Set.of(idFailed), 2, i -> Instant.now(), LOCK_TOKEN);
 
         // then
-        verify(repository, never()).updateBatchStatus(any(), any());
-        verify(repository, times(1)).partiallyUpdateBatch(any());
+        verify(repository, never()).updateBatchStatusByLockToken(any(), any(), any());
+        verify(repository, times(1)).partiallyUpdateBatchByLockToken(any(), any());
         verifyNoMoreInteractions(repository);
     }
 
@@ -197,11 +222,11 @@ public class DefaultOutboxManagerUnitTests {
         List<OutboxEvent> events = List.of(failedEvent);
 
         // when
-        tested.finalizeBatch(events, Set.of(), Set.of(idFailed), 2, i -> Instant.now());
+        tested.finalizeBatch(events, Set.of(), Set.of(idFailed), 2, i -> Instant.now(), LOCK_TOKEN);
 
         // then
-        verify(repository, never()).updateBatchStatus(any(), any());
-        verify(repository, times(1)).partiallyUpdateBatch(any());
+        verify(repository, never()).updateBatchStatusByLockToken(any(), any(), any());
+        verify(repository, times(1)).partiallyUpdateBatchByLockToken(any(), any());
         verifyNoMoreInteractions(repository);
     }
 
@@ -213,11 +238,11 @@ public class DefaultOutboxManagerUnitTests {
         Set<UUID> processedIds = Set.of(idProcessed);
 
         // when
-        tested.finalizeBatch(List.of(), processedIds, null, 2, i -> Instant.now());
+        tested.finalizeBatch(List.of(), processedIds, null, 2, i -> Instant.now(), LOCK_TOKEN);
 
         // then
-        verify(repository, times(1)).updateBatchStatus(processedIds, EventStatus.PROCESSED);
-        verify(repository, never()).partiallyUpdateBatch(any());
+        verify(repository, times(1)).updateBatchStatusByLockToken(processedIds, LOCK_TOKEN, EventStatus.PROCESSED);
+        verify(repository, never()).partiallyUpdateBatchByLockToken(any(), any());
         verifyNoMoreInteractions(repository);
     }
 
@@ -225,7 +250,7 @@ public class DefaultOutboxManagerUnitTests {
     @DisplayName("UT finalizeBatch() when both processedIds and failedIds empty should not call repository")
     public void finalizeBatch_whenBothEmpty_shouldNotCallRepository() {
         // given / when
-        tested.finalizeBatch(List.of(), Collections.emptySet(), Collections.emptySet(), 1, i -> Instant.now());
+        tested.finalizeBatch(List.of(), Collections.emptySet(), Collections.emptySet(), 1, i -> Instant.now(), LOCK_TOKEN);
 
         // then
         verifyNoInteractions(repository);
@@ -250,12 +275,12 @@ public class DefaultOutboxManagerUnitTests {
         );
 
         // when
-        tested.finalizeBatch(events, processedIds, failedIds, 3, i -> Instant.now());
+        tested.finalizeBatch(events, processedIds, failedIds, 3, i -> Instant.now(), LOCK_TOKEN);
 
         // then
-        verify(repository, times(1)).updateBatchStatus(Set.of(idProcessed), EventStatus.PROCESSED);
+        verify(repository, times(1)).updateBatchStatusByLockToken(Set.of(idProcessed), LOCK_TOKEN, EventStatus.PROCESSED);
         ArgumentCaptor<List<OutboxEvent>> eventsCaptor = ArgumentCaptor.forClass(List.class);
-        verify(repository, times(1)).partiallyUpdateBatch(eventsCaptor.capture());
+        verify(repository, times(1)).partiallyUpdateBatchByLockToken(eventsCaptor.capture(), eq(LOCK_TOKEN));
         assertThat(eventsCaptor.getValue()).containsExactlyInAnyOrder(
                 new OutboxEvent(common, EventStatus.PENDING, "type", "payloadType",
                         "payload", 1, Instant.now(), Instant.now(), Instant.now()),
@@ -279,11 +304,11 @@ public class DefaultOutboxManagerUnitTests {
         );
 
         // when
-        tested.finalizeBatch(events, processedIds, failedIds, 3, i -> Instant.now());
+        tested.finalizeBatch(events, processedIds, failedIds, 3, i -> Instant.now(), LOCK_TOKEN);
 
         // then
-        verify(repository, never()).updateBatchStatus(any(Set.class), any(EventStatus.class));
-        verify(repository, times(1)).partiallyUpdateBatch(any());
+        verify(repository, never()).updateBatchStatusByLockToken(any(Set.class), eq(LOCK_TOKEN), any(EventStatus.class));
+        verify(repository, times(1)).partiallyUpdateBatchByLockToken(any(), any());
         verifyNoMoreInteractions(repository);
     }
 
@@ -309,12 +334,12 @@ public class DefaultOutboxManagerUnitTests {
         );
 
         // when
-        tested.finalizeBatch(events, processedIds, failedIds, 3, i -> Instant.now());
+        tested.finalizeBatch(events, processedIds, failedIds, 3, i -> Instant.now(), LOCK_TOKEN);
 
         // then
-        verify(repository, times(1)).updateBatchStatus(any(Set.class), any(EventStatus.class));
+        verify(repository, times(1)).updateBatchStatusByLockToken(any(Set.class), eq(LOCK_TOKEN), any(EventStatus.class));
         ArgumentCaptor<List<OutboxEvent>> eventsCaptor = ArgumentCaptor.forClass(List.class);
-        verify(repository, times(1)).partiallyUpdateBatch(eventsCaptor.capture());
+        verify(repository, times(1)).partiallyUpdateBatchByLockToken(eventsCaptor.capture(), eq(LOCK_TOKEN));
         List<OutboxEvent> resultEvents = eventsCaptor.getValue();
         assertEquals(3, resultEvents.size());
         for (OutboxEvent event: resultEvents) {
@@ -350,15 +375,15 @@ public class DefaultOutboxManagerUnitTests {
         );
 
         // when
-        tested.finalizeBatch(events, processedIds, failedIds, 3, i -> Instant.now());
+        tested.finalizeBatch(events, processedIds, failedIds, 3, i -> Instant.now(), LOCK_TOKEN);
 
         // then
         ArgumentCaptor<Set<UUID>> processedIdsCaptor = ArgumentCaptor.forClass(Set.class);
-        verify(repository, times(1)).updateBatchStatus(processedIdsCaptor.capture(), eq(EventStatus.PROCESSED));
+        verify(repository, times(1)).updateBatchStatusByLockToken(processedIdsCaptor.capture(), eq(LOCK_TOKEN), eq(EventStatus.PROCESSED));
         assertFalse(processedIdsCaptor.getValue().contains(common));
 
         ArgumentCaptor<List<OutboxEvent>> eventsCaptor = ArgumentCaptor.forClass(List.class);
-        verify(repository, times(1)).partiallyUpdateBatch(eventsCaptor.capture());
+        verify(repository, times(1)).partiallyUpdateBatchByLockToken(eventsCaptor.capture(), eq(LOCK_TOKEN));
         List<OutboxEvent> resultEvents = eventsCaptor.getValue();
         for (OutboxEvent event: resultEvents) {
             assertEquals(EventStatus.PENDING, event.getStatus());

@@ -24,12 +24,12 @@ class PostgreSqlDistributedLockRepositoryIntegrationTests extends BasePostgresSq
     private JdbcTemplate jdbcTemplate;
 
     private PostgreSqlDistributedLockRepository repository;
-    private PostgreSqlIdHelper postgreSqlIdHelper;
+    private PostgreSqlUuidHelper postgreSqlUuidHelper;
 
     @BeforeEach
     void setUp() {
-        postgreSqlIdHelper = new PostgreSqlIdHelper();
-        repository = new PostgreSqlDistributedLockRepository(jdbcTemplate, postgreSqlIdHelper);
+        postgreSqlUuidHelper = new PostgreSqlUuidHelper();
+        repository = new PostgreSqlDistributedLockRepository(jdbcTemplate, postgreSqlUuidHelper);
         this.verifier = new DistributedLockRepositoryVerifier(
                 jdbcTemplate,
                 repository,
@@ -57,17 +57,17 @@ class PostgreSqlDistributedLockRepositoryIntegrationTests extends BasePostgresSq
     @Test
     @DisplayName("UT constructor when jdbcTemplate is null should throw NullPointerException")
     void constructor_whenJdbcTemplateIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new PostgreSqlDistributedLockRepository(null, postgreSqlIdHelper))
+        assertThatThrownBy(() -> new PostgreSqlDistributedLockRepository(null, postgreSqlUuidHelper))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("jdbcTemplate cannot be null");
     }
 
     @Test
-    @DisplayName("UT constructor when idHelper is null should throw NullPointerException")
-    void constructor_whenIdHelperIsNull_shouldThrowNullPointerException() {
+    @DisplayName("UT constructor when uuidHelper is null should throw NullPointerException")
+    void constructor_whenUuidHelperIsNull_shouldThrowNullPointerException() {
         assertThatThrownBy(() -> new PostgreSqlDistributedLockRepository(jdbcTemplate, null))
                 .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("idHelper cannot be null");
+                .hasMessageContaining("uuidHelper cannot be null");
     }
 
     @Test

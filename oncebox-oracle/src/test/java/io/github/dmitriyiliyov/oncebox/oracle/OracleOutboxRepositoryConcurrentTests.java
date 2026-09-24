@@ -63,7 +63,7 @@ class OracleOutboxRepositoryConcurrentTests extends BaseOracleIntegrationTests {
             try {
                 txTemplate.executeWithoutResult(status -> {
                     batchA.set(repository.findAndLockBatchByEventTypeAndStatus(
-                            eventType, EventStatus.PENDING, BATCH_SIZE, EventStatus.IN_PROCESS));
+                            eventType, EventStatus.PENDING, BATCH_SIZE, UUID.randomUUID(), EventStatus.IN_PROCESS));
                     firstLocked.countDown();
                     try {
                         secondDone.await(15, TimeUnit.SECONDS);
@@ -83,7 +83,7 @@ class OracleOutboxRepositoryConcurrentTests extends BaseOracleIntegrationTests {
 
         List<OutboxEvent> batchB = txTemplate.execute(status ->
                 repository.findAndLockBatchByEventTypeAndStatus(
-                        eventType, EventStatus.PENDING, BATCH_SIZE, EventStatus.IN_PROCESS));
+                        eventType, EventStatus.PENDING, BATCH_SIZE, UUID.randomUUID(), EventStatus.IN_PROCESS));
         secondDone.countDown();
         pollerA.join(15_000);
 

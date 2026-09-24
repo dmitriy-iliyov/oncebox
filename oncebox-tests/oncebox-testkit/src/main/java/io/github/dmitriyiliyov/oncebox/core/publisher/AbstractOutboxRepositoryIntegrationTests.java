@@ -8,12 +8,17 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
 
 public class AbstractOutboxRepositoryIntegrationTests {
+
+    private static final UUID LOCK_TOKEN = UUID.fromString("0192f5a0-0000-7000-8000-0000000000b1");
+    private static final UUID OTHER_LOCK_TOKEN = UUID.fromString("0192f5a0-0000-7000-8000-0000000000b2");
 
     private final OutboxRepository repository;
 
@@ -66,50 +71,41 @@ public class AbstractOutboxRepositoryIntegrationTests {
     }
 
     public void updateBatchStatus_toPending_updatesAll() {
-        OutboxEvent e1 = buildEvent(EventStatus.IN_PROCESS);
-        OutboxEvent e2 = buildEvent(EventStatus.IN_PROCESS);
-        repository.saveBatch(List.of(e1, e2));
+        Set<UUID> ids = capture(LOCK_TOKEN, 2);
 
-        int updated = repository.updateBatchStatus(
-                Set.of(e1.getId(), e2.getId()), EventStatus.PENDING
-        );
+        int updated = repository.updateBatchStatusByLockToken(ids, LOCK_TOKEN, EventStatus.PENDING);
 
         assertThat(updated).isEqualTo(2);
     }
 
     public void updateBatchStatus_toProcessed_updatesAll() {
-        OutboxEvent e1 = buildEvent(EventStatus.IN_PROCESS);
-        OutboxEvent e2 = buildEvent(EventStatus.IN_PROCESS);
-        repository.saveBatch(List.of(e1, e2));
+        Set<UUID> ids = capture(LOCK_TOKEN, 2);
 
-        int updated = repository.updateBatchStatus(
-                Set.of(e1.getId(), e2.getId()), EventStatus.PROCESSED
-        );
+        int updated = repository.updateBatchStatusByLockToken(ids, LOCK_TOKEN, EventStatus.PROCESSED);
 
         assertThat(updated).isEqualTo(2);
     }
 
     public void updateBatchStatus_toFailed_throwsException() {
-        OutboxEvent event = buildEvent(EventStatus.IN_PROCESS);
-        repository.saveBatch(List.of(event));
+        Set<UUID> ids = capture(LOCK_TOKEN, 1);
 
         assertThatThrownBy(() ->
-                repository.updateBatchStatus(Set.of(event.getId()), EventStatus.FAILED)
+                repository.updateBatchStatusByLockToken(ids, LOCK_TOKEN, EventStatus.FAILED)
         ).isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("partiallyUpdateBatch");
+                .hasMessageContaining("partiallyUpdateBatchByLockToken");
     }
 
     public void updateBatchStatus_emptyIds_returnsZero() {
-        assertThat(repository.updateBatchStatus(Set.of(), EventStatus.PROCESSED))
+        assertThat(repository.updateBatchStatusByLockToken(Set.of(), LOCK_TOKEN, EventStatus.PROCESSED))
                 .isEqualTo(0);
     }
 
     public void updateBatchStatus_doesNotAffectOtherEvents() {
-        OutboxEvent target    = buildEvent(EventStatus.IN_PROCESS);
-        OutboxEvent unrelated = buildEvent(EventStatus.PENDING);
-        repository.saveBatch(List.of(target, unrelated));
+        Set<UUID> target = capture(LOCK_TOKEN, 1);
+        OutboxEvent unrelated = buildEventWithNextRetryAt(EventStatus.PENDING, Instant.now().minusSeconds(1));
+        repository.saveBatch(List.of(unrelated));
 
-        repository.updateBatchStatus(Set.of(target.getId()), EventStatus.PROCESSED);
+        repository.updateBatchStatusByLockToken(target, LOCK_TOKEN, EventStatus.PROCESSED);
 
         List<OutboxEvent> stillPending = repository.findAndLockBatchByStatus(
                 EventStatus.PENDING, 10, EventStatus.IN_PROCESS
@@ -119,39 +115,75 @@ public class AbstractOutboxRepositoryIntegrationTests {
                 .contains(unrelated.getId());
     }
 
-    public void partiallyUpdateBatch_incrementsRetryCount() {
+    public void updateBatchStatus_whenHeldByAnotherLockToken_updatesNothing() {
+        Set<UUID> ids = capture(LOCK_TOKEN, 2);
+
+        int stale = repository.updateBatchStatusByLockToken(ids, OTHER_LOCK_TOKEN, EventStatus.PROCESSED);
+
+        assertThat(stale).isZero();
+        assertThat(repository.updateBatchStatusByLockToken(ids, LOCK_TOKEN, EventStatus.PROCESSED)).isEqualTo(2);
+    }
+
+    public void updateBatchStatus_whenNeverCaptured_updatesNothing() {
         OutboxEvent event = buildEvent(EventStatus.IN_PROCESS);
         repository.saveBatch(List.of(event));
 
+        int updated = repository.updateBatchStatusByLockToken(Set.of(event.getId()), LOCK_TOKEN, EventStatus.PROCESSED);
+
+        assertThat(updated).isZero();
+    }
+
+    public void partiallyUpdateBatch_incrementsRetryCount() {
+        UUID id = capture(LOCK_TOKEN, 1).iterator().next();
+
         OutboxEvent updated = buildEventWithRetry(
-                event.getId(), EventStatus.FAILED, 1,
+                id, EventStatus.FAILED, 1,
                 Instant.now().plusSeconds(60).truncatedTo(ChronoUnit.MILLIS)
         );
-        int count = repository.partiallyUpdateBatch(List.of(updated));
+        int count = repository.partiallyUpdateBatchByLockToken(List.of(updated), LOCK_TOKEN);
 
         assertThat(count).isEqualTo(1);
     }
 
     public void partiallyUpdateBatch_emptyList_returnsZero() {
-        assertThat(repository.partiallyUpdateBatch(List.of())).isEqualTo(0);
+        assertThat(repository.partiallyUpdateBatchByLockToken(List.of(), LOCK_TOKEN)).isEqualTo(0);
     }
 
     public void partiallyUpdateBatch_nullList_returnsZero() {
-        assertThat(repository.partiallyUpdateBatch(null)).isEqualTo(0);
+        assertThat(repository.partiallyUpdateBatchByLockToken(null, LOCK_TOKEN)).isEqualTo(0);
     }
 
     public void partiallyUpdateBatch_multipleEvents_allUpdated() {
-        OutboxEvent e1 = buildEvent(EventStatus.IN_PROCESS);
-        OutboxEvent e2 = buildEvent(EventStatus.IN_PROCESS);
-        repository.saveBatch(List.of(e1, e2));
+        List<UUID> ids = List.copyOf(capture(LOCK_TOKEN, 2));
 
         Instant nextRetry = Instant.now().plusSeconds(60).truncatedTo(ChronoUnit.MILLIS);
-        int count = repository.partiallyUpdateBatch(List.of(
-                buildEventWithRetry(e1.getId(), EventStatus.FAILED, 1, nextRetry),
-                buildEventWithRetry(e2.getId(), EventStatus.FAILED, 2, nextRetry)
-        ));
+        int count = repository.partiallyUpdateBatchByLockToken(List.of(
+                buildEventWithRetry(ids.get(0), EventStatus.FAILED, 1, nextRetry),
+                buildEventWithRetry(ids.get(1), EventStatus.FAILED, 2, nextRetry)
+        ), LOCK_TOKEN);
 
         assertThat(count).isEqualTo(2);
+    }
+
+    public void partiallyUpdateBatch_whenHeldByAnotherLockToken_updatesNothing() {
+        UUID id = capture(LOCK_TOKEN, 1).iterator().next();
+        Instant nextRetry = Instant.now().plusSeconds(60).truncatedTo(ChronoUnit.MILLIS);
+        List<OutboxEvent> outcome = List.of(buildEventWithRetry(id, EventStatus.FAILED, 1, nextRetry));
+
+        int stale = repository.partiallyUpdateBatchByLockToken(outcome, OTHER_LOCK_TOKEN);
+
+        assertThat(stale).isZero();
+        assertThat(repository.partiallyUpdateBatchByLockToken(outcome, LOCK_TOKEN)).isEqualTo(1);
+    }
+
+    public void findAndLockBatchByStatus_shouldKeepLockTokenOfLastCapture() {
+        Set<UUID> ids = capture(LOCK_TOKEN, 1);
+        repository.updateBatchStatusByLockToken(ids, LOCK_TOKEN, EventStatus.PENDING);
+
+        List<OutboxEvent> relocked = repository.findAndLockBatchByStatus(EventStatus.PENDING, 10, EventStatus.IN_PROCESS);
+
+        assertThat(relocked).extracting(OutboxEvent::getId).containsAll(ids);
+        assertThat(repository.updateBatchStatusByLockToken(ids, LOCK_TOKEN, EventStatus.PROCESSED)).isEqualTo(1);
     }
 
     public void deleteBatch_existingIds_deletedAndReturnsCount() {
@@ -188,6 +220,24 @@ public class AbstractOutboxRepositoryIntegrationTests {
         assertThat(repository.deleteBatch(
                 Set.of(UUID.randomUUID(), UUID.randomUUID()))
         ).isEqualTo(0);
+    }
+
+    /**
+     * Saves {@code count} due events of an event type of their own and captures them with the given token, the
+     * way a poller does - the finalization methods only touch events captured with the token they are given.
+     */
+    private Set<UUID> capture(UUID lockToken, int count) {
+        String eventType = "capture-" + UUID.randomUUID();
+        Instant due = Instant.now().minusSeconds(1).truncatedTo(ChronoUnit.MILLIS);
+        List<OutboxEvent> events = IntStream.range(0, count)
+                .mapToObj(i -> buildEventWithTypeAndNextRetryAt(EventStatus.PENDING, eventType, due))
+                .toList();
+        repository.saveBatch(events);
+        List<OutboxEvent> captured = repository.findAndLockBatchByEventTypeAndStatus(
+                eventType, EventStatus.PENDING, count, lockToken, EventStatus.IN_PROCESS
+        );
+        assertThat(captured).hasSize(count);
+        return captured.stream().map(OutboxEvent::getId).collect(Collectors.toSet());
     }
 
     public OutboxEvent buildEvent(EventStatus status) {

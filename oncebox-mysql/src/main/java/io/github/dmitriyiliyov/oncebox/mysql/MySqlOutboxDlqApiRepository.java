@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.mysql;
 
 import io.github.dmitriyiliyov.oncebox.core.utils.BytesResultSetMapper;
-import io.github.dmitriyiliyov.oncebox.core.utils.BytesSqlIdHelper;
+import io.github.dmitriyiliyov.oncebox.core.utils.BytesSqlUuidHelper;
 import io.github.dmitriyiliyov.oncebox.dlq.api.AbstractOutboxDlqApiRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -11,16 +11,16 @@ import java.util.UUID;
 
 public class MySqlOutboxDlqApiRepository extends AbstractOutboxDlqApiRepository {
 
-    private final BytesSqlIdHelper localIdHelper;
+    private final BytesSqlUuidHelper localUuidHelper;
 
-    public MySqlOutboxDlqApiRepository(JdbcTemplate jdbcTemplate, BytesSqlIdHelper idHelper, BytesResultSetMapper mapper,
+    public MySqlOutboxDlqApiRepository(JdbcTemplate jdbcTemplate, BytesSqlUuidHelper uuidHelper, BytesResultSetMapper mapper,
                                        Clock clock) {
-        super(jdbcTemplate, idHelper, mapper, clock);
-        this.localIdHelper = Objects.requireNonNull(idHelper, "idHelper cannot be null");
+        super(jdbcTemplate, uuidHelper, mapper, clock);
+        this.localUuidHelper = Objects.requireNonNull(uuidHelper, "uuidHelper cannot be null");
     }
 
     @Override
     protected Object convertIdParameter(UUID id) {
-        return localIdHelper.uuidToBytes(id);
+        return localUuidHelper.uuidToBytes(id);
     }
 }

@@ -1,11 +1,11 @@
 package io.github.dmitriyiliyov.oncebox.oracle;
 
-import io.github.dmitriyiliyov.oncebox.core.utils.BytesSqlIdHelper;
+import io.github.dmitriyiliyov.oncebox.core.utils.BytesSqlUuidHelper;
 
 import java.nio.ByteBuffer;
 import java.util.UUID;
 
-public final class OracleSqlIdHelper extends BytesSqlIdHelper {
+public final class OracleSqlUuidHelper extends BytesSqlUuidHelper {
 
     @Override
     public byte[] uuidToBytes(UUID id) {

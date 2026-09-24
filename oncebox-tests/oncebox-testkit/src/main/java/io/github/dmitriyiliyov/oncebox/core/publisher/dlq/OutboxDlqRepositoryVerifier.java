@@ -2,7 +2,7 @@ package io.github.dmitriyiliyov.oncebox.core.publisher.dlq;
 
 import io.github.dmitriyiliyov.oncebox.core.publisher.domain.EventStatus;
 import io.github.dmitriyiliyov.oncebox.core.utils.ResultSetMapper;
-import io.github.dmitriyiliyov.oncebox.core.utils.SqlIdHelper;
+import io.github.dmitriyiliyov.oncebox.core.utils.SqlUuidHelper;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.Instant;
@@ -18,16 +18,16 @@ public class OutboxDlqRepositoryVerifier {
 
     private final OutboxDlqRepository repository;
     private final JdbcTemplate jdbcTemplate;
-    private final SqlIdHelper sqlIdHelper;
+    private final SqlUuidHelper sqlUuidHelper;
     private final ResultSetMapper mapper;
 
     public OutboxDlqRepositoryVerifier(OutboxDlqRepository repository,
                                 JdbcTemplate jdbcTemplate,
-                                SqlIdHelper sqlIdHelper,
+                                SqlUuidHelper sqlUuidHelper,
                                 ResultSetMapper mapper) {
         this.repository = repository;
         this.jdbcTemplate = jdbcTemplate;
-        this.sqlIdHelper = sqlIdHelper;
+        this.sqlUuidHelper = sqlUuidHelper;
         this.mapper = mapper;
     }
 
@@ -188,7 +188,7 @@ public class OutboxDlqRepositoryVerifier {
         """;
         List<OutboxDlqEvent> results = jdbcTemplate.query(
                 sql,
-                ps -> sqlIdHelper.setIdToPs(ps, 1, id),
+                ps -> sqlUuidHelper.setToPs(ps, 1, id),
                 (rs, rowNum) -> mapper.toDlqEvent(rs)
         );
         return results.stream().findFirst();

@@ -5,7 +5,7 @@ import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.DlqStatus;
 import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.OutboxDlqEvent;
 import io.github.dmitriyiliyov.oncebox.core.publisher.domain.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.utils.BytesResultSetMapper;
-import io.github.dmitriyiliyov.oncebox.core.utils.BytesSqlIdHelper;
+import io.github.dmitriyiliyov.oncebox.core.utils.BytesSqlUuidHelper;
 import io.github.dmitriyiliyov.oncebox.core.utils.RepositoryUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -21,8 +21,8 @@ public class OracleOutboxDlqRepository extends AbstractOutboxDlqRepository {
     private final BytesResultSetMapper localMapper;
     private final Clock clock;
 
-    public OracleOutboxDlqRepository(JdbcTemplate jdbcTemplate, BytesSqlIdHelper idHelper, BytesResultSetMapper mapper, Clock clock) {
-        super(jdbcTemplate, idHelper, mapper);
+    public OracleOutboxDlqRepository(JdbcTemplate jdbcTemplate, BytesSqlUuidHelper uuidHelper, BytesResultSetMapper mapper, Clock clock) {
+        super(jdbcTemplate, uuidHelper, mapper);
         this.localMapper = Objects.requireNonNull(mapper, "mapper cannot be null");
         this.clock = Objects.requireNonNull(clock, "clock cannot be null");
     }
@@ -66,7 +66,7 @@ public class OracleOutboxDlqRepository extends AbstractOutboxDlqRepository {
                 ps -> {
                     ps.setString(1, lockStatus.name());
                     ps.setTimestamp(2, Timestamp.from(clock.instant()));
-                    idHelper.setIdsToPs(ps, 3, ids);
+                    uuidHelper.setToPs(ps, 3, ids);
                 }
         );
         events.forEach(event -> event.setDlqStatus(lockStatus));
@@ -100,6 +100,6 @@ public class OracleOutboxDlqRepository extends AbstractOutboxDlqRepository {
             DELETE FROM outbox_dlq_events
             WHERE id IN (%s)
         """.formatted(RepositoryUtils.generateIdsPlaceholders(ids));
-        return jdbcTemplate.update(sql, ps -> idHelper.setIdsToPs(ps, 1, ids));
+        return jdbcTemplate.update(sql, ps -> uuidHelper.setToPs(ps, 1, ids));
     }
 }

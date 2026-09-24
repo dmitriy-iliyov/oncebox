@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.postgresql;
 
 import io.github.dmitriyiliyov.oncebox.core.utils.ResultSetMapper;
-import io.github.dmitriyiliyov.oncebox.core.utils.SqlIdHelper;
+import io.github.dmitriyiliyov.oncebox.core.utils.SqlUuidHelper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -15,11 +15,11 @@ class PostgreSqlOutboxDlqApiRepositoryUnitTests {
     @Test
     @DisplayName("UT constructor should throw NPE when jdbcTemplate is null")
     void constructor_shouldThrowNPE_whenJdbcTemplateIsNull() {
-        SqlIdHelper idHelper = mock(SqlIdHelper.class);
+        SqlUuidHelper uuidHelper = mock(SqlUuidHelper.class);
         ResultSetMapper mapper = mock(ResultSetMapper.class);
         Clock clock = mock(Clock.class);
 
-        assertThatThrownBy(() -> new PostgreSqlOutboxDlqApiRepository(null, idHelper, mapper, clock))
+        assertThatThrownBy(() -> new PostgreSqlOutboxDlqApiRepository(null, uuidHelper, mapper, clock))
                 .isInstanceOf(NullPointerException.class);
     }
 }

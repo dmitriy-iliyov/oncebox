@@ -30,6 +30,8 @@ class OutboxPublishingComponentTests {
     private static final String EVENT_TYPE = "order-created";
     private static final String TOPIC = "orders";
     private static final Instant START = Instant.parse("2026-09-24T10:00:00Z");
+    private static final UUID FIRST_CAPTURE = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final UUID SECOND_CAPTURE = UUID.fromString("22222222-2222-2222-2222-222222222222");
 
     private final TestClock clock = new TestClock(START);
     private final InMemoryOutboxRepository repository = new InMemoryOutboxRepository(clock);
@@ -154,7 +156,7 @@ class OutboxPublishingComponentTests {
     void recoverStuckBatch_whenEventStuckPastLimit_shouldReturnItToPending() {
         // given
         publisher.publish(EVENT_TYPE, new OrderCreated("order-1"));
-        manager.loadBatch(EVENT_TYPE, 10);
+        manager.loadBatch(EVENT_TYPE, 10, FIRST_CAPTURE);
         clock.advance(Duration.ofMinutes(6));
 
         // when
@@ -170,7 +172,7 @@ class OutboxPublishingComponentTests {
     void recoverStuckBatch_whenEventWithinLimit_shouldLeaveIt() {
         // given
         publisher.publish(EVENT_TYPE, new OrderCreated("order-1"));
-        manager.loadBatch(EVENT_TYPE, 10);
+        manager.loadBatch(EVENT_TYPE, 10, FIRST_CAPTURE);
         clock.advance(Duration.ofMinutes(4));
 
         // when
@@ -179,6 +181,40 @@ class OutboxPublishingComponentTests {
         // then
         assertThat(recovered).isZero();
         assertThat(repository.onlyEvent().getStatus()).isEqualTo(EventStatus.IN_PROCESS);
+    }
+
+    @Test
+    @DisplayName("CT finalizeBatch() when a stale capture finalizes after the event was captured again should keep the newer outcome")
+    void finalizeBatch_whenStaleCaptureFinalizesAfterRecapture_shouldKeepNewerOutcome() {
+        // given
+        publisher.publish(EVENT_TYPE, new OrderCreated("order-1"));
+        List<OutboxEvent> stale = manager.loadBatch(EVENT_TYPE, 10, FIRST_CAPTURE);
+        clock.advance(Duration.ofMinutes(6));
+        manager.recoverStuckBatch(Duration.ofMinutes(5), 100);
+        List<OutboxEvent> fresh = manager.loadBatch(EVENT_TYPE, 10, SECOND_CAPTURE);
+        manager.finalizeBatch(fresh, ids(fresh), null, 0, retry -> clock.instant(), SECOND_CAPTURE);
+
+        // when
+        manager.finalizeBatch(stale, null, ids(stale), 0, retry -> clock.instant(), FIRST_CAPTURE);
+
+        // then
+        assertThat(repository.onlyEvent().getStatus()).isEqualTo(EventStatus.PROCESSED);
+    }
+
+    @Test
+    @DisplayName("CT finalizeBatch() when the capture was recovered but not taken again should apply its outcome")
+    void finalizeBatch_whenCaptureRecoveredButNotTakenAgain_shouldApplyItsOutcome() {
+        // given
+        publisher.publish(EVENT_TYPE, new OrderCreated("order-1"));
+        List<OutboxEvent> stale = manager.loadBatch(EVENT_TYPE, 10, FIRST_CAPTURE);
+        clock.advance(Duration.ofMinutes(6));
+        manager.recoverStuckBatch(Duration.ofMinutes(5), 100);
+
+        // when
+        manager.finalizeBatch(stale, ids(stale), null, 0, retry -> clock.instant(), FIRST_CAPTURE);
+
+        // then
+        assertThat(repository.onlyEvent().getStatus()).isEqualTo(EventStatus.PROCESSED);
     }
 
     @Test
@@ -209,6 +245,10 @@ class OutboxPublishingComponentTests {
     }
 
     record OrderCreated(String orderId) {}
+
+    private static Set<UUID> ids(List<OutboxEvent> events) {
+        return events.stream().map(OutboxEvent::getId).collect(Collectors.toSet());
+    }
 
     static final class TestClock extends Clock {
 
@@ -250,6 +290,7 @@ class OutboxPublishingComponentTests {
 
         private final Clock clock;
         private final Map<UUID, OutboxEvent> rows = new LinkedHashMap<>();
+        private final Map<UUID, UUID> lockTokens = new HashMap<>();
 
         InMemoryOutboxRepository(Clock clock) {
             this.clock = clock;
@@ -277,15 +318,20 @@ class OutboxPublishingComponentTests {
         }
 
         @Override
-        public List<OutboxEvent> findAndLockBatchByEventTypeAndStatus(String eventType, EventStatus status,
-                                                                      int batchSize, EventStatus lockStatus) {
-            return lock(rows.values().stream()
+        public List<OutboxEvent> findAndLockBatchByEventTypeAndStatus(String eventType,
+                                                                      EventStatus status,
+                                                                      int batchSize,
+                                                                      UUID lockToken,
+                                                                      EventStatus lockStatus) {
+            List<OutboxEvent> locked = lock(rows.values().stream()
                     .filter(event -> event.getEventType().equals(eventType))
                     .filter(event -> event.getStatus() == status)
                     .filter(event -> !event.getNextRetryAt().isAfter(clock.instant()))
                     .sorted(Comparator.comparing(OutboxEvent::getNextRetryAt))
                     .limit(batchSize)
                     .toList(), lockStatus);
+            locked.forEach(event -> lockTokens.put(event.getId(), lockToken));
+            return locked;
         }
 
         @Override
@@ -297,9 +343,9 @@ class OutboxPublishingComponentTests {
         }
 
         @Override
-        public int updateBatchStatus(Set<UUID> ids, EventStatus newStatus) {
+        public int updateBatchStatusByLockToken(Set<UUID> ids, UUID lockToken, EventStatus newStatus) {
             if (newStatus == EventStatus.FAILED) {
-                throw new IllegalArgumentException("use partiallyUpdateBatch for failed events");
+                throw new IllegalArgumentException("use partiallyUpdateBatchByLockToken for failed events");
             }
             if (ids == null) {
                 return 0;
@@ -307,7 +353,7 @@ class OutboxPublishingComponentTests {
             int updated = 0;
             for (UUID id : ids) {
                 OutboxEvent event = rows.get(id);
-                if (event != null) {
+                if (event != null && isHeldBy(id, lockToken)) {
                     rows.put(id, withStatus(event, newStatus));
                     updated++;
                 }
@@ -328,12 +374,15 @@ class OutboxPublishingComponentTests {
         }
 
         @Override
-        public int partiallyUpdateBatch(List<OutboxEvent> events) {
+        public int partiallyUpdateBatchByLockToken(List<OutboxEvent> events, UUID lockToken) {
             if (events == null) {
                 return 0;
             }
-            events.forEach(event -> rows.put(event.getId(), event));
-            return events.size();
+            List<OutboxEvent> held = events.stream()
+                    .filter(event -> rows.containsKey(event.getId()) && isHeldBy(event.getId(), lockToken))
+                    .toList();
+            held.forEach(event -> rows.put(event.getId(), event));
+            return held.size();
         }
 
         @Override
@@ -341,6 +390,7 @@ class OutboxPublishingComponentTests {
             if (ids == null) {
                 return 0;
             }
+            ids.forEach(lockTokens::remove);
             return (int) ids.stream().filter(id -> rows.remove(id) != null).count();
         }
 
@@ -353,6 +403,10 @@ class OutboxPublishingComponentTests {
                     .map(OutboxEvent::getId)
                     .collect(Collectors.toSet());
             return deleteBatch(expired);
+        }
+
+        private boolean isHeldBy(UUID id, UUID lockToken) {
+            return lockToken != null && lockToken.equals(lockTokens.get(id));
         }
 
         private List<OutboxEvent> lock(List<OutboxEvent> events, EventStatus lockStatus) {

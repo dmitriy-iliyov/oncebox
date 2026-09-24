@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS outbox_events (
     retry_count INTEGER NOT NULL,
     next_retry_at DATETIME NOT NULL,
     created_at DATETIME NOT NULL,
-    updated_at DATETIME NOT NULL
+    updated_at DATETIME NOT NULL,
+    lock_token BINARY(16)
 );
 
 SET @exists := (

@@ -21,7 +21,7 @@ class MySqlDistributedLockRepositoryConcurrentTests extends BaseMySqlIntegration
 
     @BeforeEach
     void setUp() {
-        repository = new MySqlDistributedLockRepository(jdbcTemplate, new MySqlIdHelper());
+        repository = new MySqlDistributedLockRepository(jdbcTemplate, new MySqlUuidHelper());
         this.verifier = new DistributedLockRepositoryConcurrentVerifier(
                 jdbcTemplate,
                 repository,

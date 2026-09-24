@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS outbox_events (
     retry_count INTEGER NOT NULL,
     next_retry_at TIMESTAMP NOT NULL,
     created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL
+    updated_at TIMESTAMP NOT NULL,
+    lock_token UUID
 );
 
 CREATE INDEX IF NOT EXISTS idx_outbox_by_event_type_and_next_retry_at

@@ -52,17 +52,17 @@ public class MySqlIntegrationTestsConfig {
 
     @Bean
     public OutboxDlqRepository mysqlOutboxDlqRepository(DataSource dataSource, Clock clock) {
-        return new MySqlOutboxDlqRepository(new JdbcTemplate(dataSource), new MySqlIdHelper(), new DefaultBytesResultSetMapper(), clock);
+        return new MySqlOutboxDlqRepository(new JdbcTemplate(dataSource), new MySqlUuidHelper(), new DefaultBytesResultSetMapper(), clock);
     }
 
     @Bean
     public OutboxRepository mysqlOutboxRepository(DataSource dataSource, Clock clock) {
-        return new MySqlOutboxRepository(new JdbcTemplate(dataSource), clock, new MySqlIdHelper(), new DefaultBytesResultSetMapper());
+        return new MySqlOutboxRepository(new JdbcTemplate(dataSource), clock, new MySqlUuidHelper(), new DefaultBytesResultSetMapper());
     }
 
     @Bean
     public ConsumedOutboxRepository mysqlConsumedOutboxRepository(DataSource dataSource, Clock clock) {
-        return new MySqlConsumedOutboxRepository(new JdbcTemplate(dataSource), clock, new MySqlIdHelper(), new DefaultBytesResultSetMapper());
+        return new MySqlConsumedOutboxRepository(new JdbcTemplate(dataSource), clock, new MySqlUuidHelper(), new DefaultBytesResultSetMapper());
     }
 
     @Bean

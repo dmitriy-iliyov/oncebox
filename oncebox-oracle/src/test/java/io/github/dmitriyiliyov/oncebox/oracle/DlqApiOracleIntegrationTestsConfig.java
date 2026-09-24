@@ -38,6 +38,6 @@ public class DlqApiOracleIntegrationTestsConfig {
 
     @Bean
     public OutboxDlqApiRepository oracleOutboxDlqApiRepository(DataSource dataSource, Clock clock) {
-        return new OracleOutboxDlqApiRepository(new JdbcTemplate(dataSource), new OracleSqlIdHelper(), new DefaultBytesResultSetMapper(), clock);
+        return new OracleOutboxDlqApiRepository(new JdbcTemplate(dataSource), new OracleSqlUuidHelper(), new DefaultBytesResultSetMapper(), clock);
     }
 }

@@ -21,7 +21,7 @@ class MySqlAbstractOutboxDlqApiRepositoryIntegrationTests extends BaseDlqApiMySq
         this.delegate = new MultiDialectOutboxDlqApiRepositoryVerifier(
                 repository,
                 jdbcTemplate,
-                new MySqlIdHelper(),
+                new MySqlUuidHelper(),
                 new DefaultBytesResultSetMapper()
         );
     }

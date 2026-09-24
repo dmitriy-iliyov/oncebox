@@ -23,7 +23,7 @@ class PostgreSqlDistributedLockRepositoryConcurrentTests extends BasePostgresSql
 
     @BeforeEach
     void setUp() {
-        repository = new PostgreSqlDistributedLockRepository(jdbcTemplate, new PostgreSqlIdHelper());
+        repository = new PostgreSqlDistributedLockRepository(jdbcTemplate, new PostgreSqlUuidHelper());
         this.verifier = new DistributedLockRepositoryConcurrentVerifier(
                 jdbcTemplate,
                 repository,

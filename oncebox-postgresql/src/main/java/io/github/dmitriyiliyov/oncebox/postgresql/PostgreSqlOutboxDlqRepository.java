@@ -5,7 +5,7 @@ import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.DlqStatus;
 import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.OutboxDlqEvent;
 import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.OutboxDlqRepository;
 import io.github.dmitriyiliyov.oncebox.core.utils.ResultSetMapper;
-import io.github.dmitriyiliyov.oncebox.core.utils.SqlIdHelper;
+import io.github.dmitriyiliyov.oncebox.core.utils.SqlUuidHelper;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.sql.Timestamp;
@@ -21,8 +21,8 @@ public class PostgreSqlOutboxDlqRepository extends AbstractOutboxDlqRepository {
 
     private final Clock clock;
 
-    public PostgreSqlOutboxDlqRepository(JdbcTemplate jdbcTemplate, SqlIdHelper idHelper, ResultSetMapper mapper, Clock clock) {
-        super(jdbcTemplate, idHelper, mapper);
+    public PostgreSqlOutboxDlqRepository(JdbcTemplate jdbcTemplate, SqlUuidHelper uuidHelper, ResultSetMapper mapper, Clock clock) {
+        super(jdbcTemplate, uuidHelper, mapper);
         this.clock = Objects.requireNonNull(clock, "clock cannot be null");
     }
 

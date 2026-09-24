@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.core.publisher.dlq;
 
 import io.github.dmitriyiliyov.oncebox.core.utils.ResultSetMapper;
-import io.github.dmitriyiliyov.oncebox.core.utils.SqlIdHelper;
+import io.github.dmitriyiliyov.oncebox.core.utils.SqlUuidHelper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,7 +27,7 @@ class AbstractOutboxDlqRepositoryUnitTests {
     JdbcTemplate jdbcTemplate;
 
     @Mock
-    SqlIdHelper idHelper;
+    SqlUuidHelper uuidHelper;
 
     @Mock
     ResultSetMapper mapper;
@@ -37,7 +37,7 @@ class AbstractOutboxDlqRepositoryUnitTests {
     @BeforeEach
     void setUp() {
         tested = Mockito.spy(
-                new AbstractOutboxDlqRepository(jdbcTemplate, idHelper, mapper) {
+                new AbstractOutboxDlqRepository(jdbcTemplate, uuidHelper, mapper) {
                     @Override
                     public List<OutboxDlqEvent> findAndLockBatchByStatus(DlqStatus status, int batchSize, DlqStatus lockStatus) {
                         return List.of();
@@ -54,7 +54,7 @@ class AbstractOutboxDlqRepositoryUnitTests {
     @Test
     @DisplayName("UT constructor when jdbcTemplate is null should throw NullPointerException")
     void constructor_whenJdbcTemplateIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new AbstractOutboxDlqRepository(null, idHelper, mapper) {
+        assertThatThrownBy(() -> new AbstractOutboxDlqRepository(null, uuidHelper, mapper) {
             @Override
             public List<OutboxDlqEvent> findAndLockBatchByStatus(DlqStatus status, int batchSize, DlqStatus lockStatus) { return null; }
 
@@ -64,21 +64,21 @@ class AbstractOutboxDlqRepositoryUnitTests {
     }
 
     @Test
-    @DisplayName("UT constructor when idHelper is null should throw NullPointerException")
-    void constructor_whenIdHelperIsNull_shouldThrowNullPointerException() {
+    @DisplayName("UT constructor when uuidHelper is null should throw NullPointerException")
+    void constructor_whenUuidHelperIsNull_shouldThrowNullPointerException() {
         assertThatThrownBy(() -> new AbstractOutboxDlqRepository(jdbcTemplate, null, mapper) {
             @Override
             public List<OutboxDlqEvent> findAndLockBatchByStatus(DlqStatus status, int batchSize, DlqStatus lockStatus) { return null; }
 
             @Override
             public int deleteBatchByStatusAndThreshold(DlqStatus status, Instant threshold, int batchSize) { return 0; }
-        }).isInstanceOf(NullPointerException.class).hasMessageContaining("idHelper cannot be null");
+        }).isInstanceOf(NullPointerException.class).hasMessageContaining("uuidHelper cannot be null");
     }
 
     @Test
     @DisplayName("UT constructor when mapper is null should throw NullPointerException")
     void constructor_whenMapperIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new AbstractOutboxDlqRepository(jdbcTemplate, idHelper, null) {
+        assertThatThrownBy(() -> new AbstractOutboxDlqRepository(jdbcTemplate, uuidHelper, null) {
             @Override
             public List<OutboxDlqEvent> findAndLockBatchByStatus(DlqStatus status, int batchSize, DlqStatus lockStatus) { return null; }
 

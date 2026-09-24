@@ -43,11 +43,13 @@ public class DefaultOutboxManager implements OutboxManager {
 
     @Transactional
     @Override
-    public List<OutboxEvent> loadBatch(String eventType, int batchSize) {
+    public List<OutboxEvent> loadBatch(String eventType, int batchSize, UUID lockToken) {
+        Objects.requireNonNull(lockToken, "lockToken cannot be null");
         return repository.findAndLockBatchByEventTypeAndStatus(
                 eventType,
                 EventStatus.PENDING,
                 batchSize,
+                lockToken,
                 EventStatus.IN_PROCESS
         );
     }
@@ -60,33 +62,55 @@ public class DefaultOutboxManager implements OutboxManager {
 
     @Transactional
     @Override
-    public void finalizeBatch(List<OutboxEvent> events, Set<UUID> processedIds, Set<UUID> failedIds,
-                              int maxRetryCount, Function<Integer, Instant> nextRetryAtSupplier) {
+    public void finalizeBatch(List<OutboxEvent> events,
+                              Set<UUID> processedIds,
+                              Set<UUID> failedIds,
+                              int maxRetryCount,
+                              Function<Integer, Instant> nextRetryAtSupplier,
+                              UUID lockToken) {
+        Objects.requireNonNull(lockToken, "lockToken cannot be null");
+
         boolean hasProcessed = !SetUtils.isEmpty(processedIds);
         boolean hasFailed = !SetUtils.isEmpty(failedIds);
-
         Set<UUID> processedIdsCopy = SetUtils.mutableCopy(processedIds);
 
-        if (hasProcessed && hasFailed) {
-            boolean wasOverlapped = processedIdsCopy.removeAll(failedIds);
-            if (wasOverlapped) {
-                log.warn("Set of ids was overlapped, all overlapped ids moved from processedIds to failedIds");
-            }
-            if (!processedIdsCopy.isEmpty()) {
-                repository.updateBatchStatus(processedIdsCopy, EventStatus.PROCESSED);
-            }
-            repository.partiallyUpdateBatch(prepareFailedEvents(events, failedIds, maxRetryCount, nextRetryAtSupplier));
-        } else if (hasProcessed) {
-            repository.updateBatchStatus(processedIdsCopy, EventStatus.PROCESSED);
-        } else if (hasFailed) {
-            repository.partiallyUpdateBatch(prepareFailedEvents(events, failedIds, maxRetryCount, nextRetryAtSupplier));
-        } else {
+        if (!hasProcessed && !hasFailed) {
             log.warn("Finalization nullable or empty batch not delegating to repository layer");
+            return;
+        }
+        if (hasProcessed && hasFailed && processedIdsCopy.removeAll(failedIds)) {
+            log.warn("Set of ids was overlapped, all overlapped ids moved from processedIds to failedIds");
+        }
+
+        int expected = 0;
+        int updated = 0;
+
+        if (hasProcessed && !processedIdsCopy.isEmpty()) {
+            expected += processedIdsCopy.size();
+            updated += repository.updateBatchStatusByLockToken(processedIdsCopy, lockToken, EventStatus.PROCESSED);
+        }
+
+        if (hasFailed) {
+            List<OutboxEvent> failedEvents = prepareFailedEvents(events, failedIds, maxRetryCount, nextRetryAtSupplier);
+            expected += failedEvents.size();
+            updated += repository.partiallyUpdateBatchByLockToken(failedEvents, lockToken);
+        }
+
+        if (updated < expected) {
+            log.warn("""
+                    Outcome of %d of %d events not written, they were captured again by another poller \
+                    after this batch outlived stuck recovery; lockToken=%s"""
+                    .formatted(expected - updated, expected, lockToken)
+            );
         }
     }
 
-    private List<OutboxEvent> prepareFailedEvents(List<OutboxEvent> events, Set<UUID> failedIds,
-                                                  int maxRetryCount, Function<Integer, Instant> nextRetryAtSupplier) {
+    private List<OutboxEvent> prepareFailedEvents(
+            List<OutboxEvent> events,
+            Set<UUID> failedIds,
+            int maxRetryCount,
+            Function<Integer, Instant> nextRetryAtSupplier
+    ) {
         return events.stream()
                 .filter(event -> failedIds.contains(event.getId()))
                 .map(event -> {

@@ -21,7 +21,7 @@ class OracleDistributedLockRepositoryConcurrentTests extends BaseOracleIntegrati
 
     @BeforeEach
     void setUp() {
-        repository = new OracleDistributedLockRepository(jdbcTemplate, new OracleSqlIdHelper());
+        repository = new OracleDistributedLockRepository(jdbcTemplate, new OracleSqlUuidHelper());
         this.verifier = new DistributedLockRepositoryConcurrentVerifier(
                 jdbcTemplate,
                 repository,

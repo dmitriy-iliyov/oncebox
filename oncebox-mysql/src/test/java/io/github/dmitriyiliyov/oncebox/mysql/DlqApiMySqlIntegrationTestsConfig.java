@@ -35,7 +35,7 @@ public class DlqApiMySqlIntegrationTestsConfig {
 
     @Bean
     public OutboxDlqApiRepository mysqlOutboxDlqApiRepository(DataSource dataSource, Clock clock) {
-        return new MySqlOutboxDlqApiRepository(new JdbcTemplate(dataSource), new MySqlIdHelper(), new DefaultBytesResultSetMapper(), clock);
+        return new MySqlOutboxDlqApiRepository(new JdbcTemplate(dataSource), new MySqlUuidHelper(), new DefaultBytesResultSetMapper(), clock);
     }
 
     @Bean

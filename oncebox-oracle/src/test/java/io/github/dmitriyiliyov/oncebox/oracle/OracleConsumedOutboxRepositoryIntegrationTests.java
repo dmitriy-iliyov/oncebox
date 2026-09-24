@@ -32,7 +32,7 @@ class OracleConsumedOutboxRepositoryIntegrationTests extends BaseOracleIntegrati
     @Test
     @DisplayName("UT constructor when jdbcTemplate is null should throw NullPointerException")
     void constructor_whenJdbcTemplateIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new OracleConsumedOutboxRepository(null, repository.clock, repository.idHelper, repository.mapper))
+        assertThatThrownBy(() -> new OracleConsumedOutboxRepository(null, repository.clock, repository.uuidHelper, repository.mapper))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("jdbcTemplate cannot be null");
     }
@@ -40,23 +40,23 @@ class OracleConsumedOutboxRepositoryIntegrationTests extends BaseOracleIntegrati
     @Test
     @DisplayName("UT constructor when clock is null should throw NullPointerException")
     void constructor_whenClockIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new OracleConsumedOutboxRepository(repository.jdbcTemplate, null, repository.idHelper, repository.mapper))
+        assertThatThrownBy(() -> new OracleConsumedOutboxRepository(repository.jdbcTemplate, null, repository.uuidHelper, repository.mapper))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("clock cannot be null");
     }
 
     @Test
-    @DisplayName("UT constructor when idHelper is null should throw NullPointerException")
-    void constructor_whenIdHelperIsNull_shouldThrowNullPointerException() {
+    @DisplayName("UT constructor when uuidHelper is null should throw NullPointerException")
+    void constructor_whenUuidHelperIsNull_shouldThrowNullPointerException() {
         assertThatThrownBy(() -> new OracleConsumedOutboxRepository(repository.jdbcTemplate, repository.clock, null, repository.mapper))
                 .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("idHelper cannot be null");
+                .hasMessageContaining("uuidHelper cannot be null");
     }
 
     @Test
     @DisplayName("UT constructor when mapper is null should throw NullPointerException")
     void constructor_whenMapperIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new OracleConsumedOutboxRepository(repository.jdbcTemplate, repository.clock, repository.idHelper, null))
+        assertThatThrownBy(() -> new OracleConsumedOutboxRepository(repository.jdbcTemplate, repository.clock, repository.uuidHelper, null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("mapper cannot be null");
     }
@@ -175,7 +175,7 @@ class OracleConsumedOutboxRepositoryIntegrationTests extends BaseOracleIntegrati
         OracleConsumedOutboxRepository testRepository = new OracleConsumedOutboxRepository(
                 interceptedJdbcTemplate,
                 repository.clock,
-                repository.idHelper,
+                repository.uuidHelper,
                 repository.mapper
         );
 

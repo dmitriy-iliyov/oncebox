@@ -10,7 +10,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class OutboxPublisherPropertiesUnitTests {
@@ -977,6 +977,41 @@ public class OutboxPublisherPropertiesUnitTests {
     }
 
     @Test
+    @DisplayName("UT applyDefaults() when emergency timeout exceeds max batch processing time should throw naming both")
+    public void applyDefaults_whenEmergencyTimeoutExceedsMaxBatchProcessingTime_shouldThrow() {
+        // given
+        OutboxPublisherProperties properties = propertiesWithTimeouts(Duration.ofMinutes(10), Duration.ofMinutes(5));
+
+        // when / then
+        assertThatThrownBy(properties::applyDefaults)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("'sender.emergency-timeout' (PT10M)")
+                .hasMessageContaining("'stuck-recovery.max-batch-processing-time' (PT5M)");
+    }
+
+    @Test
+    @DisplayName("UT applyDefaults() when emergency timeout equals max batch processing time should throw")
+    public void applyDefaults_whenEmergencyTimeoutEqualsMaxBatchProcessingTime_shouldThrow() {
+        // given
+        OutboxPublisherProperties properties = propertiesWithTimeouts(Duration.ofMinutes(5), Duration.ofMinutes(5));
+
+        // when / then
+        assertThatThrownBy(properties::applyDefaults)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("sender.emergency-timeout");
+    }
+
+    @Test
+    @DisplayName("UT applyDefaults() when emergency timeout is below max batch processing time should accept")
+    public void applyDefaults_whenEmergencyTimeoutBelowMaxBatchProcessingTime_shouldAccept() {
+        // given
+        OutboxPublisherProperties properties = propertiesWithTimeouts(Duration.ofMinutes(4), Duration.ofMinutes(5));
+
+        // when / then
+        assertThatCode(properties::applyDefaults).doesNotThrowAnyException();
+    }
+
+    @Test
     @DisplayName("UT DlqProperties.applyDefaults() when enabled is null should disable and init empty properties")
     public void applyDefaults_dlqWhenEnabledNull_shouldDisableAndInitEmptyProperties() {
         OutboxPublisherProperties.DlqProperties dlq = new OutboxPublisherProperties.DlqProperties();
@@ -1097,5 +1132,19 @@ public class OutboxPublisherPropertiesUnitTests {
 
         assertNotNull(dlq.toString());
         assertNotNull(transfer.toString());
+    }
+
+    private OutboxPublisherProperties propertiesWithTimeouts(Duration emergencyTimeout, Duration maxBatchProcessingTime) {
+        OutboxPublisherProperties properties = new OutboxPublisherProperties();
+        OutboxPublisherProperties.SenderProperties sender = new OutboxPublisherProperties.SenderProperties();
+        sender.setType(TransportType.KAFKA);
+        sender.setBeanName("bean");
+        sender.setEmergencyTimeout(emergencyTimeout);
+        properties.setSender(sender);
+        properties.setEvents(new HashMap<>());
+        OutboxPublisherProperties.StuckRecoveryProperties stuckRecovery = new OutboxPublisherProperties.StuckRecoveryProperties();
+        stuckRecovery.setMaxBatchProcessingTime(maxBatchProcessingTime);
+        properties.setStuckRecovery(stuckRecovery);
+        return properties;
     }
 }

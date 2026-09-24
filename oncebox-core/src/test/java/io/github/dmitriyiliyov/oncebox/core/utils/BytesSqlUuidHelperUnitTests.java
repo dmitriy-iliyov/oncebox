@@ -18,7 +18,7 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
-class BytesSqlIdHelperUnitTests {
+class BytesSqlUuidHelperUnitTests {
 
     private static final UUID FIRST = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
     private static final UUID SECOND = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
@@ -26,13 +26,13 @@ class BytesSqlIdHelperUnitTests {
     @Mock
     private PreparedStatement ps;
 
-    private final BytesSqlIdHelper tested = new TestBytesSqlIdHelper();
+    private final BytesSqlUuidHelper tested = new TestBytesSqlUuidHelper();
 
     @Test
     @DisplayName("UT setIdToPs() should bind the id as bytes at the given index")
-    void setIdToPs_shouldBindBytesAtIndex() throws SQLException {
+    void setToPs_shouldBindBytesAtIndex() throws SQLException {
         // when
-        tested.setIdToPs(ps, 3, FIRST);
+        tested.setToPs(ps, 3, FIRST);
 
         // then
         verify(ps).setBytes(3, bytes(FIRST));
@@ -40,9 +40,9 @@ class BytesSqlIdHelperUnitTests {
 
     @Test
     @DisplayName("UT setIdsToPs() should bind the ids to consecutive indexes starting at the given one")
-    void setIdsToPs_shouldBindConsecutiveIndexes() throws SQLException {
+    void setToPs_shouldBindConsecutiveIndexes() throws SQLException {
         // when
-        tested.setIdsToPs(ps, 2, new LinkedHashSet<>(List.of(FIRST, SECOND)));
+        tested.setToPs(ps, 2, new LinkedHashSet<>(List.of(FIRST, SECOND)));
 
         // then
         InOrder order = inOrder(ps);
@@ -57,7 +57,7 @@ class BytesSqlIdHelperUnitTests {
                 .array();
     }
 
-    private static class TestBytesSqlIdHelper extends BytesSqlIdHelper {
+    private static class TestBytesSqlUuidHelper extends BytesSqlUuidHelper {
 
         @Override
         public byte[] uuidToBytes(UUID id) {

@@ -5,7 +5,7 @@ import io.github.dmitriyiliyov.oncebox.core.publisher.OutboxRepository;
 import io.github.dmitriyiliyov.oncebox.core.publisher.domain.EventStatus;
 import io.github.dmitriyiliyov.oncebox.core.publisher.domain.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.utils.ResultSetMapper;
-import io.github.dmitriyiliyov.oncebox.core.utils.SqlIdHelper;
+import io.github.dmitriyiliyov.oncebox.core.utils.SqlUuidHelper;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.sql.Timestamp;
@@ -13,6 +13,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 /**
  * PostgreSQL-specific implementation of {@link OutboxRepository}.
@@ -33,14 +34,17 @@ public class PostgreSqlOutboxRepository extends AbstractOutboxRepository {
 
     public PostgreSqlOutboxRepository(JdbcTemplate jdbcTemplate,
                                       Clock clock,
-                                      SqlIdHelper idHelper,
+                                      SqlUuidHelper uuidHelper,
                                       ResultSetMapper mapper) {
-        super(jdbcTemplate, clock, idHelper);
+        super(jdbcTemplate, clock, uuidHelper);
         this.mapper = Objects.requireNonNull(mapper, "mapper cannot be null");
     }
 
     @Override
-    public List<OutboxEvent> findAndLockBatchByEventTypeAndStatus(String eventType, EventStatus status, int batchSize,
+    public List<OutboxEvent> findAndLockBatchByEventTypeAndStatus(String eventType,
+                                                                  EventStatus status,
+                                                                  int batchSize,
+                                                                  UUID lockToken,
                                                                   EventStatus lockStatus) {
         String sql = """
             WITH to_lock AS (
@@ -51,7 +55,7 @@ public class PostgreSqlOutboxRepository extends AbstractOutboxRepository {
                 FOR UPDATE SKIP LOCKED
             )
             UPDATE outbox_events
-                SET status = ?, updated_at = ?
+                SET status = ?, updated_at = ?, lock_token = ?
             WHERE id IN(SELECT id FROM to_lock)
             RETURNING id, status, event_type, payload_type, payload, retry_count, next_retry_at, created_at, updated_at
         """;
@@ -64,6 +68,7 @@ public class PostgreSqlOutboxRepository extends AbstractOutboxRepository {
                     ps.setInt(4, batchSize);
                     ps.setString(5, lockStatus.name());
                     ps.setTimestamp(6, Timestamp.from(clock.instant()));
+                    uuidHelper.setToPs(ps, 7, lockToken);
                 },
                 (rs, rowNum) -> mapper.toEvent(rs)
         );
@@ -97,7 +102,10 @@ public class PostgreSqlOutboxRepository extends AbstractOutboxRepository {
     }
 
     @Override
-    public int updateBatchStatusByStatusAndThreshold(EventStatus status, Instant threshold, int batchSize, EventStatus newStatus) {
+    public int updateBatchStatusByStatusAndThreshold(EventStatus status,
+                                                     Instant threshold,
+                                                     int batchSize,
+                                                     EventStatus newStatus) {
         String sql = """
             WITH to_update AS (
                 SELECT id FROM outbox_events

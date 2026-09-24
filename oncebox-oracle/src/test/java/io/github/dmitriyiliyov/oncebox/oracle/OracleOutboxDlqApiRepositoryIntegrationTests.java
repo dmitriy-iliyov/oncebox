@@ -31,7 +31,7 @@ class OracleOutboxDlqApiRepositoryIntegrationTests extends BaseDlqApiOracleInteg
         this.delegate = new MultiDialectOutboxDlqApiRepositoryVerifier(
                 repository,
                 jdbcTemplate,
-                new OracleSqlIdHelper(),
+                new OracleSqlUuidHelper(),
                 new DefaultBytesResultSetMapper()
         );
     }

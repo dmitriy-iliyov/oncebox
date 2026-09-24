@@ -25,7 +25,7 @@ public class PostgreSqlOutboxRepositoryFactory implements OutboxRepositoryFactor
         return new PostgreSqlOutboxRepository(
                 jdbcTemplate,
                 clock,
-                new PostgreSqlIdHelper(),
+                new PostgreSqlUuidHelper(),
                 new DefaultResultSetMapper()
         );
     }
@@ -34,7 +34,7 @@ public class PostgreSqlOutboxRepositoryFactory implements OutboxRepositoryFactor
     public OutboxDlqRepository createOutboxDlqRepository() {
         return new PostgreSqlOutboxDlqRepository(
                 jdbcTemplate,
-                new PostgreSqlIdHelper(),
+                new PostgreSqlUuidHelper(),
                 new DefaultResultSetMapper(),
                 clock
         );
@@ -42,7 +42,7 @@ public class PostgreSqlOutboxRepositoryFactory implements OutboxRepositoryFactor
 
     @Override
     public DistributedLockRepository createDistributedLockRepository() {
-        return new PostgreSqlDistributedLockRepository(jdbcTemplate, new PostgreSqlIdHelper());
+        return new PostgreSqlDistributedLockRepository(jdbcTemplate, new PostgreSqlUuidHelper());
     }
 
     @Override

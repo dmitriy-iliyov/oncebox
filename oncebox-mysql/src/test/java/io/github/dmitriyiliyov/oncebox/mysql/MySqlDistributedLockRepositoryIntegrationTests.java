@@ -22,12 +22,12 @@ class MySqlDistributedLockRepositoryIntegrationTests extends BaseMySqlIntegratio
     private JdbcTemplate jdbcTemplate;
 
     private MySqlDistributedLockRepository repository;
-    private MySqlIdHelper mySqlIdHelper;
+    private MySqlUuidHelper mySqlUuidHelper;
 
     @BeforeEach
     void setUp() {
-        mySqlIdHelper = new MySqlIdHelper();
-        repository = new MySqlDistributedLockRepository(jdbcTemplate, mySqlIdHelper);
+        mySqlUuidHelper = new MySqlUuidHelper();
+        repository = new MySqlDistributedLockRepository(jdbcTemplate, mySqlUuidHelper);
         this.verifier = new DistributedLockRepositoryVerifier(
                 jdbcTemplate,
                 repository,
@@ -55,17 +55,17 @@ class MySqlDistributedLockRepositoryIntegrationTests extends BaseMySqlIntegratio
     @Test
     @DisplayName("UT constructor when jdbcTemplate is null should throw NullPointerException")
     void constructor_whenJdbcTemplateIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new MySqlDistributedLockRepository(null, mySqlIdHelper))
+        assertThatThrownBy(() -> new MySqlDistributedLockRepository(null, mySqlUuidHelper))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("jdbcTemplate cannot be null");
     }
 
     @Test
-    @DisplayName("UT constructor when idHelper is null should throw NullPointerException")
-    void constructor_whenIdHelperIsNull_shouldThrowNullPointerException() {
+    @DisplayName("UT constructor when uuidHelper is null should throw NullPointerException")
+    void constructor_whenUuidHelperIsNull_shouldThrowNullPointerException() {
         assertThatThrownBy(() -> new MySqlDistributedLockRepository(jdbcTemplate, null))
                 .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("idHelper cannot be null");
+                .hasMessageContaining("uuidHelper cannot be null");
     }
 
     @Test

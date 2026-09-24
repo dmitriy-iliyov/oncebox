@@ -3,7 +3,7 @@ package io.github.dmitriyiliyov.oncebox.dlq.api;
 import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.DlqStatus;
 import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.OutboxDlqEvent;
 import io.github.dmitriyiliyov.oncebox.core.utils.ResultSetMapper;
-import io.github.dmitriyiliyov.oncebox.core.utils.SqlIdHelper;
+import io.github.dmitriyiliyov.oncebox.core.utils.SqlUuidHelper;
 import io.github.dmitriyiliyov.oncebox.dlq.api.exception.InvalidDlqFilterException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -31,7 +31,7 @@ class AbstractOutboxDlqApiRepositoryUnitTests {
 
     JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
 
-    SqlIdHelper idHelper = mock(SqlIdHelper.class);
+    SqlUuidHelper uuidHelper = mock(SqlUuidHelper.class);
 
     ResultSetMapper mapper = mock(ResultSetMapper.class);
 
@@ -41,7 +41,7 @@ class AbstractOutboxDlqApiRepositoryUnitTests {
 
     @BeforeEach
     public void construct() {
-        tested = new AbstractOutboxDlqApiRepository(jdbcTemplate, idHelper, mapper, clock) {
+        tested = new AbstractOutboxDlqApiRepository(jdbcTemplate, uuidHelper, mapper, clock) {
             @Override
             protected Object convertIdParameter(UUID id) {
                 return id;
@@ -53,7 +53,7 @@ class AbstractOutboxDlqApiRepositoryUnitTests {
     @Test
     @DisplayName("UT constructor should throw NPE when jdbcTemplate is null")
     void constructor_shouldThrowNPE_whenJdbcTemplateIsNull() {
-        assertThatThrownBy(() -> new AbstractOutboxDlqApiRepository(null, idHelper, mapper, clock) {
+        assertThatThrownBy(() -> new AbstractOutboxDlqApiRepository(null, uuidHelper, mapper, clock) {
             @Override
             protected Object convertIdParameter(UUID id) {
                 return id;
@@ -62,8 +62,8 @@ class AbstractOutboxDlqApiRepositoryUnitTests {
     }
 
     @Test
-    @DisplayName("UT constructor should throw NPE when idHelper is null")
-    void constructor_shouldThrowNPE_whenIdHelperIsNull() {
+    @DisplayName("UT constructor should throw NPE when uuidHelper is null")
+    void constructor_shouldThrowNPE_whenUuidHelperIsNull() {
         assertThatThrownBy(() -> new AbstractOutboxDlqApiRepository(jdbcTemplate, null, mapper, clock) {
             @Override
             protected Object convertIdParameter(UUID id) {
@@ -75,7 +75,7 @@ class AbstractOutboxDlqApiRepositoryUnitTests {
     @Test
     @DisplayName("UT constructor should throw NPE when mapper is null")
     void constructor_shouldThrowNPE_whenMapperIsNull() {
-        assertThatThrownBy(() -> new AbstractOutboxDlqApiRepository(jdbcTemplate, idHelper, null, clock) {
+        assertThatThrownBy(() -> new AbstractOutboxDlqApiRepository(jdbcTemplate, uuidHelper, null, clock) {
             @Override
             protected Object convertIdParameter(UUID id) {
                 return id;
@@ -86,7 +86,7 @@ class AbstractOutboxDlqApiRepositoryUnitTests {
     @Test
     @DisplayName("UT constructor should throw NPE when clock is null")
     void constructor_shouldThrowNPE_whenClockIsNull() {
-        assertThatThrownBy(() -> new AbstractOutboxDlqApiRepository(jdbcTemplate, idHelper, mapper, null) {
+        assertThatThrownBy(() -> new AbstractOutboxDlqApiRepository(jdbcTemplate, uuidHelper, mapper, null) {
             @Override
             protected Object convertIdParameter(UUID id) {
                 return id;

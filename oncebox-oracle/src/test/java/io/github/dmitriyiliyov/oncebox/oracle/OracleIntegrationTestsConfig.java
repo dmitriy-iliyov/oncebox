@@ -49,17 +49,17 @@ public class OracleIntegrationTestsConfig {
 
     @Bean
     public OutboxDlqRepository oracleOutboxDlqRepository(DataSource dataSource, Clock clock) {
-        return new OracleOutboxDlqRepository(new JdbcTemplate(dataSource), new OracleSqlIdHelper(), new DefaultBytesResultSetMapper(), clock);
+        return new OracleOutboxDlqRepository(new JdbcTemplate(dataSource), new OracleSqlUuidHelper(), new DefaultBytesResultSetMapper(), clock);
     }
 
     @Bean
     public OutboxRepository oracleOutboxRepository(DataSource dataSource, Clock clock) {
-        return new OracleOutboxRepository(new JdbcTemplate(dataSource), clock, new OracleSqlIdHelper(), new DefaultBytesResultSetMapper());
+        return new OracleOutboxRepository(new JdbcTemplate(dataSource), clock, new OracleSqlUuidHelper(), new DefaultBytesResultSetMapper());
     }
 
     @Bean
     public ConsumedOutboxRepository oracleConsumedOutboxRepository(DataSource dataSource, Clock clock) {
-        return new OracleConsumedOutboxRepository(new JdbcTemplate(dataSource), clock, new OracleSqlIdHelper(), new DefaultBytesResultSetMapper());
+        return new OracleConsumedOutboxRepository(new JdbcTemplate(dataSource), clock, new OracleSqlUuidHelper(), new DefaultBytesResultSetMapper());
     }
 
     @Bean

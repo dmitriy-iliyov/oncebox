@@ -2,8 +2,8 @@ package io.github.dmitriyiliyov.oncebox.starter.publisher.dlq;
 
 import io.github.dmitriyiliyov.oncebox.core.utils.DefaultBytesResultSetMapper;
 import io.github.dmitriyiliyov.oncebox.dlq.api.OutboxDlqApiRepository;
-import io.github.dmitriyiliyov.oncebox.mysql.MySqlIdHelper;
 import io.github.dmitriyiliyov.oncebox.mysql.MySqlOutboxDlqApiRepository;
+import io.github.dmitriyiliyov.oncebox.mysql.MySqlUuidHelper;
 import io.github.dmitriyiliyov.oncebox.starter.ConditionalOnDatabaseType;
 import io.github.dmitriyiliyov.oncebox.starter.DatabaseType;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -26,7 +26,7 @@ public class MySqlOutboxDlqApiRepositoryConfiguration {
                                                               Clock clock) {
         return new MySqlOutboxDlqApiRepository(
                 jdbcTemplate,
-                new MySqlIdHelper(),
+                new MySqlUuidHelper(),
                 new DefaultBytesResultSetMapper(),
                 clock
         );

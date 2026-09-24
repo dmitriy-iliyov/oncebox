@@ -22,12 +22,12 @@ class OracleDistributedLockRepositoryIntegrationTests extends BaseOracleIntegrat
     private JdbcTemplate jdbcTemplate;
 
     private OracleDistributedLockRepository repository;
-    private OracleSqlIdHelper oracleSqlIdHelper;
+    private OracleSqlUuidHelper oracleSqlUuidHelper;
 
     @BeforeEach
     void setUp() {
-        oracleSqlIdHelper = new OracleSqlIdHelper();
-        repository = new OracleDistributedLockRepository(jdbcTemplate, oracleSqlIdHelper);
+        oracleSqlUuidHelper = new OracleSqlUuidHelper();
+        repository = new OracleDistributedLockRepository(jdbcTemplate, oracleSqlUuidHelper);
         this.verifier = new DistributedLockRepositoryVerifier(
                 jdbcTemplate,
                 repository,
@@ -55,17 +55,17 @@ class OracleDistributedLockRepositoryIntegrationTests extends BaseOracleIntegrat
     @Test
     @DisplayName("UT constructor when jdbcTemplate is null should throw NullPointerException")
     void constructor_whenJdbcTemplateIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new OracleDistributedLockRepository(null, oracleSqlIdHelper))
+        assertThatThrownBy(() -> new OracleDistributedLockRepository(null, oracleSqlUuidHelper))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("jdbcTemplate cannot be null");
     }
 
     @Test
-    @DisplayName("UT constructor when idHelper is null should throw NullPointerException")
-    void constructor_whenIdHelperIsNull_shouldThrowNullPointerException() {
+    @DisplayName("UT constructor when uuidHelper is null should throw NullPointerException")
+    void constructor_whenUuidHelperIsNull_shouldThrowNullPointerException() {
         assertThatThrownBy(() -> new OracleDistributedLockRepository(jdbcTemplate, null))
                 .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("idHelper cannot be null");
+                .hasMessageContaining("uuidHelper cannot be null");
     }
 
     @Test

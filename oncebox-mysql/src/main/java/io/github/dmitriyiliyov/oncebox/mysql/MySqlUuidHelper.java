@@ -1,11 +1,11 @@
 package io.github.dmitriyiliyov.oncebox.mysql;
 
-import io.github.dmitriyiliyov.oncebox.core.utils.BytesSqlIdHelper;
+import io.github.dmitriyiliyov.oncebox.core.utils.BytesSqlUuidHelper;
 
 import java.nio.ByteBuffer;
 import java.util.UUID;
 
-public final class MySqlIdHelper extends BytesSqlIdHelper {
+public final class MySqlUuidHelper extends BytesSqlUuidHelper {
 
     @Override
     public byte[] uuidToBytes(UUID id) {

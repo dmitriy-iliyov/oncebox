@@ -51,12 +51,12 @@ public class PostgresSqlIntegrationTestsConfig {
 
     @Bean
     public OutboxDlqRepository postgresOutboxDlqRepository(DataSource dataSource, Clock clock) {
-        return new PostgreSqlOutboxDlqRepository(new JdbcTemplate(dataSource), new PostgreSqlIdHelper(), new DefaultResultSetMapper(), clock);
+        return new PostgreSqlOutboxDlqRepository(new JdbcTemplate(dataSource), new PostgreSqlUuidHelper(), new DefaultResultSetMapper(), clock);
     }
 
     @Bean
     public OutboxRepository postgresOutboxRepository(DataSource dataSource,  Clock clock) {
-        return new PostgreSqlOutboxRepository(new JdbcTemplate(dataSource), clock, new PostgreSqlIdHelper(), new DefaultResultSetMapper());
+        return new PostgreSqlOutboxRepository(new JdbcTemplate(dataSource), clock, new PostgreSqlUuidHelper(), new DefaultResultSetMapper());
     }
 
     @Bean

@@ -21,7 +21,7 @@ class PostgreSqlAbstractOutboxDlqApiRepositoryIntegrationTests extends BaseDlqAp
         this.delegate = new MultiDialectOutboxDlqApiRepositoryVerifier(
                 repository,
                 jdbcTemplate,
-                new PostgreSqlIdHelper(),
+                new PostgreSqlUuidHelper(),
                 new DefaultResultSetMapper()
         );
     }

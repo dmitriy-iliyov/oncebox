@@ -9,7 +9,8 @@ EXECUTE IMMEDIATE '
             retry_count INTEGER NOT NULL,
             next_retry_at TIMESTAMP NOT NULL,
             created_at TIMESTAMP NOT NULL,
-            updated_at TIMESTAMP NOT NULL
+            updated_at TIMESTAMP NOT NULL,
+            lock_token RAW(16)
         )';
 EXCEPTION WHEN OTHERS THEN
     IF SQLCODE != -955 THEN RAISE; END IF;

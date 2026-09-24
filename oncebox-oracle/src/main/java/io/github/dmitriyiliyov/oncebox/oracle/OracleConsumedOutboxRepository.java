@@ -3,7 +3,7 @@ package io.github.dmitriyiliyov.oncebox.oracle;
 import io.github.dmitriyiliyov.oncebox.core.consumer.ConcurrentInsertException;
 import io.github.dmitriyiliyov.oncebox.core.consumer.ConsumedOutboxRepository;
 import io.github.dmitriyiliyov.oncebox.core.utils.BytesResultSetMapper;
-import io.github.dmitriyiliyov.oncebox.core.utils.BytesSqlIdHelper;
+import io.github.dmitriyiliyov.oncebox.core.utils.BytesSqlUuidHelper;
 import io.github.dmitriyiliyov.oncebox.core.utils.RepositoryUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -16,16 +16,16 @@ public class OracleConsumedOutboxRepository implements ConsumedOutboxRepository 
 
     protected final JdbcTemplate jdbcTemplate;
     protected final Clock clock;
-    protected final BytesSqlIdHelper idHelper;
+    protected final BytesSqlUuidHelper uuidHelper;
     protected final BytesResultSetMapper mapper;
 
     public OracleConsumedOutboxRepository(JdbcTemplate jdbcTemplate,
                                           Clock clock,
-                                          BytesSqlIdHelper idHelper,
+                                          BytesSqlUuidHelper uuidHelper,
                                           BytesResultSetMapper mapper) {
         this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate, "jdbcTemplate cannot be null");
         this.clock = Objects.requireNonNull(clock, "clock cannot be null");
-        this.idHelper = Objects.requireNonNull(idHelper, "idHelper cannot be null");
+        this.uuidHelper = Objects.requireNonNull(uuidHelper, "uuidHelper cannot be null");
         this.mapper = Objects.requireNonNull(mapper, "mapper cannot be null");
     }
 
@@ -44,7 +44,7 @@ public class OracleConsumedOutboxRepository implements ConsumedOutboxRepository 
         return jdbcTemplate.update(
                 sql,
                 ps -> {
-                    idHelper.setIdToPs(ps, 1, id);
+                    uuidHelper.setToPs(ps, 1, id);
                     ps.setTimestamp(2, Timestamp.from(clock.instant()));
                 }
         );
@@ -63,7 +63,7 @@ public class OracleConsumedOutboxRepository implements ConsumedOutboxRepository 
         """.formatted(RepositoryUtils.generateIdsPlaceholders(ids));
         List<UUID> existsIds = jdbcTemplate.query(
                 existsIdsSql,
-                ps -> idHelper.setIdsToPs(ps, 1, ids),
+                ps -> uuidHelper.setToPs(ps, 1, ids),
                 (rs, rowNum) -> mapper.fromBytesToUuid(rs.getBytes("id"))
         );
 
@@ -86,7 +86,7 @@ public class OracleConsumedOutboxRepository implements ConsumedOutboxRepository 
                 nonExistsIds,
                 nonExistsIds.size(),
                 (ps, id) -> {
-                    ps.setBytes(1, idHelper.uuidToBytes(id));
+                    ps.setBytes(1, uuidHelper.uuidToBytes(id));
                     ps.setTimestamp(2, Timestamp.from(consumedAt));
                 }
         );
@@ -130,6 +130,6 @@ public class OracleConsumedOutboxRepository implements ConsumedOutboxRepository 
             DELETE FROM outbox_consumed_events
             WHERE id IN(%s)
         """.formatted(RepositoryUtils.generateIdsPlaceholders(ids));
-        return jdbcTemplate.update(deleteSql, ps -> idHelper.setIdsToPs(ps, 1, ids));
+        return jdbcTemplate.update(deleteSql, ps -> uuidHelper.setToPs(ps, 1, ids));
     }
 }

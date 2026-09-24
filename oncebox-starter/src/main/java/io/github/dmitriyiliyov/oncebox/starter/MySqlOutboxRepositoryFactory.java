@@ -25,7 +25,7 @@ public class MySqlOutboxRepositoryFactory implements OutboxRepositoryFactory {
         return new MySqlOutboxRepository(
                 jdbcTemplate,
                 clock,
-                new MySqlIdHelper(),
+                new MySqlUuidHelper(),
                 new DefaultBytesResultSetMapper()
         );
     }
@@ -34,7 +34,7 @@ public class MySqlOutboxRepositoryFactory implements OutboxRepositoryFactory {
     public OutboxDlqRepository createOutboxDlqRepository() {
         return new MySqlOutboxDlqRepository(
                 jdbcTemplate,
-                new MySqlIdHelper(),
+                new MySqlUuidHelper(),
                 new DefaultBytesResultSetMapper(),
                 clock
         );
@@ -42,7 +42,7 @@ public class MySqlOutboxRepositoryFactory implements OutboxRepositoryFactory {
 
     @Override
     public DistributedLockRepository createDistributedLockRepository() {
-        return new MySqlDistributedLockRepository(jdbcTemplate, new MySqlIdHelper());
+        return new MySqlDistributedLockRepository(jdbcTemplate, new MySqlUuidHelper());
     }
 
     @Override
@@ -50,7 +50,7 @@ public class MySqlOutboxRepositoryFactory implements OutboxRepositoryFactory {
         return new MySqlConsumedOutboxRepository(
                 jdbcTemplate,
                 clock,
-                new MySqlIdHelper(),
+                new MySqlUuidHelper(),
                 new DefaultBytesResultSetMapper()
         );
     }

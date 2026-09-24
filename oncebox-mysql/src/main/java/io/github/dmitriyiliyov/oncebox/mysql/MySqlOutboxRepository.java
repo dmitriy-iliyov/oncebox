@@ -6,7 +6,7 @@ import io.github.dmitriyiliyov.oncebox.core.publisher.domain.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.utils.BytesResultSetMapper;
 import io.github.dmitriyiliyov.oncebox.core.utils.RepositoryUtils;
 import io.github.dmitriyiliyov.oncebox.core.utils.ResultSetMapper;
-import io.github.dmitriyiliyov.oncebox.core.utils.SqlIdHelper;
+import io.github.dmitriyiliyov.oncebox.core.utils.SqlUuidHelper;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.sql.Timestamp;
@@ -21,14 +21,17 @@ public class MySqlOutboxRepository extends AbstractOutboxRepository {
 
     public MySqlOutboxRepository(JdbcTemplate jdbcTemplate,
                                  Clock clock,
-                                 SqlIdHelper idHelper,
+                                 SqlUuidHelper uuidHelper,
                                  BytesResultSetMapper mapper) {
-        super(jdbcTemplate, clock, idHelper);
+        super(jdbcTemplate, clock, uuidHelper);
         this.mapper = Objects.requireNonNull(mapper, "mapper cannot be null");
     }
 
     @Override
-    public List<OutboxEvent> findAndLockBatchByEventTypeAndStatus(String eventType, EventStatus status, int batchSize,
+    public List<OutboxEvent> findAndLockBatchByEventTypeAndStatus(String eventType,
+                                                                  EventStatus status,
+                                                                  int batchSize,
+                                                                  UUID lockToken,
                                                                   EventStatus lockStatus) {
         String selectSql = """
             SELECT * 
@@ -48,7 +51,7 @@ public class MySqlOutboxRepository extends AbstractOutboxRepository {
                 },
                 (rs, rowNum) -> mapper.toEvent(rs)
         );
-        return lock(events, lockStatus);
+        return lock(events, lockStatus, lockToken);
     }
 
     @Override
@@ -69,10 +72,14 @@ public class MySqlOutboxRepository extends AbstractOutboxRepository {
                 },
                 (rs, rowNum) -> mapper.toEvent(rs)
         );
-        return lock(events, lockStatus);
+        return lock(events, lockStatus, null);
     }
 
-    private List<OutboxEvent> lock(List<OutboxEvent> events, EventStatus lockStatus) {
+    /**
+     * Sets the status of the selected events and, when {@code lockToken} is given, the token of this capture;
+     * without one the event keeps the token it already carries.
+     */
+    private List<OutboxEvent> lock(List<OutboxEvent> events, EventStatus lockStatus, UUID lockToken) {
         Set<UUID> ids = events.stream()
                 .map(OutboxEvent::getId)
                 .collect(Collectors.toSet());
@@ -83,9 +90,9 @@ public class MySqlOutboxRepository extends AbstractOutboxRepository {
 
         String lockSql = """
             UPDATE outbox_events
-                SET status = ?, updated_at = ?
+                SET status = ?, updated_at = ?%s
             WHERE id IN(%s)
-        """.formatted(RepositoryUtils.generateIdsPlaceholders(ids));
+        """.formatted(lockToken == null ? "" : ", lock_token = ?", RepositoryUtils.generateIdsPlaceholders(ids));
         Instant updatedAt = clock.instant();
 
         jdbcTemplate.update(
@@ -93,7 +100,11 @@ public class MySqlOutboxRepository extends AbstractOutboxRepository {
                 ps -> {
                     ps.setString(1, lockStatus.name());
                     ps.setTimestamp(2, Timestamp.from(updatedAt));
-                    idHelper.setIdsToPs(ps, 3, ids);
+                    int index = 3;
+                    if (lockToken != null) {
+                        uuidHelper.setToPs(ps, index++, lockToken);
+                    }
+                    uuidHelper.setToPs(ps, index, ids);
                 }
         );
 

@@ -25,7 +25,7 @@ class MySqlOutboxDlqRepositoryIntegrationTests extends BaseMySqlIntegrationTests
     private final OutboxDlqRepositoryVerifier delegate;
 
     private final JdbcTemplate jdbcTemplate;
-    private final MySqlIdHelper mySqlIdHelper = new MySqlIdHelper();
+    private final MySqlUuidHelper mySqlUuidHelper = new MySqlUuidHelper();
     private final DefaultBytesResultSetMapper mapper = new DefaultBytesResultSetMapper();
     private final Clock clock = Clock.systemUTC();
 
@@ -38,7 +38,7 @@ class MySqlOutboxDlqRepositoryIntegrationTests extends BaseMySqlIntegrationTests
         this.delegate = new OutboxDlqRepositoryVerifier(
                 repository,
                 jdbcTemplate,
-                new MySqlIdHelper(),
+                new MySqlUuidHelper(),
                 new DefaultBytesResultSetMapper()
         );
     }
@@ -46,7 +46,7 @@ class MySqlOutboxDlqRepositoryIntegrationTests extends BaseMySqlIntegrationTests
     @Test
     @DisplayName("UT constructor when clock is null should throw NullPointerException")
     void constructor_whenClockIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new MySqlOutboxDlqRepository(jdbcTemplate, mySqlIdHelper, mapper, null))
+        assertThatThrownBy(() -> new MySqlOutboxDlqRepository(jdbcTemplate, mySqlUuidHelper, mapper, null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("clock cannot be null");
     }

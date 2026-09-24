@@ -25,7 +25,7 @@ class OracleOutboxDlqRepositoryIntegrationTests extends BaseOracleIntegrationTes
     private final OutboxDlqRepositoryVerifier delegate;
 
     private final JdbcTemplate jdbcTemplate;
-    private final OracleSqlIdHelper oracleSqlIdHelper = new OracleSqlIdHelper();
+    private final OracleSqlUuidHelper oracleSqlUuidHelper = new OracleSqlUuidHelper();
     private final DefaultBytesResultSetMapper mapper = new DefaultBytesResultSetMapper();
     private final Clock clock = Clock.systemUTC();
 
@@ -38,7 +38,7 @@ class OracleOutboxDlqRepositoryIntegrationTests extends BaseOracleIntegrationTes
         this.delegate = new OutboxDlqRepositoryVerifier(
                 repository,
                 jdbcTemplate,
-                new OracleSqlIdHelper(),
+                new OracleSqlUuidHelper(),
                 new DefaultBytesResultSetMapper()
         );
     }
@@ -46,7 +46,7 @@ class OracleOutboxDlqRepositoryIntegrationTests extends BaseOracleIntegrationTes
     @Test
     @DisplayName("UT constructor when mapper is null should throw NullPointerException")
     void constructor_whenMapperIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new OracleOutboxDlqRepository(jdbcTemplate, oracleSqlIdHelper, null, clock))
+        assertThatThrownBy(() -> new OracleOutboxDlqRepository(jdbcTemplate, oracleSqlUuidHelper, null, clock))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("mapper cannot be null");
     }
@@ -54,7 +54,7 @@ class OracleOutboxDlqRepositoryIntegrationTests extends BaseOracleIntegrationTes
     @Test
     @DisplayName("UT constructor when clock is null should throw NullPointerException")
     void constructor_whenClockIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new OracleOutboxDlqRepository(jdbcTemplate, oracleSqlIdHelper, mapper, null))
+        assertThatThrownBy(() -> new OracleOutboxDlqRepository(jdbcTemplate, oracleSqlUuidHelper, mapper, null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("clock cannot be null");
     }

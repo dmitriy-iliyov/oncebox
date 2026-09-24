@@ -25,7 +25,7 @@ public class OracleOutboxRepositoryFactory implements OutboxRepositoryFactory {
         return new OracleOutboxRepository(
                 jdbcTemplate,
                 clock,
-                new OracleSqlIdHelper(),
+                new OracleSqlUuidHelper(),
                 new DefaultBytesResultSetMapper()
         );
     }
@@ -34,7 +34,7 @@ public class OracleOutboxRepositoryFactory implements OutboxRepositoryFactory {
     public OutboxDlqRepository createOutboxDlqRepository() {
         return new OracleOutboxDlqRepository(
                 jdbcTemplate,
-                new OracleSqlIdHelper(),
+                new OracleSqlUuidHelper(),
                 new DefaultBytesResultSetMapper(),
                 clock
         );
@@ -42,7 +42,7 @@ public class OracleOutboxRepositoryFactory implements OutboxRepositoryFactory {
 
     @Override
     public DistributedLockRepository createDistributedLockRepository() {
-        return new OracleDistributedLockRepository(jdbcTemplate, new OracleSqlIdHelper());
+        return new OracleDistributedLockRepository(jdbcTemplate, new OracleSqlUuidHelper());
     }
 
     @Override
@@ -50,7 +50,7 @@ public class OracleOutboxRepositoryFactory implements OutboxRepositoryFactory {
         return new OracleConsumedOutboxRepository(
                 jdbcTemplate,
                 clock,
-                new OracleSqlIdHelper(),
+                new OracleSqlUuidHelper(),
                 new DefaultBytesResultSetMapper()
         );
     }

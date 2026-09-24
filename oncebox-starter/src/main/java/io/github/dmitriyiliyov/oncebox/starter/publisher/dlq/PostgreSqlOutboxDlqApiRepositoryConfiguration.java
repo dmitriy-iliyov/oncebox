@@ -3,8 +3,8 @@ package io.github.dmitriyiliyov.oncebox.starter.publisher.dlq;
 
 import io.github.dmitriyiliyov.oncebox.core.utils.DefaultResultSetMapper;
 import io.github.dmitriyiliyov.oncebox.dlq.api.OutboxDlqApiRepository;
-import io.github.dmitriyiliyov.oncebox.postgresql.PostgreSqlIdHelper;
 import io.github.dmitriyiliyov.oncebox.postgresql.PostgreSqlOutboxDlqApiRepository;
+import io.github.dmitriyiliyov.oncebox.postgresql.PostgreSqlUuidHelper;
 import io.github.dmitriyiliyov.oncebox.starter.ConditionalOnDatabaseType;
 import io.github.dmitriyiliyov.oncebox.starter.DatabaseType;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -27,7 +27,7 @@ public class PostgreSqlOutboxDlqApiRepositoryConfiguration {
                                                                    Clock clock) {
         return new PostgreSqlOutboxDlqApiRepository(
                 jdbcTemplate,
-                new PostgreSqlIdHelper(),
+                new PostgreSqlUuidHelper(),
                 new DefaultResultSetMapper(),
                 clock
         );

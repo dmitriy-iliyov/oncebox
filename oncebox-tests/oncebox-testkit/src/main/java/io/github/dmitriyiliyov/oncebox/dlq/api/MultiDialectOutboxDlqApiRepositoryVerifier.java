@@ -5,7 +5,7 @@ import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.OutboxDlqEvent;
 import io.github.dmitriyiliyov.oncebox.core.publisher.domain.EventStatus;
 import io.github.dmitriyiliyov.oncebox.core.utils.RepositoryUtils;
 import io.github.dmitriyiliyov.oncebox.core.utils.ResultSetMapper;
-import io.github.dmitriyiliyov.oncebox.core.utils.SqlIdHelper;
+import io.github.dmitriyiliyov.oncebox.core.utils.SqlUuidHelper;
 import io.github.dmitriyiliyov.oncebox.dlq.api.exception.InvalidDlqFilterException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -25,18 +25,18 @@ public class MultiDialectOutboxDlqApiRepositoryVerifier {
 
     private final OutboxDlqApiRepository repository;
     private final JdbcTemplate jdbcTemplate;
-    private final SqlIdHelper idHelper;
+    private final SqlUuidHelper uuidHelper;
     private final ResultSetMapper mapper;
 
     public MultiDialectOutboxDlqApiRepositoryVerifier(
             OutboxDlqApiRepository repository,
             JdbcTemplate jdbcTemplate,
-            SqlIdHelper idHelper,
+            SqlUuidHelper uuidHelper,
             ResultSetMapper mapper
     ) {
         this.repository = repository;
         this.jdbcTemplate = jdbcTemplate;
-        this.idHelper = idHelper;
+        this.uuidHelper = uuidHelper;
         this.mapper = mapper;
     }
 
@@ -551,7 +551,7 @@ public class MultiDialectOutboxDlqApiRepositoryVerifier {
                 eventBatch,
                 eventBatch.size(),
                 (ps, event) -> {
-                    idHelper.setIdToPs(ps, 1, event.getId());
+                    uuidHelper.setToPs(ps, 1, event.getId());
                     ps.setString(2, event.getStatus().name());
                     ps.setString(3, event.getDlqStatus().name());
                     ps.setString(4, event.getEventType());
@@ -577,7 +577,7 @@ public class MultiDialectOutboxDlqApiRepositoryVerifier {
                 ps -> {
                     int i = 1;
                     for (UUID id: ids) {
-                        idHelper.setIdToPs(ps, i++, id);
+                        uuidHelper.setToPs(ps, i++, id);
                     }
                 },
                 (rs, rowNum) -> mapper.toDlqEvent(rs)

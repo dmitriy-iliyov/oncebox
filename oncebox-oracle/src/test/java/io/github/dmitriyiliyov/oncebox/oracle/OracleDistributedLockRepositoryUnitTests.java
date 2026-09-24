@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.oracle;
 
-import io.github.dmitriyiliyov.oncebox.core.utils.BytesSqlIdHelper;
+import io.github.dmitriyiliyov.oncebox.core.utils.BytesSqlUuidHelper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,11 +27,11 @@ class OracleDistributedLockRepositoryUnitTests {
 
     private OracleDistributedLockRepository repository;
 
-    private final BytesSqlIdHelper idHelper = new OracleSqlIdHelper();
+    private final BytesSqlUuidHelper uuidHelper = new OracleSqlUuidHelper();
 
     @BeforeEach
     void setUp() {
-        repository = new OracleDistributedLockRepository(jdbcTemplate, new OracleSqlIdHelper());
+        repository = new OracleDistributedLockRepository(jdbcTemplate, new OracleSqlUuidHelper());
     }
 
     @Test
@@ -50,7 +50,7 @@ class OracleDistributedLockRepositoryUnitTests {
 
         PreparedStatement ps = mock(PreparedStatement.class);
         setterCaptor.getValue().setValues(ps);
-        verify(ps).setBytes(1, idHelper.uuidToBytes(workerId));
+        verify(ps).setBytes(1, uuidHelper.uuidToBytes(workerId));
         verify(ps).setString(2, jobName);
     }
 
@@ -89,7 +89,7 @@ class OracleDistributedLockRepositoryUnitTests {
         PreparedStatement ps = mock(PreparedStatement.class);
         setterCaptor.getValue().setValues(ps);
         verify(ps).setString(1, jobName);
-        verify(ps).setBytes(2, idHelper.uuidToBytes(workerId));
+        verify(ps).setBytes(2, uuidHelper.uuidToBytes(workerId));
     }
 
     @Test

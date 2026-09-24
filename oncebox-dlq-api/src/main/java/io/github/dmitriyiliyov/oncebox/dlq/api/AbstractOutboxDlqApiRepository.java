@@ -4,7 +4,7 @@ import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.DlqStatus;
 import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.OutboxDlqEvent;
 import io.github.dmitriyiliyov.oncebox.core.utils.RepositoryUtils;
 import io.github.dmitriyiliyov.oncebox.core.utils.ResultSetMapper;
-import io.github.dmitriyiliyov.oncebox.core.utils.SqlIdHelper;
+import io.github.dmitriyiliyov.oncebox.core.utils.SqlUuidHelper;
 import io.github.dmitriyiliyov.oncebox.dlq.api.exception.InvalidDlqFilterException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -15,16 +15,16 @@ import java.util.*;
 public abstract class AbstractOutboxDlqApiRepository implements OutboxDlqApiRepository {
 
     protected final JdbcTemplate jdbcTemplate;
-    protected final SqlIdHelper idHelper;
+    protected final SqlUuidHelper uuidHelper;
     protected final ResultSetMapper mapper;
     protected final Clock clock;
 
     public AbstractOutboxDlqApiRepository(JdbcTemplate jdbcTemplate,
-                                          SqlIdHelper idHelper,
+                                          SqlUuidHelper uuidHelper,
                                           ResultSetMapper mapper,
                                           Clock clock) {
         this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate, "jdbcTemplate cannot be null");
-        this.idHelper = Objects.requireNonNull(idHelper, "idHelper cannot be null");
+        this.uuidHelper = Objects.requireNonNull(uuidHelper, "uuidHelper cannot be null");
         this.mapper = Objects.requireNonNull(mapper, "mapper cannot be null");
         this.clock = Objects.requireNonNull(clock, "clock cannot be null");
     }
@@ -38,7 +38,7 @@ public abstract class AbstractOutboxDlqApiRepository implements OutboxDlqApiRepo
         """;
         List<OutboxDlqEvent> results = jdbcTemplate.query(
                 sql,
-                ps -> idHelper.setIdToPs(ps, 1, id),
+                ps -> uuidHelper.setToPs(ps, 1, id),
                 (rs, rowNum) -> mapper.toDlqEvent(rs)
         );
         return results.stream().findFirst();
@@ -54,7 +54,7 @@ public abstract class AbstractOutboxDlqApiRepository implements OutboxDlqApiRepo
         """;
         List<OutboxDlqEvent> results = jdbcTemplate.query(
                 sql,
-                ps -> idHelper.setIdToPs(ps, 1, id),
+                ps -> uuidHelper.setToPs(ps, 1, id),
                 (rs, rowNum) -> mapper.toDlqEvent(rs)
         );
         return results.stream().findFirst();
@@ -107,7 +107,7 @@ public abstract class AbstractOutboxDlqApiRepository implements OutboxDlqApiRepo
                 ps -> {
                     ps.setString(1, status.name());
                     ps.setTimestamp(2, Timestamp.from(clock.instant()));
-                    idHelper.setIdToPs(ps, 3, id);
+                    uuidHelper.setToPs(ps, 3, id);
                 }
         );
     }
@@ -135,7 +135,7 @@ public abstract class AbstractOutboxDlqApiRepository implements OutboxDlqApiRepo
     @Override
     public int deleteById(UUID id) {
         String sql = "DELETE FROM outbox_dlq_events WHERE id = ?";
-        return jdbcTemplate.update(sql, ps -> idHelper.setIdToPs(ps, 1, id));
+        return jdbcTemplate.update(sql, ps -> uuidHelper.setToPs(ps, 1, id));
     }
 
     @Override

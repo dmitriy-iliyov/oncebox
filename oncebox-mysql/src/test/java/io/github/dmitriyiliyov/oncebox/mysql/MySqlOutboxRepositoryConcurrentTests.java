@@ -66,7 +66,7 @@ class MySqlOutboxRepositoryConcurrentTests extends BaseMySqlIntegrationTests {
                 try {
                     start.await();
                     while (true) {
-                        List<OutboxEvent> batch = manager.loadBatch(eventType, BATCH_SIZE);
+                        List<OutboxEvent> batch = manager.loadBatch(eventType, BATCH_SIZE, UUID.randomUUID());
                         if (batch.isEmpty()) {
                             break;
                         }

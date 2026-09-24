@@ -58,6 +58,14 @@ public class OutboxPublisherProperties implements OutboxPublisherPropertiesHolde
             stuckRecovery = stuckRecovery == null ? new StuckRecoveryProperties() : stuckRecovery;
             stuckRecovery.applyDefaults();
 
+            if (sender.getEmergencyTimeout().compareTo(stuckRecovery.getMaxBatchProcessingTime()) >= 0) {
+                throw new IllegalStateException("""
+                                'sender.emergency-timeout' (%s) must be less than 'stuck-recovery.max-batch-processing-time' (%s), \
+                                otherwise a batch still being sent is recovered as stuck and published twice"""
+                        .formatted(sender.getEmergencyTimeout(), stuckRecovery.getMaxBatchProcessingTime())
+                );
+            }
+
             if (cleanUp == null) {
                 cleanUp = new OutboxProperties.CleanUpProperties();
                 cleanUp.setEnabled(true);

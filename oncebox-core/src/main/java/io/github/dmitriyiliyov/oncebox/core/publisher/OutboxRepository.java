@@ -42,17 +42,23 @@ public interface OutboxRepository {
      * @param eventType  the type of events to find.
      * @param status     the current status of events to find.
      * @param batchSize  the maximum number of events to retrieve.
+     * @param lockToken  the token of this capture, written to every locked event; the finalization of the batch
+     *                   passes it back, so it cannot overwrite an event captured since by another poller.
      * @param lockStatus the new status to set for the locked events.
      * @return           a list of locked outbox events with status set to {@code lockStatus};
      *                   empty list if none available.
      */
-    List<OutboxEvent> findAndLockBatchByEventTypeAndStatus(String eventType, EventStatus status, int batchSize, EventStatus lockStatus);
+    List<OutboxEvent> findAndLockBatchByEventTypeAndStatus(String eventType,
+                                                           EventStatus status,
+                                                           int batchSize,
+                                                           UUID lockToken,
+                                                           EventStatus lockStatus);
 
     /**
      * Finds and locks a batch of events by their status, without filtering by event type.
      * <p>
      * Behaves identically to
-     * {@link #findAndLockBatchByEventTypeAndStatus(String, EventStatus, int, EventStatus)}
+     * {@link #findAndLockBatchByEventTypeAndStatus(String, EventStatus, int, UUID, EventStatus)}
      * except that all event types are considered.
      *
      * @param status     the current status of events to find.
@@ -64,18 +70,25 @@ public interface OutboxRepository {
     List<OutboxEvent> findAndLockBatchByStatus(EventStatus status, int batchSize, EventStatus lockStatus);
 
     /**
-     * Updates the status for a batch of events.
+     * Updates the status for a batch of events that are still held by the given capture.
      * <p>
-     * Does nothing and returns 0 if the set is null or empty.
-     * IDs that do not correspond to existing events are silently ignored.
+     * Does nothing and returns 0 if the set is empty.
+     * IDs that do not correspond to existing events, or whose events carry another lock token, are silently
+     * ignored: such an event was recovered and captured again, and its newer owner writes its outcome.
+     * <p>
+     * The token alone decides, whatever the current status: an event recovered to {@link EventStatus#PENDING}
+     * and not yet captured again still carries this token and takes this outcome - the outcome of the capture
+     * that actually sent it.
      *
      * @param ids       the IDs of the events to update.
+     * @param lockToken the token the events were captured with.
      * @param newStatus the new status to set.
      * @return          the number of updated events.
      * @throws IllegalArgumentException if {@code newStatus} is {@link EventStatus#FAILED};
-     *                                  use {@link #partiallyUpdateBatch(List)} for failed events.
+     *                                  use {@link #partiallyUpdateBatchByLockToken(List, UUID)} for failed events.
+     * @throws NullPointerException     if {@code ids} is null.
      */
-    int updateBatchStatus(Set<UUID> ids, EventStatus newStatus);
+    int updateBatchStatusByLockToken(Set<UUID> ids, UUID lockToken, EventStatus newStatus);
 
     /**
      * Updates the status of events that match a given status and were last updated
@@ -90,27 +103,34 @@ public interface OutboxRepository {
      * @param newStatus the new status to set.
      * @return          the number of updated events.
      */
-    int updateBatchStatusByStatusAndThreshold(EventStatus status, Instant threshold, int batchSize, EventStatus newStatus);
+    int updateBatchStatusByStatusAndThreshold(EventStatus status,
+                                              Instant threshold,
+                                              int batchSize,
+                                              EventStatus newStatus);
 
     /**
      * Updates a batch of events using the state carried by each event object.
      * <p>
      * Used when finalizing a batch where some events failed processing.
      * Does nothing and returns 0 if the list is null or empty.
+     * Only events still held by the given capture are updated, on the same terms as
+     * {@link #updateBatchStatusByLockToken(Set, UUID, EventStatus)}.
      *
-     * @param events the list of events to update; each event carries its own updated state.
-     * @return       the number of updated events.
+     * @param events    the list of events to update; each event carries its own updated state.
+     * @param lockToken the token the events were captured with.
+     * @return          the number of updated events.
      */
-    int partiallyUpdateBatch(List<OutboxEvent> events);
+    int partiallyUpdateBatchByLockToken(List<OutboxEvent> events, UUID lockToken);
 
     /**
      * Deletes a batch of events by their IDs.
      * <p>
-     * Does nothing and returns 0 if the set is null or empty.
+     * Does nothing and returns 0 if the set is empty.
      * IDs that do not correspond to existing events are silently ignored.
      *
      * @param ids the set of event IDs to delete.
      * @return    the number of deleted events.
+     * @throws NullPointerException if {@code ids} is null.
      */
     int deleteBatch(Set<UUID> ids);
 

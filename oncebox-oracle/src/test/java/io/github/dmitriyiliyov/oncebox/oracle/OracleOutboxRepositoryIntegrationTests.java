@@ -14,6 +14,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,7 +28,7 @@ class OracleOutboxRepositoryIntegrationTests extends BaseOracleIntegrationTests 
 
     private final JdbcTemplate jdbcTemplate;
     private final Clock clock = Clock.systemUTC();
-    private final OracleSqlIdHelper oracleSqlIdHelper = new OracleSqlIdHelper();
+    private final OracleSqlUuidHelper oracleSqlUuidHelper = new OracleSqlUuidHelper();
     private final DefaultBytesResultSetMapper mapper = new DefaultBytesResultSetMapper();
 
     OracleOutboxRepositoryIntegrationTests(
@@ -42,7 +43,7 @@ class OracleOutboxRepositoryIntegrationTests extends BaseOracleIntegrationTests 
     @Test
     @DisplayName("UT constructor when mapper is null should throw NullPointerException")
     void constructor_whenMapperIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new OracleOutboxRepository(jdbcTemplate, clock, oracleSqlIdHelper, null))
+        assertThatThrownBy(() -> new OracleOutboxRepository(jdbcTemplate, clock, oracleSqlUuidHelper, null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("mapper cannot be null");
     }
@@ -56,32 +57,44 @@ class OracleOutboxRepositoryIntegrationTests extends BaseOracleIntegrationTests 
     @Test @DisplayName("IT saveBatch() with empty list should not throw")
     void saveBatch_emptyList_doesNotThrow() { delegate.saveBatch_emptyList_doesNotThrow(); }
 
-    @Test @DisplayName("IT updateBatchStatus() to PENDING should update all")
-    void updateBatchStatus_toPending_updatesAll() { delegate.updateBatchStatus_toPending_updatesAll(); }
+    @Test @DisplayName("IT updateBatchStatusByLockToken() to PENDING should update all")
+    void updateBatchStatusByLockToken_toPending_updatesAll() { delegate.updateBatchStatus_toPending_updatesAll(); }
 
-    @Test @DisplayName("IT updateBatchStatus() to PROCESSED should update all")
-    void updateBatchStatus_toProcessed_updatesAll() { delegate.updateBatchStatus_toProcessed_updatesAll(); }
+    @Test @DisplayName("IT updateBatchStatusByLockToken() to PROCESSED should update all")
+    void updateBatchStatusByLockToken_toProcessed_updatesAll() { delegate.updateBatchStatus_toProcessed_updatesAll(); }
 
-    @Test @DisplayName("IT updateBatchStatus() to FAILED should throw exception")
-    void updateBatchStatus_toFailed_throwsException() { delegate.updateBatchStatus_toFailed_throwsException(); }
+    @Test @DisplayName("IT updateBatchStatusByLockToken() to FAILED should throw exception")
+    void updateBatchStatusByLockToken_toFailed_throwsException() { delegate.updateBatchStatus_toFailed_throwsException(); }
 
-    @Test @DisplayName("IT updateBatchStatus() with empty ids should return zero")
-    void updateBatchStatus_emptyIds_returnsZero() { delegate.updateBatchStatus_emptyIds_returnsZero(); }
+    @Test @DisplayName("IT updateBatchStatusByLockToken() with empty ids should return zero")
+    void updateBatchStatusByLockToken_emptyIds_returnsZero() { delegate.updateBatchStatus_emptyIds_returnsZero(); }
 
-    @Test @DisplayName("IT updateBatchStatus() should not affect other events")
-    void updateBatchStatus_doesNotAffectOtherEvents() { delegate.updateBatchStatus_doesNotAffectOtherEvents(); }
+    @Test @DisplayName("IT updateBatchStatusByLockToken() should not affect other events")
+    void updateBatchStatusByLockToken_doesNotAffectOtherEvents() { delegate.updateBatchStatus_doesNotAffectOtherEvents(); }
 
-    @Test @DisplayName("IT partiallyUpdateBatch() should increment retry count")
-    void partiallyUpdateBatch_incrementsRetryCount() { delegate.partiallyUpdateBatch_incrementsRetryCount(); }
+    @Test @DisplayName("IT partiallyUpdateBatchByLockToken() should increment retry count")
+    void partiallyUpdateBatchByLockToken_incrementsRetryCount() { delegate.partiallyUpdateBatch_incrementsRetryCount(); }
 
-    @Test @DisplayName("IT partiallyUpdateBatch() with empty list should return zero")
-    void partiallyUpdateBatch_emptyList_returnsZero() { delegate.partiallyUpdateBatch_emptyList_returnsZero(); }
+    @Test @DisplayName("IT partiallyUpdateBatchByLockToken() with empty list should return zero")
+    void partiallyUpdateBatchByLockToken_emptyList_returnsZero() { delegate.partiallyUpdateBatch_emptyList_returnsZero(); }
 
-    @Test @DisplayName("IT partiallyUpdateBatch() with null should return zero")
-    void partiallyUpdateBatch_nullList_returnsZero() { delegate.partiallyUpdateBatch_nullList_returnsZero(); }
+    @Test @DisplayName("IT partiallyUpdateBatchByLockToken() with null should return zero")
+    void partiallyUpdateBatchByLockToken_nullList_returnsZero() { delegate.partiallyUpdateBatch_nullList_returnsZero(); }
 
-    @Test @DisplayName("IT partiallyUpdateBatch() should update all events")
-    void partiallyUpdateBatch_multipleEvents_allUpdated() { delegate.partiallyUpdateBatch_multipleEvents_allUpdated(); }
+    @Test @DisplayName("IT partiallyUpdateBatchByLockToken() should update all events")
+    void partiallyUpdateBatchByLockToken_multipleEvents_allUpdated() { delegate.partiallyUpdateBatch_multipleEvents_allUpdated(); }
+
+    @Test @DisplayName("IT updateBatchStatusByLockToken() when held by another lock token should update nothing")
+    void updateBatchStatusByLockToken_whenHeldByAnotherLockToken_updatesNothing() { delegate.updateBatchStatus_whenHeldByAnotherLockToken_updatesNothing(); }
+
+    @Test @DisplayName("IT updateBatchStatusByLockToken() when the event was never captured should update nothing")
+    void updateBatchStatusByLockToken_whenNeverCaptured_updatesNothing() { delegate.updateBatchStatus_whenNeverCaptured_updatesNothing(); }
+
+    @Test @DisplayName("IT partiallyUpdateBatchByLockToken() when held by another lock token should update nothing")
+    void partiallyUpdateBatchByLockToken_whenHeldByAnotherLockToken_updatesNothing() { delegate.partiallyUpdateBatch_whenHeldByAnotherLockToken_updatesNothing(); }
+
+    @Test @DisplayName("IT findAndLockBatchByStatus() should keep the lock token of the last capture")
+    void findAndLockBatchByStatus_shouldKeepLockTokenOfLastCapture() { delegate.findAndLockBatchByStatus_shouldKeepLockTokenOfLastCapture(); }
 
     @Test @DisplayName("IT deleteBatch() should delete and return count")
     void deleteBatch_existingIds_deletedAndReturnsCount() { delegate.deleteBatch_existingIds_deletedAndReturnsCount(); }
@@ -165,7 +178,7 @@ class OracleOutboxRepositoryIntegrationTests extends BaseOracleIntegrationTests 
         repository.saveBatch(List.of(orderEvent, paymentEvent));
 
         List<OutboxEvent> locked = repository.findAndLockBatchByEventTypeAndStatus(
-                "ORDER_CREATED", EventStatus.PENDING, 10, EventStatus.IN_PROCESS
+                "ORDER_CREATED", EventStatus.PENDING, 10, UUID.randomUUID(), EventStatus.IN_PROCESS
         );
 
         assertThat(locked)
@@ -186,7 +199,7 @@ class OracleOutboxRepositoryIntegrationTests extends BaseOracleIntegrationTests 
         repository.saveBatch(List.of(ready, notReady));
 
         List<OutboxEvent> locked = repository.findAndLockBatchByEventTypeAndStatus(
-                "ORDER_CREATED", EventStatus.PENDING, 10, EventStatus.IN_PROCESS
+                "ORDER_CREATED", EventStatus.PENDING, 10, UUID.randomUUID(), EventStatus.IN_PROCESS
         );
 
         assertThat(locked)
@@ -210,7 +223,7 @@ class OracleOutboxRepositoryIntegrationTests extends BaseOracleIntegrationTests 
 
     @Test
     @DisplayName("IT updateBatchStatusByStatusAndThreshold() should respect batch size via FETCH FIRST")
-    void updateBatchStatusByStatusAndThreshold_respectsBatchSize() {
+    void updateBatchStatusByStatusAndThreshold_respectsLockedBatchSize() {
         repository.saveBatch(
                 IntStream.range(0, 5)
                         .mapToObj(i -> delegate.buildEvent(EventStatus.IN_PROCESS))

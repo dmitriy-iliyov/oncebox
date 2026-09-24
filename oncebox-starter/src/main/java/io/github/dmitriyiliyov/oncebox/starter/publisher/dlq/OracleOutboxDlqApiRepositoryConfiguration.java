@@ -3,7 +3,7 @@ package io.github.dmitriyiliyov.oncebox.starter.publisher.dlq;
 import io.github.dmitriyiliyov.oncebox.core.utils.DefaultBytesResultSetMapper;
 import io.github.dmitriyiliyov.oncebox.dlq.api.OutboxDlqApiRepository;
 import io.github.dmitriyiliyov.oncebox.oracle.OracleOutboxDlqApiRepository;
-import io.github.dmitriyiliyov.oncebox.oracle.OracleSqlIdHelper;
+import io.github.dmitriyiliyov.oncebox.oracle.OracleSqlUuidHelper;
 import io.github.dmitriyiliyov.oncebox.starter.ConditionalOnDatabaseType;
 import io.github.dmitriyiliyov.oncebox.starter.DatabaseType;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -26,7 +26,7 @@ public class OracleOutboxDlqApiRepositoryConfiguration {
                                                                Clock clock) {
         return new OracleOutboxDlqApiRepository(
                 jdbcTemplate,
-                new OracleSqlIdHelper(),
+                new OracleSqlUuidHelper(),
                 new DefaultBytesResultSetMapper(),
                 clock
         );

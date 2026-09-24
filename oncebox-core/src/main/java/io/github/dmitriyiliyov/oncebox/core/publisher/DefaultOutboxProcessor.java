@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import java.time.Clock;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class DefaultOutboxProcessor implements OutboxProcessor {
@@ -29,7 +30,8 @@ public class DefaultOutboxProcessor implements OutboxProcessor {
     public int process(OutboxPublisherPropertiesHolder.EventPropertiesHolder properties) {
         Objects.requireNonNull(properties, "properties cannot be null");
 
-        List<OutboxEvent> events = manager.loadBatch(properties.getEventType(), properties.getBatchSize());
+        UUID lockToken = UUID.randomUUID();
+        List<OutboxEvent> events = manager.loadBatch(properties.getEventType(), properties.getBatchSize(), lockToken);
         if (events == null) {
             log.warn("Outbox events batch is unexpectedly null, for eventType={}", properties.getEventType());
             return 0;
@@ -61,7 +63,8 @@ public class DefaultOutboxProcessor implements OutboxProcessor {
                     double currentMultiplier = Math.pow(properties.backoffMultiplier(), retryCount);
                     return clock.instant()
                             .plusSeconds((long) currentMultiplier * properties.backoffDelay());
-                }
+                },
+                lockToken
         );
         return events.size();
     }

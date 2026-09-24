@@ -99,18 +99,40 @@ class DefaultOutboxProcessorUnitTests {
         Set<UUID> failedIds = Set.of(failedId);
         SenderResult senderResult = new SenderResult(processedIds, failedIds);
 
-        when(manager.loadBatch(eventType, batchSize)).thenReturn(events);
+        when(manager.loadBatch(eq(eventType), eq(batchSize), any(UUID.class))).thenReturn(events);
         when(sender.sendEvents(topic, events)).thenReturn(senderResult);
 
         // when
         tested.process(properties);
 
         // then
-        verify(manager, times(1)).loadBatch(eventType, batchSize);
+        verify(manager, times(1)).loadBatch(eq(eventType), eq(batchSize), any(UUID.class));
         verify(sender, times(1)).sendEvents(topic, events);
         verify(manager, times(1)).finalizeBatch(eq(events), eq(processedIds), eq(failedIds),
-                eq(maxRetries), any(Function.class));
+                eq(maxRetries), any(Function.class), any(UUID.class));
         verifyNoMoreInteractions(manager, sender);
+    }
+
+    @Test
+    @DisplayName("UT process() should finalize the batch with the lock token it was loaded with")
+    @SuppressWarnings("unchecked")
+    void process_shouldFinalizeWithLockTokenBatchWasLoadedWith() {
+        // given
+        OutboxEvent event = mock(OutboxEvent.class);
+        List<OutboxEvent> events = List.of(event);
+        when(manager.loadBatch(eq(eventType), eq(batchSize), any(UUID.class))).thenReturn(events);
+        when(sender.sendEvents(topic, events)).thenReturn(new SenderResult(Set.of(), Set.of()));
+
+        // when
+        tested.process(properties);
+
+        // then
+        ArgumentCaptor<UUID> loadToken = ArgumentCaptor.forClass(UUID.class);
+        ArgumentCaptor<UUID> finalizeToken = ArgumentCaptor.forClass(UUID.class);
+        verify(manager).loadBatch(eq(eventType), eq(batchSize), loadToken.capture());
+        verify(manager).finalizeBatch(eq(events), any(), any(), eq(maxRetries), any(Function.class), finalizeToken.capture());
+        assertThat(loadToken.getValue()).isNotNull();
+        assertThat(finalizeToken.getValue()).isEqualTo(loadToken.getValue());
     }
 
     @Test
@@ -125,7 +147,7 @@ class DefaultOutboxProcessorUnitTests {
         when(event2.getId()).thenReturn(id2);
         List<OutboxEvent> events = List.of(event1, event2);
 
-        when(manager.loadBatch(eventType, batchSize)).thenReturn(events);
+        when(manager.loadBatch(eq(eventType), eq(batchSize), any(UUID.class))).thenReturn(events);
         when(sender.sendEvents(topic, events)).thenThrow(RuntimeException.class);
 
         // when
@@ -135,9 +157,9 @@ class DefaultOutboxProcessorUnitTests {
         ArgumentCaptor<Set<UUID>> processedCaptor = ArgumentCaptor.forClass(Set.class);
         ArgumentCaptor<Set<UUID>> failedCaptor = ArgumentCaptor.forClass(Set.class);
 
-        verify(manager).loadBatch(eventType, batchSize);
+        verify(manager).loadBatch(eq(eventType), eq(batchSize), any(UUID.class));
         verify(sender).sendEvents(topic, events);
-        verify(manager).finalizeBatch(eq(events), processedCaptor.capture(), failedCaptor.capture(), eq(maxRetries), any(Function.class));
+        verify(manager).finalizeBatch(eq(events), processedCaptor.capture(), failedCaptor.capture(), eq(maxRetries), any(Function.class), any(UUID.class));
 
         assertThat(processedCaptor.getValue()).isNull();
         assertThat(failedCaptor.getValue()).containsExactlyInAnyOrder(id1, id2);
@@ -155,24 +177,24 @@ class DefaultOutboxProcessorUnitTests {
     @DisplayName("UT process() when loaded events is null, should early returns")
     public void process_whenLoadedEventsIsNull_shouldEarlyReturns() {
         // given
-        when(manager.loadBatch(eventType, batchSize)).thenReturn(null);
+        when(manager.loadBatch(eq(eventType), eq(batchSize), any(UUID.class))).thenReturn(null);
 
         // when
         tested.process(properties);
 
         // then
-        verify(manager, times(1)).loadBatch(eventType, batchSize);
+        verify(manager, times(1)).loadBatch(eq(eventType), eq(batchSize), any(UUID.class));
         verifyNoMoreInteractions(manager);
     }
 
     @Test
     @DisplayName("UT process() when loaded events is empty, should early returns")
     void process_whenLoadedEventsIsEmpty_shouldEarlyReturn() {
-        when(manager.loadBatch(eventType, batchSize)).thenReturn(List.of());
+        when(manager.loadBatch(eq(eventType), eq(batchSize), any(UUID.class))).thenReturn(List.of());
 
         tested.process(properties);
 
-        verify(manager).loadBatch(eventType, batchSize);
+        verify(manager).loadBatch(eq(eventType), eq(batchSize), any(UUID.class));
         verifyNoMoreInteractions(manager, sender);
     }
 
@@ -197,7 +219,7 @@ class DefaultOutboxProcessorUnitTests {
     private Function<Integer, Instant> captureNextRetryAt(double multiplier, long delay) {
         OutboxEvent event = mock(OutboxEvent.class);
         when(event.getId()).thenReturn(UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"));
-        when(manager.loadBatch(eventType, batchSize)).thenReturn(List.of(event));
+        when(manager.loadBatch(eq(eventType), eq(batchSize), any(UUID.class))).thenReturn(List.of(event));
         when(sender.sendEvents(topic, List.of(event))).thenThrow(new RuntimeException("broker down"));
         when(properties.backoffMultiplier()).thenReturn(multiplier);
         when(properties.backoffDelay()).thenReturn(delay);
@@ -206,7 +228,7 @@ class DefaultOutboxProcessorUnitTests {
         tested.process(properties);
 
         ArgumentCaptor<Function<Integer, Instant>> captor = ArgumentCaptor.forClass(Function.class);
-        verify(manager).finalizeBatch(anyList(), any(), anySet(), anyInt(), captor.capture());
+        verify(manager).finalizeBatch(anyList(), any(), anySet(), anyInt(), captor.capture(), any(UUID.class));
         return captor.getValue();
     }
 }
