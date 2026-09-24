@@ -3,6 +3,7 @@ package io.github.dmitriyiliyov.oncebox.tests.integration.consume.kafka;
 import io.github.dmitriyiliyov.oncebox.core.consumer.OutboxIdempotentConsumer;
 import io.github.dmitriyiliyov.oncebox.messaging.OutboxHeadersUtils;
 import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.ConsumerBusinessRepository;
+import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.ConsumerVariant;
 import io.github.dmitriyiliyov.oncebox.tests.integration.domain.BusinessEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,14 +28,28 @@ public class KafkaConsumerBusinessService {
 
     private final OutboxIdempotentConsumer outboxConsumer;
     private final ConsumerBusinessRepository repository;
+    private final ConsumerVariant variant;
 
     public KafkaConsumerBusinessService(OutboxIdempotentConsumer outboxConsumer,
-                                        ConsumerBusinessRepository repository) {
+                                        ConsumerBusinessRepository repository,
+                                        ConsumerVariant variant) {
         this.outboxConsumer = outboxConsumer;
         this.repository = repository;
+        this.variant = variant;
     }
 
-    @KafkaListener(topics = SINGLE_TOPIC, groupId = CONSUMER_GROUP, containerFactory = "testSingleKafkaListenerContainerFactory")
+    public ConsumerVariant variant() {
+        return variant;
+    }
+
+    /**
+     * The queue or topic this bean listens on for the given base name - read by the listener annotations.
+     */
+    public String name(String baseName) {
+        return variant.of(baseName);
+    }
+
+    @KafkaListener(topics = "#{__listener.name('" + SINGLE_TOPIC + "')}", groupId = CONSUMER_GROUP, containerFactory = "testSingleKafkaListenerContainerFactory")
     public void listenSingleMessage(Message<BusinessEvent> message, Acknowledgment ack) {
         try {
             outboxConsumer.consume(
@@ -49,7 +64,7 @@ public class KafkaConsumerBusinessService {
         }
     }
 
-    @KafkaListener(topics = BATCH_TOPIC, groupId = CONSUMER_GROUP, containerFactory = "testBatchKafkaListenerContainerFactory")
+    @KafkaListener(topics = "#{__listener.name('" + BATCH_TOPIC + "')}", groupId = CONSUMER_GROUP, containerFactory = "testBatchKafkaListenerContainerFactory")
     public void listenBatchMessages(List<Message<BusinessEvent>> messages, Acknowledgment ack) {
         try {
             outboxConsumer.consume(
@@ -66,7 +81,7 @@ public class KafkaConsumerBusinessService {
         }
     }
 
-    @KafkaListener(topics = SINGLE_ID_TOPIC, groupId = CONSUMER_GROUP, containerFactory = "testSingleKafkaListenerContainerFactory")
+    @KafkaListener(topics = "#{__listener.name('" + SINGLE_ID_TOPIC + "')}", groupId = CONSUMER_GROUP, containerFactory = "testSingleKafkaListenerContainerFactory")
     public void listenSingleId(Message<BusinessEvent> message, Acknowledgment ack) {
         try {
             UUID eventId = OutboxHeadersUtils.extractId(message);
@@ -81,7 +96,7 @@ public class KafkaConsumerBusinessService {
         }
     }
 
-    @KafkaListener(topics = BATCH_ID_TOPIC, groupId = CONSUMER_GROUP, containerFactory = "testBatchKafkaListenerContainerFactory")
+    @KafkaListener(topics = "#{__listener.name('" + BATCH_ID_TOPIC + "')}", groupId = CONSUMER_GROUP, containerFactory = "testBatchKafkaListenerContainerFactory")
     public void listenBatchIds(List<Message<BusinessEvent>> messages, Acknowledgment ack) {
         try {
             Set<UUID> allIds = messages.stream()

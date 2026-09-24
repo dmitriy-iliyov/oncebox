@@ -3,6 +3,7 @@ package io.github.dmitriyiliyov.oncebox.tests.integration.consume.kafka;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.dmitriyiliyov.oncebox.core.publisher.domain.OutboxHeaders;
+import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.ConsumerVariant;
 import io.github.dmitriyiliyov.oncebox.tests.integration.domain.BusinessEvent;
 import io.github.dmitriyiliyov.oncebox.tests.integration.utils.IdExtractor;
 import org.awaitility.Awaitility;
@@ -32,6 +33,7 @@ public class KafkaConsumerIntegrationVerifier {
     private final JdbcTemplate jdbcTemplate;
     private final IdExtractor idExtractor;
     private final KafkaConsumerFaultyBusinessService faultyService;
+    private final ConsumerVariant variant;
     private final KafkaTestUtils kafkaTestUtils;
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -44,6 +46,7 @@ public class KafkaConsumerIntegrationVerifier {
         this.jdbcTemplate = jdbcTemplate;
         this.idExtractor = idExtractor;
         this.faultyService = faultyService;
+        this.variant = faultyService.variant();
         this.kafkaTestUtils = kafkaTestUtils;
     }
 
@@ -253,12 +256,14 @@ public class KafkaConsumerIntegrationVerifier {
 
     public void consume_shouldRollbackBothTables_whenBusinessOperationFails() {
         faultyService.setShouldFail(true);
+        int failuresBefore = faultyService.failures();
 
         UUID eventId  = UUID.randomUUID();
         UUID verifyId = UUID.randomUUID();
 
         sendToFailingTopic(eventId, verifyId);
 
+        awaitFailureSince(failuresBefore);
         awaitStableBusinessCount(0);
 
         assertThat(selectBusinessVerifyIds()).isEmpty();
@@ -267,12 +272,14 @@ public class KafkaConsumerIntegrationVerifier {
 
     public void consumeId_shouldRollbackBothTables_whenBusinessOperationFails() {
         faultyService.setShouldFail(true);
+        int failuresBefore = faultyService.failures();
 
         UUID eventId  = UUID.randomUUID();
         UUID verifyId = UUID.randomUUID();
 
         sendToIdFailingTopic(eventId, verifyId);
 
+        awaitFailureSince(failuresBefore);
         awaitStableBusinessCount(0);
 
         assertThat(selectBusinessVerifyIds()).isEmpty();
@@ -281,12 +288,14 @@ public class KafkaConsumerIntegrationVerifier {
 
     public void consume_shouldRollbackBothTables_whenBatchOperationFails(int batchSize) {
         faultyService.setShouldFail(true);
+        int failuresBefore = faultyService.failures();
 
         List<UUID> eventIds  = generateIds(batchSize);
         List<UUID> verifyIds = generateIds(batchSize);
 
         sendBatchToFailingTopic(eventIds, verifyIds);
 
+        awaitFailureSince(failuresBefore);
         awaitStableBusinessCount(0);
 
         assertThat(selectBusinessVerifyIds()).isEmpty();
@@ -295,12 +304,14 @@ public class KafkaConsumerIntegrationVerifier {
 
     public void consumeId_shouldRollbackBothTables_whenBatchOperationFails(int batchSize) {
         faultyService.setShouldFail(true);
+        int failuresBefore = faultyService.failures();
 
         List<UUID> eventIds  = generateIds(batchSize);
         List<UUID> verifyIds = generateIds(batchSize);
 
         sendBatchToIdFailingTopic(eventIds, verifyIds);
 
+        awaitFailureSince(failuresBefore);
         awaitStableBusinessCount(0);
 
         assertThat(selectBusinessVerifyIds()).isEmpty();
@@ -309,11 +320,13 @@ public class KafkaConsumerIntegrationVerifier {
 
     public void consume_shouldBeRetryable_afterTransactionRollback() {
         faultyService.setShouldFail(true);
+        int failuresBefore = faultyService.failures();
 
         UUID eventId  = UUID.randomUUID();
         UUID verifyId = UUID.randomUUID();
 
         sendToFailingTopic(eventId, verifyId);
+        awaitFailureSince(failuresBefore);
         awaitStableBusinessCount(0);
 
         assertThat(selectBusinessVerifyIds()).isEmpty();
@@ -330,11 +343,13 @@ public class KafkaConsumerIntegrationVerifier {
 
     public void consumeId_shouldBeRetryable_afterTransactionRollback() {
         faultyService.setShouldFail(true);
+        int failuresBefore = faultyService.failures();
 
         UUID eventId  = UUID.randomUUID();
         UUID verifyId = UUID.randomUUID();
 
         sendToIdFailingTopic(eventId, verifyId);
+        awaitFailureSince(failuresBefore);
         awaitStableBusinessCount(0);
 
         assertThat(selectBusinessVerifyIds()).isEmpty();
@@ -351,11 +366,13 @@ public class KafkaConsumerIntegrationVerifier {
 
     public void consume_shouldBeBatchRetryable_afterTransactionRollback(int batchSize) {
         faultyService.setShouldFail(true);
+        int failuresBefore = faultyService.failures();
 
         List<UUID> eventIds  = generateIds(batchSize);
         List<UUID> verifyIds = generateIds(batchSize);
 
         sendBatchToFailingTopic(eventIds, verifyIds);
+        awaitFailureSince(failuresBefore);
         awaitStableBusinessCount(0);
 
         assertThat(selectBusinessVerifyIds()).isEmpty();
@@ -374,11 +391,13 @@ public class KafkaConsumerIntegrationVerifier {
 
     public void consumeId_shouldBeBatchRetryable_afterTransactionRollback(int batchSize) {
         faultyService.setShouldFail(true);
+        int failuresBefore = faultyService.failures();
 
         List<UUID> eventIds  = generateIds(batchSize);
         List<UUID> verifyIds = generateIds(batchSize);
 
         sendBatchToIdFailingTopic(eventIds, verifyIds);
+        awaitFailureSince(failuresBefore);
         awaitStableBusinessCount(0);
 
         assertThat(selectBusinessVerifyIds()).isEmpty();
@@ -396,22 +415,22 @@ public class KafkaConsumerIntegrationVerifier {
     }
 
     private void sendSingle(UUID eventId, UUID verifyId) {
-        kafkaTemplate.send(buildRecord(KafkaConsumerBusinessService.SINGLE_TOPIC, eventId, verifyId)).join();
+        kafkaTemplate.send(buildRecord(variant.of(KafkaConsumerBusinessService.SINGLE_TOPIC), eventId, verifyId)).join();
     }
 
     private void sendSingleId(UUID eventId, UUID verifyId) {
-        kafkaTemplate.send(buildRecord(KafkaConsumerBusinessService.SINGLE_ID_TOPIC, eventId, verifyId)).join();
+        kafkaTemplate.send(buildRecord(variant.of(KafkaConsumerBusinessService.SINGLE_ID_TOPIC), eventId, verifyId)).join();
     }
 
     private void sendBatch(List<UUID> eventIds, List<UUID> verifyIds) {
         for (int i = 0; i < eventIds.size(); i++) {
-            kafkaTemplate.send(buildRecord(KafkaConsumerBusinessService.BATCH_TOPIC, eventIds.get(i), verifyIds.get(i))).join();
+            kafkaTemplate.send(buildRecord(variant.of(KafkaConsumerBusinessService.BATCH_TOPIC), eventIds.get(i), verifyIds.get(i))).join();
         }
     }
 
     private void sendBatchId(List<UUID> eventIds, List<UUID> verifyIds) {
         for (int i = 0; i < eventIds.size(); i++) {
-            kafkaTemplate.send(buildRecord(KafkaConsumerBusinessService.BATCH_ID_TOPIC, eventIds.get(i), verifyIds.get(i))).join();
+            kafkaTemplate.send(buildRecord(variant.of(KafkaConsumerBusinessService.BATCH_ID_TOPIC), eventIds.get(i), verifyIds.get(i))).join();
         }
     }
 
@@ -437,6 +456,13 @@ public class KafkaConsumerIntegrationVerifier {
                 .untilAsserted(() ->
                         assertThat(countBusinessEvents()).isEqualTo(expectedCount)
                 );
+    }
+
+    private void awaitFailureSince(int failuresBefore) {
+        Awaitility.await()
+                .atMost(AWAIT_AT_MOST)
+                .pollInterval(POLL_INTERVAL)
+                .untilAsserted(() -> assertThat(faultyService.failures()).isGreaterThan(failuresBefore));
     }
 
     private void awaitStableBusinessCount(int stableCount) {
@@ -475,38 +501,40 @@ public class KafkaConsumerIntegrationVerifier {
     }
 
     private void sendToFailingTopic(UUID eventId, UUID verifyId) {
-        kafkaTemplate.send(buildRecord(KafkaConsumerFaultyBusinessService.SINGLE_FAILING_TOPIC, eventId, verifyId)).join();
+        kafkaTemplate.send(buildRecord(variant.of(KafkaConsumerFaultyBusinessService.SINGLE_FAILING_TOPIC), eventId, verifyId)).join();
     }
 
     private void sendToIdFailingTopic(UUID eventId, UUID verifyId) {
-        kafkaTemplate.send(buildRecord(KafkaConsumerFaultyBusinessService.SINGLE_ID_FAILING_TOPIC, eventId, verifyId)).join();
+        kafkaTemplate.send(buildRecord(variant.of(KafkaConsumerFaultyBusinessService.SINGLE_ID_FAILING_TOPIC), eventId, verifyId)).join();
     }
 
     private void sendBatchToFailingTopic(List<UUID> eventIds, List<UUID> verifyIds) {
         for (int i = 0; i < eventIds.size(); i++) {
-            kafkaTemplate.send(buildRecord(KafkaConsumerFaultyBusinessService.BATCH_FAILING_TOPIC, eventIds.get(i), verifyIds.get(i))).join();
+            kafkaTemplate.send(buildRecord(variant.of(KafkaConsumerFaultyBusinessService.BATCH_FAILING_TOPIC), eventIds.get(i), verifyIds.get(i))).join();
         }
     }
 
     private void sendBatchToIdFailingTopic(List<UUID> eventIds, List<UUID> verifyIds) {
         for (int i = 0; i < eventIds.size(); i++) {
-            kafkaTemplate.send(buildRecord(KafkaConsumerFaultyBusinessService.BATCH_ID_FAILING_TOPIC, eventIds.get(i), verifyIds.get(i))).join();
+            kafkaTemplate.send(buildRecord(variant.of(KafkaConsumerFaultyBusinessService.BATCH_ID_FAILING_TOPIC), eventIds.get(i), verifyIds.get(i))).join();
         }
     }
 
     public void cleanUpQueries() {
-        faultyService.setShouldFail(false);
+        // Back to failing: a message of the previous rollback case may still be redelivered, and it must not
+        // succeed now and leave its row in the next case's tables.
+        faultyService.setShouldFail(true);
         jdbcTemplate.execute("DELETE FROM business_events");
         jdbcTemplate.execute("DELETE FROM outbox_consumed_events");
         kafkaTestUtils.resetKafkaTopics(List.of(
-                KafkaConsumerBusinessService.SINGLE_TOPIC,
-                KafkaConsumerBusinessService.BATCH_TOPIC,
-                KafkaConsumerBusinessService.SINGLE_ID_TOPIC,
-                KafkaConsumerBusinessService.BATCH_ID_TOPIC,
-                KafkaConsumerFaultyBusinessService.SINGLE_FAILING_TOPIC,
-                KafkaConsumerFaultyBusinessService.BATCH_FAILING_TOPIC,
-                KafkaConsumerFaultyBusinessService.SINGLE_ID_FAILING_TOPIC,
-                KafkaConsumerFaultyBusinessService.BATCH_ID_FAILING_TOPIC
+                variant.of(KafkaConsumerBusinessService.SINGLE_TOPIC),
+                variant.of(KafkaConsumerBusinessService.BATCH_TOPIC),
+                variant.of(KafkaConsumerBusinessService.SINGLE_ID_TOPIC),
+                variant.of(KafkaConsumerBusinessService.BATCH_ID_TOPIC),
+                variant.of(KafkaConsumerFaultyBusinessService.SINGLE_FAILING_TOPIC),
+                variant.of(KafkaConsumerFaultyBusinessService.BATCH_FAILING_TOPIC),
+                variant.of(KafkaConsumerFaultyBusinessService.SINGLE_ID_FAILING_TOPIC),
+                variant.of(KafkaConsumerFaultyBusinessService.BATCH_ID_FAILING_TOPIC)
         ));
         try {
             Thread.sleep(1000);

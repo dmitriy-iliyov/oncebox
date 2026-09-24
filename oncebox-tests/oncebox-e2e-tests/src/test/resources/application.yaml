@@ -48,9 +48,11 @@ oncebox:
           delay: 500ms
           multiplier: 2.0
 
+    # Must stay above sender.emergency-timeout, or a batch still being sent is recovered as stuck and published
+    # twice - the starter refuses to start otherwise. The stuck-event scenario inserts its row an hour in the past.
     stuck-recovery:
       batch-size: 100
-      max-batch-processing-time: 3s
+      max-batch-processing-time: 30s
       polling:
         type: fixed
         initial-delay: 1s

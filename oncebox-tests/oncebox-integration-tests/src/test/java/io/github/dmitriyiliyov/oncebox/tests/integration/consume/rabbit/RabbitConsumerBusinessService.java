@@ -3,8 +3,8 @@ package io.github.dmitriyiliyov.oncebox.tests.integration.consume.rabbit;
 import io.github.dmitriyiliyov.oncebox.core.consumer.OutboxIdempotentConsumer;
 import io.github.dmitriyiliyov.oncebox.messaging.OutboxHeadersUtils;
 import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.ConsumerBusinessRepository;
+import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.ConsumerVariant;
 import io.github.dmitriyiliyov.oncebox.tests.integration.domain.BusinessEvent;
-import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.messaging.Message;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,18 +22,29 @@ public class RabbitConsumerBusinessService {
 
     private final OutboxIdempotentConsumer outboxConsumer;
     private final ConsumerBusinessRepository repository;
+    private final ConsumerVariant variant;
 
     public RabbitConsumerBusinessService(OutboxIdempotentConsumer outboxConsumer,
-                                         ConsumerBusinessRepository repository) {
+                                         ConsumerBusinessRepository repository,
+                                         ConsumerVariant variant) {
         this.outboxConsumer = outboxConsumer;
         this.repository = repository;
+        this.variant = variant;
+    }
+
+    public ConsumerVariant variant() {
+        return variant;
+    }
+
+    /**
+     * The queue this bean listens on for the given base name - its endpoints are registered by
+     * {@code RabbitIntegrationTestsConfig}, one set per variant.
+     */
+    public String name(String baseName) {
+        return variant.of(baseName);
     }
 
     @Transactional
-    @RabbitListener(
-            queues = SINGLE_QUEUE,
-            containerFactory = "testSingleRabbitListenerContainerFactory"
-    )
     public void listenSingleMessage(Message<BusinessEvent> message) {
         outboxConsumer.consume(
                 message,
@@ -43,10 +54,6 @@ public class RabbitConsumerBusinessService {
     }
 
     @Transactional
-    @RabbitListener(
-            queues = BATCH_QUEUE,
-            containerFactory = "testBatchRabbitListenerContainerFactory"
-    )
     public void listenBatchMessages(List<Message<BusinessEvent>> messages) {
         outboxConsumer.consume(
                 messages,
@@ -58,10 +65,6 @@ public class RabbitConsumerBusinessService {
     }
 
     @Transactional
-    @RabbitListener(
-            queues = SINGLE_ID_QUEUE,
-            containerFactory = "testSingleRabbitListenerContainerFactory"
-    )
     public void listenSingleId(Message<BusinessEvent> message) {
         UUID eventId = OutboxHeadersUtils.extractId(message);
         outboxConsumer.consume(
@@ -71,10 +74,6 @@ public class RabbitConsumerBusinessService {
     }
 
     @Transactional
-    @RabbitListener(
-            queues = BATCH_ID_QUEUE,
-            containerFactory = "testBatchRabbitListenerContainerFactory"
-    )
     public void listenBatchIds(List<Message<BusinessEvent>> messages) {
         Set<UUID> allIds = messages.stream()
                 .map(OutboxHeadersUtils::extractId)

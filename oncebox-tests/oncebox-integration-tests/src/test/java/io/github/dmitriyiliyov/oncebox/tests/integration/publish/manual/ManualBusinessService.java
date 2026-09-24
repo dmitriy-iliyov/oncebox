@@ -3,6 +3,7 @@ package io.github.dmitriyiliyov.oncebox.tests.integration.publish.manual;
 import io.github.dmitriyiliyov.oncebox.core.publisher.OutboxPublisher;
 import io.github.dmitriyiliyov.oncebox.tests.integration.domain.BusinessEntity;
 import io.github.dmitriyiliyov.oncebox.tests.integration.domain.BusinessEvent;
+import io.github.dmitriyiliyov.oncebox.tests.integration.domain.BusinessFailureException;
 import io.github.dmitriyiliyov.oncebox.tests.integration.publish.BusinessRepository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,7 +30,8 @@ public class ManualBusinessService {
     public void successSaveEvents(List<BusinessEvent> events) {
         repository.saveAll(
                 events.stream().map(event -> new BusinessEntity(event.verifyId())).toList()
-        );        publisher.publish(EVENT_TYPE, events);
+        );
+        publisher.publish(EVENT_TYPE, events);
     }
 
     public void exceptionallyWithoutTransaction(BusinessEvent event) {
@@ -46,13 +48,17 @@ public class ManualBusinessService {
 
     @Transactional
     public void exceptionallyInBusinessTransaction(BusinessEvent event) {
+        repository.save(new BusinessEntity(event.verifyId()));
         publisher.publish(EVENT_TYPE, event);
-        throw new RuntimeException("Business transaction exception");
+        throw new BusinessFailureException();
     }
 
     @Transactional
     public void exceptionallyInBusinessTransaction(List<BusinessEvent> events) {
+        repository.saveAll(
+                events.stream().map(event -> new BusinessEntity(event.verifyId())).toList()
+        );
         publisher.publish(EVENT_TYPE, events);
-        throw new RuntimeException("Business transaction exception");
+        throw new BusinessFailureException();
     }
 }

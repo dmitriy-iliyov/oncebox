@@ -60,6 +60,8 @@ public class OutboxLoadSimulation extends Simulation {
                         rampUsersPerSec(1).to(USERS).during(Duration.ofSeconds(30)),
                         constantUsersPerSec(USERS).during(Duration.ofSeconds(60))
                 )
-        ).protocols(httpProtocol);
+        ).protocols(httpProtocol)
+                // A KO request alone does not fail the Gatling run - only a global assertion does.
+                .assertions(global().failedRequests().count().is(0L));
     }
 }

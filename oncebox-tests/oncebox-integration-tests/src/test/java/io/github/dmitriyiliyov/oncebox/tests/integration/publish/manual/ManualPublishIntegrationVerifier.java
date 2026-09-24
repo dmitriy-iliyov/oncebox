@@ -3,6 +3,7 @@ package io.github.dmitriyiliyov.oncebox.tests.integration.publish.manual;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.dmitriyiliyov.oncebox.tests.integration.domain.BusinessEvent;
+import io.github.dmitriyiliyov.oncebox.tests.integration.domain.BusinessFailureException;
 import io.github.dmitriyiliyov.oncebox.tests.integration.utils.IdExtractor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.IllegalTransactionStateException;
@@ -76,7 +77,7 @@ public class ManualPublishIntegrationVerifier {
 
     public void publishEvent_shouldThrows_whenBusinessTransactionFailed() {
         assertThrows(
-                RuntimeException.class,
+                BusinessFailureException.class,
                 () -> service.exceptionallyInBusinessTransaction(BusinessEvent.of())
         );
 
@@ -86,7 +87,7 @@ public class ManualPublishIntegrationVerifier {
 
     public void publishEvents_shouldThrows_whenBusinessTransactionFailed() {
         assertThrows(
-                RuntimeException.class,
+                BusinessFailureException.class,
                 () -> service.exceptionallyInBusinessTransaction(List.of(BusinessEvent.of(), BusinessEvent.of()))
         );
 

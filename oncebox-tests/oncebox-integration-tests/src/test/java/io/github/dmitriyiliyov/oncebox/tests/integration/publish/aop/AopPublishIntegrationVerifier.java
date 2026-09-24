@@ -3,6 +3,7 @@ package io.github.dmitriyiliyov.oncebox.tests.integration.publish.aop;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.dmitriyiliyov.oncebox.tests.integration.domain.BusinessEvent;
+import io.github.dmitriyiliyov.oncebox.tests.integration.domain.BusinessFailureException;
 import io.github.dmitriyiliyov.oncebox.tests.integration.utils.IdExtractor;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -64,13 +65,8 @@ public class AopPublishIntegrationVerifier {
 
         service.successSaveReturnedEvent(event);
 
-        List<UUID> outboxIds = selectOutboxIdsQuery();
-        assertThat(outboxIds).containsOnly(event.verifyId());
-
-        List<UUID> businessIds = selectBusinessIdsQuery();
-        assertThat(businessIds).containsOnly(event.verifyId());
-
-        assertEquals(outboxIds.getFirst(), businessIds.getFirst());
+        assertThat(selectOutboxIdsQuery()).containsOnly(AopBusinessService.resultOf(event).verifyId());
+        assertThat(selectBusinessIdsQuery()).containsOnly(event.verifyId());
     }
 
     public void publish_successSaveReturnedEvents(int eventCount) {
@@ -81,17 +77,17 @@ public class AopPublishIntegrationVerifier {
 
         service.successSaveReturnedEvents(events);
 
-        List<UUID> ids = events.stream().map(BusinessEvent::verifyId).toList();
-        List<UUID> outboxIds = selectOutboxIdsQuery();
-        assertThat(outboxIds).containsExactlyInAnyOrder(ids.toArray(new UUID[0]));
-
-        List<UUID> businessIds = selectBusinessIdsQuery();
-        assertThat(businessIds).containsExactlyInAnyOrder(ids.toArray(new UUID[0]));
+        assertThat(selectOutboxIdsQuery()).containsExactlyInAnyOrderElementsOf(
+                events.stream().map(event -> AopBusinessService.resultOf(event).verifyId()).toList()
+        );
+        assertThat(selectBusinessIdsQuery()).containsExactlyInAnyOrderElementsOf(
+                events.stream().map(BusinessEvent::verifyId).toList()
+        );
     }
 
     public void publishEvent_shouldThrows_whenBusinessTransactionFailed() {
         assertThrows(
-                RuntimeException.class,
+                BusinessFailureException.class,
                 () -> service.exceptionallyInBusinessTransaction(BusinessEvent.of())
         );
 
@@ -101,7 +97,7 @@ public class AopPublishIntegrationVerifier {
 
     public void publishEvents_shouldThrows_whenBusinessTransactionFailed() {
         assertThrows(
-                RuntimeException.class,
+                BusinessFailureException.class,
                 () -> service.exceptionallyInBusinessTransaction(List.of(BusinessEvent.of(), BusinessEvent.of()))
         );
 
@@ -111,7 +107,7 @@ public class AopPublishIntegrationVerifier {
 
     public void publishEventWithReturnedEvent_shouldThrows_whenBusinessTransactionFailed() {
         assertThrows(
-                RuntimeException.class,
+                BusinessFailureException.class,
                 () -> service.exceptionallyInBusinessTransactionWithReturnedEvent(BusinessEvent.of())
         );
 
@@ -121,7 +117,7 @@ public class AopPublishIntegrationVerifier {
 
     public void publishEventsWithReturnedEvents_shouldThrows_whenBusinessTransactionFailed() {
         assertThrows(
-                RuntimeException.class,
+                BusinessFailureException.class,
                 () -> service.exceptionallyInBusinessTransactionWithReturnedEvents(List.of(BusinessEvent.of(), BusinessEvent.of()))
         );
 

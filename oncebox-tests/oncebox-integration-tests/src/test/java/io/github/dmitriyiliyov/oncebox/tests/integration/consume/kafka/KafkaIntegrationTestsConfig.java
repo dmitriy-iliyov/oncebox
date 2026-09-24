@@ -1,6 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.tests.integration.consume.kafka;
 
 import io.github.dmitriyiliyov.oncebox.core.consumer.OutboxIdempotentConsumer;
+import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.ConsumerVariant;
 import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.JdbcConsumerBusinessRepository;
 import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.JpaConsumerBusinessRepositoryProxy;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -21,7 +22,9 @@ import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @TestConfiguration
@@ -30,43 +33,21 @@ public class KafkaIntegrationTestsConfig {
     private static final String BOOTSTRAP = KafkaTestContainerSingleton.INSTANCE.getBootstrapServers();
 
     @Bean
-    public NewTopic testOutboxSingleTopic() {
-        return TopicBuilder.name(KafkaConsumerBusinessService.SINGLE_TOPIC).partitions(1).replicas(1).build();
-    }
-
-    @Bean
-    public NewTopic testOutboxBatchTopic() {
-        return TopicBuilder.name(KafkaConsumerBusinessService.BATCH_TOPIC).partitions(1).replicas(1).build();
-    }
-
-    @Bean
-    public NewTopic testOutboxSingleIdTopic() {
-        return TopicBuilder.name(KafkaConsumerBusinessService.SINGLE_ID_TOPIC).partitions(1).replicas(1).build();
-    }
-
-    @Bean
-    public NewTopic testOutboxBatchIdTopic() {
-        return TopicBuilder.name(KafkaConsumerBusinessService.BATCH_ID_TOPIC).partitions(1).replicas(1).build();
-    }
-
-    @Bean
-    public NewTopic testOutboxSingleFailingTopic() {
-        return TopicBuilder.name(KafkaConsumerFaultyBusinessService.SINGLE_FAILING_TOPIC).partitions(1).replicas(1).build();
-    }
-
-    @Bean
-    public NewTopic testOutboxBatchFailingTopic() {
-        return TopicBuilder.name(KafkaConsumerFaultyBusinessService.BATCH_FAILING_TOPIC).partitions(1).replicas(1).build();
-    }
-
-    @Bean
-    public NewTopic testOutboxSingleIdFailingTopic() {
-        return TopicBuilder.name(KafkaConsumerFaultyBusinessService.SINGLE_ID_FAILING_TOPIC).partitions(1).replicas(1).build();
-    }
-
-    @Bean
-    public NewTopic testOutboxBatchIdFailingTopic() {
-        return TopicBuilder.name(KafkaConsumerFaultyBusinessService.BATCH_ID_FAILING_TOPIC).partitions(1).replicas(1).build();
+    public KafkaAdmin.NewTopics testOutboxTopics() {
+        List<String> baseNames = List.of(
+                KafkaConsumerBusinessService.SINGLE_TOPIC,
+                KafkaConsumerBusinessService.BATCH_TOPIC,
+                KafkaConsumerBusinessService.SINGLE_ID_TOPIC,
+                KafkaConsumerBusinessService.BATCH_ID_TOPIC,
+                KafkaConsumerFaultyBusinessService.SINGLE_FAILING_TOPIC,
+                KafkaConsumerFaultyBusinessService.BATCH_FAILING_TOPIC,
+                KafkaConsumerFaultyBusinessService.SINGLE_ID_FAILING_TOPIC,
+                KafkaConsumerFaultyBusinessService.BATCH_ID_FAILING_TOPIC
+        );
+        return new KafkaAdmin.NewTopics(Arrays.stream(ConsumerVariant.values())
+                .flatMap(variant -> baseNames.stream().map(variant::of))
+                .map(name -> TopicBuilder.name(name).partitions(1).replicas(1).build())
+                .toArray(NewTopic[]::new));
     }
 
     @Bean
@@ -146,7 +127,7 @@ public class KafkaIntegrationTestsConfig {
             OutboxIdempotentConsumer outboxIdempotentConsumer,
             JdbcConsumerBusinessRepository repository
     ) {
-        return new KafkaConsumerBusinessService(outboxIdempotentConsumer, repository);
+        return new KafkaConsumerBusinessService(outboxIdempotentConsumer, repository, ConsumerVariant.JDBC);
     }
 
     @Bean
@@ -154,7 +135,7 @@ public class KafkaIntegrationTestsConfig {
             OutboxIdempotentConsumer outboxIdempotentConsumer,
             JpaConsumerBusinessRepositoryProxy repository
     ) {
-        return new KafkaConsumerBusinessService(outboxIdempotentConsumer, repository);
+        return new KafkaConsumerBusinessService(outboxIdempotentConsumer, repository, ConsumerVariant.JPA);
     }
 
     @Bean
@@ -162,7 +143,7 @@ public class KafkaIntegrationTestsConfig {
             OutboxIdempotentConsumer outboxIdempotentConsumer,
             JdbcConsumerBusinessRepository repository
     ) {
-        return new KafkaConsumerFaultyBusinessService(outboxIdempotentConsumer, repository);
+        return new KafkaConsumerFaultyBusinessService(outboxIdempotentConsumer, repository, ConsumerVariant.JDBC);
     }
 
     @Bean
@@ -170,6 +151,6 @@ public class KafkaIntegrationTestsConfig {
             OutboxIdempotentConsumer outboxIdempotentConsumer,
             JpaConsumerBusinessRepositoryProxy repository
     ) {
-        return new KafkaConsumerFaultyBusinessService(outboxIdempotentConsumer, repository);
+        return new KafkaConsumerFaultyBusinessService(outboxIdempotentConsumer, repository, ConsumerVariant.JPA);
     }
 }

@@ -5,6 +5,7 @@ import io.github.dmitriyiliyov.oncebox.core.publisher.domain.EventStatus;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.config.BrokerFaultControl;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.domain.BusinessEvent;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.domain.E2eEvents;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.client.TestRestTemplate;
@@ -24,7 +25,8 @@ class DlqEventLifeCycleTests extends BaseE2eTests {
     TestRestTemplate restTemplate;
 
     @Test
-    void shouldMoveFailedEventToDlqAndDeliverAfterManualRetry() {
+    @DisplayName("CT event when retries are exhausted while the broker is down should move to the DLQ and be delivered after a manual retry")
+    void event_whenRetriesExhaustedWhileBrokerDown_shouldMoveToDlqAndDeliverAfterManualRetry() {
         BrokerFaultControl.stopBroker();
 
         BusinessEvent event = publisherService.saveAndPublish(E2eEvents.DLQ_EVENT);
@@ -50,7 +52,8 @@ class DlqEventLifeCycleTests extends BaseE2eTests {
     }
 
     @Test
-    void shouldCleanUpResolvedDlqEvent() {
+    @DisplayName("CT DLQ event when resolved should be cleaned up")
+    void dlqEvent_whenResolved_shouldBeCleanedUp() {
         BrokerFaultControl.stopBroker();
 
         publisherService.saveAndPublish(E2eEvents.DLQ_EVENT);
@@ -73,7 +76,8 @@ class DlqEventLifeCycleTests extends BaseE2eTests {
     }
 
     @Test
-    void shouldManageDlqEventsViaRestApi() {
+    @DisplayName("CT DLQ API when events are in the DLQ should get, count, page and delete them")
+    void dlqApi_whenEventsAreInDlq_shouldGetCountPageAndDeleteThem() {
         UUID firstId = outboxRepository.insertDlqEvent(
                 "e2e-dlq-event", DlqStatus.MOVED, BusinessEvent.class.getName(), "{\"verifyId\":\"" + UUID.randomUUID() + "\"}"
         );
