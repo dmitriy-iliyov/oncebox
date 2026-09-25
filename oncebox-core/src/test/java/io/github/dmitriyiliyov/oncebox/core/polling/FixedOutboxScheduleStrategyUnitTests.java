@@ -16,8 +16,7 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class FixedOutboxScheduleStrategyUnitTests {
@@ -171,5 +170,67 @@ public class FixedOutboxScheduleStrategyUnitTests {
         // then
         verify(executor).scheduleWithFixedDelay(any(), anyLong(), anyLong(), eq(TimeUnit.MILLISECONDS));
         verify(listener).onDelayChanged(nullable(Long.class));
+    }
+
+    @Test
+    @DisplayName("UT scheduleExecution() when listener fails on the initial delay should still schedule the task")
+    void scheduleExecution_whenListenerFailsOnInitialDelay_shouldStillScheduleTask() {
+        // given
+        givenDelays();
+        doThrow(LISTENER_FAILURE).when(listener).onDelayChanged(anyLong());
+
+        // when / then
+        assertDoesNotThrow(() -> tested.scheduleExecution(task));
+        verify(executor).scheduleWithFixedDelay(any(Runnable.class), eq(0L), eq(500L), eq(TimeUnit.MILLISECONDS));
+    }
+
+    @Test
+    @DisplayName("UT scheduleExecution() when listener fails before the task runs should still run the task without rethrowing")
+    void scheduleExecution_whenListenerFailsOnStart_shouldStillRunTaskWithoutRethrowing() {
+        // given
+        givenDelays();
+        doThrow(LISTENER_FAILURE).when(listener).onExecutionStarted();
+        tested.scheduleExecution(task);
+        Runnable runnable = captureScheduledRunnable();
+
+        // when / then
+        assertDoesNotThrow(runnable::run);
+        verify(task).run();
+    }
+
+    @Test
+    @DisplayName("UT scheduleExecution() when listener fails on a success should not report the run as failed")
+    void scheduleExecution_whenListenerFailsOnSuccess_shouldNotReportRunAsFailed() {
+        // given
+        givenDelays();
+        doThrow(LISTENER_FAILURE).when(listener).onExecutionSucceeded();
+        tested.scheduleExecution(task);
+        Runnable runnable = captureScheduledRunnable();
+
+        // when / then
+        assertDoesNotThrow(runnable::run);
+        verify(listener, never()).onExecutionFailed();
+    }
+
+    @Test
+    @DisplayName("UT scheduleExecution() when listener fails on a failed run should not rethrow, which would cancel the periodic task")
+    void scheduleExecution_whenListenerFailsOnFailure_shouldNotRethrow() {
+        // given
+        givenDelays();
+        when(task.run()).thenThrow(new RuntimeException("task error"));
+        doThrow(LISTENER_FAILURE).when(listener).onExecutionFailed();
+        tested.scheduleExecution(task);
+        Runnable runnable = captureScheduledRunnable();
+
+        // when / then
+        assertDoesNotThrow(runnable::run);
+        verify(listener).onExecutionFailed();
+    }
+
+    private static final RuntimeException LISTENER_FAILURE = new IllegalStateException("meter registry closed");
+
+    private void givenDelays() {
+        when(properties.getInitialDelay()).thenReturn(Duration.ofMillis(0));
+        when(properties.getFixedDelay()).thenReturn(Duration.ofMillis(500));
     }
 }

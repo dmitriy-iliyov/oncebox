@@ -29,7 +29,9 @@ public class AdaptiveOutboxScheduleStrategy implements OutboxScheduleStrategy {
                                           OutboxScheduleStrategyListener listener) {
         this.properties = Objects.requireNonNull(properties, "properties cannot be null");
         this.executor = Objects.requireNonNull(executor, "executor cannot be null");
-        this.listener = Objects.requireNonNull(listener, "listener cannot be null");
+        this.listener = new SafeOutboxScheduleStrategyListenerDecorator(
+                Objects.requireNonNull(listener, "listener cannot be null")
+        );
         this.minFixedDelay = properties.getMinFixedDelay().toMillis();
         this.maxFixedDelay = properties.getMaxFixedDelay().toMillis();
         this.multiplier = properties.getMultiplier();
@@ -72,8 +74,8 @@ public class AdaptiveOutboxScheduleStrategy implements OutboxScheduleStrategy {
             shouldContinue = task.run();
             listener.onExecutionSucceeded();
         } catch (Throwable t) {
-            listener.onExecutionFailed();
             log.error("Exception while executing task", t);
+            listener.onExecutionFailed();
         } finally {
             if (shouldContinue) {
                 currentDelay.set(minFixedDelay);

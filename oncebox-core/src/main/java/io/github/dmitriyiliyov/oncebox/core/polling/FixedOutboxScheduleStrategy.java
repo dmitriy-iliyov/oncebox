@@ -21,7 +21,9 @@ public class FixedOutboxScheduleStrategy implements OutboxScheduleStrategy {
                                        OutboxScheduleStrategyListener listener) {
         this.properties = Objects.requireNonNull(properties, "properties cannot be null");
         this.executor = Objects.requireNonNull(executor, "executor cannot be null");
-        this.listener = Objects.requireNonNull(listener, "listener cannot be null");
+        this.listener = new SafeOutboxScheduleStrategyListenerDecorator(
+                Objects.requireNonNull(listener, "listener cannot be null")
+        );
     }
 
     @Override
@@ -34,8 +36,8 @@ public class FixedOutboxScheduleStrategy implements OutboxScheduleStrategy {
                         task.run();
                         listener.onExecutionSucceeded();
                     } catch (Throwable t) {
-                        listener.onExecutionFailed();
                         log.error("Exception in scheduled execution", t);
+                        listener.onExecutionFailed();
                     }
                 },
                 properties.getInitialDelay().toMillis(),

@@ -218,4 +218,68 @@ class AdaptiveOutboxScheduleStrategyUnitTests {
         verify(executor, times(expectedCalls)).schedule(any(Runnable.class), captor.capture(), any());
         return captor;
     }
+
+    @Test
+    @DisplayName("UT scheduleExecution() when listener fails before the task runs should still schedule the next run")
+    void scheduleExecution_whenListenerFailsOnStart_shouldStillScheduleNextRun() {
+        // given
+        doReturn(scheduledFuture).when(executor).schedule(any(Runnable.class), anyLong(), any());
+        doThrow(new IllegalStateException("meter registry closed")).when(listener).onExecutionStarted();
+
+        // when
+        strategy.scheduleExecution(task);
+        runCapturedTask(0);
+
+        // then
+        verify(executor, times(2)).schedule(any(Runnable.class), anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("UT scheduleExecution() when listener fails on the delay change should still schedule the next run")
+    void scheduleExecution_whenListenerFailsOnDelayChange_shouldStillScheduleNextRun() {
+        // given
+        doReturn(scheduledFuture).when(executor).schedule(any(Runnable.class), anyLong(), any());
+        when(task.run()).thenReturn(false);
+        doThrow(new IllegalStateException("meter registry closed")).when(listener).onDelayChanged(anyLong());
+
+        // when
+        strategy.scheduleExecution(task);
+        runCapturedTask(0);
+
+        // then
+        verify(executor, times(2)).schedule(any(Runnable.class), anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("UT scheduleExecution() when listener fails on a success should not report the run as failed and should schedule the next run")
+    void scheduleExecution_whenListenerFailsOnSuccess_shouldNotReportRunAsFailed() {
+        // given
+        doReturn(scheduledFuture).when(executor).schedule(any(Runnable.class), anyLong(), any());
+        when(task.run()).thenReturn(true);
+        doThrow(new IllegalStateException("meter registry closed")).when(listener).onExecutionSucceeded();
+
+        // when
+        strategy.scheduleExecution(task);
+        runCapturedTask(0);
+
+        // then
+        verify(listener, never()).onExecutionFailed();
+        verify(executor, times(2)).schedule(any(Runnable.class), anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("UT scheduleExecution() when listener fails on a failed run should still schedule the next run")
+    void scheduleExecution_whenListenerFailsOnFailure_shouldStillScheduleNextRun() {
+        // given
+        doReturn(scheduledFuture).when(executor).schedule(any(Runnable.class), anyLong(), any());
+        when(task.run()).thenThrow(new RuntimeException("task error"));
+        doThrow(new IllegalStateException("meter registry closed")).when(listener).onExecutionFailed();
+
+        // when
+        strategy.scheduleExecution(task);
+        runCapturedTask(0);
+
+        // then
+        verify(executor, times(2)).schedule(any(Runnable.class), anyLong(), any());
+    }
 }
