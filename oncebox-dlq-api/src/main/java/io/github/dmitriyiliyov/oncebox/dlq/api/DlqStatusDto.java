@@ -8,10 +8,11 @@ import jakarta.validation.constraints.NotNull;
 public record DlqStatusDto(
 
         @Schema(
-                description = "DLQ status to set as new event status",
+                description = "DLQ status to set as new event status, any but IN_PROCESS",
                 example = "RESOLVED",
                 requiredMode = Schema.RequiredMode.REQUIRED
         )
-        @NotNull(message = "Status cannot be null")
+        @NotNull(message = "status must not be null")
+        @NotInProcess
         DlqStatus status
 ) {}

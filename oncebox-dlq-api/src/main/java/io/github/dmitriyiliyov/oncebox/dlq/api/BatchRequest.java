@@ -10,30 +10,35 @@ import jakarta.validation.constraints.PositiveOrZero;
 public record BatchRequest(
 
         @Schema(
-                description = "Type of events to filter",
+                description = "Filter by event type",
                 example = "event-type",
                 requiredMode = Schema.RequiredMode.NOT_REQUIRED
         )
         String eventType,
 
         @Schema(
-                description = "Status to filter events",
+                description = "Filter by DLQ status",
                 example = "MOVED",
                 requiredMode = Schema.RequiredMode.NOT_REQUIRED
         )
         DlqStatus status,
 
-        @Schema(description = "Zero-based batch index (pagination offset in batches)", example = "1")
-        @PositiveOrZero(message = "Batch number cannot be negative")
+        @Schema(
+                description = "Zero-based batch index (pagination offset in batches)",
+                example = "1",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
+        @PositiveOrZero(message = "batchNumber must not be negative")
         int batchNumber,
 
         @Schema(
                 description = "Number of events per batch",
                 example = "50",
                 minimum = "10",
-                maximum = "100"
+                maximum = "100",
+                requiredMode = Schema.RequiredMode.REQUIRED
         )
-        @Min(value = 10, message = "Min batch size is 10")
-        @Max(value = 100, message = "Max batch size is 100")
+        @Min(value = 10, message = "batchSize must be at least {value}")
+        @Max(value = 100, message = "batchSize must be at most {value}")
         int batchSize
 ) { }

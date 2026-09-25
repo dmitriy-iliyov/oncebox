@@ -2,7 +2,7 @@ package io.github.dmitriyiliyov.oncebox.dlq.api.exception;
 
 import java.util.UUID;
 
-public class OutboxDlqEventInProcessException extends BadRequestException {
+public class OutboxDlqEventInProcessException extends OutboxDlqException {
 
     private final UUID id;
 

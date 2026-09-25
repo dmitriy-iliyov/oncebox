@@ -1,160 +1,124 @@
 package io.github.dmitriyiliyov.oncebox.dlq.api;
 
-import io.github.dmitriyiliyov.oncebox.dlq.api.exception.BadRequestException;
+import io.github.dmitriyiliyov.oncebox.dlq.api.exception.InvalidDlqFilterException;
 import io.github.dmitriyiliyov.oncebox.dlq.api.exception.NotFoundException;
-import io.github.dmitriyiliyov.oncebox.dlq.api.exception.UnknownDlqStatusException;
+import io.github.dmitriyiliyov.oncebox.dlq.api.exception.OutboxDlqEventInProcessException;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataAccessException;
-import org.springframework.http.HttpStatus;
+import org.springframework.beans.TypeMismatchException;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
-import org.springframework.validation.BindException;
+import org.springframework.http.ResponseEntity;
+import org.springframework.lang.Nullable;
+import org.springframework.validation.FieldError;
+import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-import java.net.URI;
 import java.time.Clock;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice(basePackageClasses = OutboxDlqController.class)
-public class OutboxDlqControllerAdvice {
+@Order(Ordered.LOWEST_PRECEDENCE - 1)
+public class OutboxDlqControllerAdvice extends ResponseEntityExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(OutboxDlqControllerAdvice.class);
 
     private final Clock clock;
 
     public OutboxDlqControllerAdvice(Clock clock) {
-        this.clock = clock;
-    }
-
-    @ExceptionHandler(Exception.class)
-    public ProblemDetail handleException(Exception e, HttpServletRequest request) {
-        log.error("Unexpected error: {}", request.getRequestURI(), e);
-        return createProblemDetail(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "/errors/outbox/unexpected",
-                "Internal Server Error",
-                e.getMessage(),
-                request.getRequestURI(),
-                clock.instant()
-        );
+        this.clock = Objects.requireNonNull(clock, "clock cannot be null");
     }
 
     @ExceptionHandler(NotFoundException.class)
     public ProblemDetail handleNotFoundException(NotFoundException e, HttpServletRequest request) {
-        return createProblemDetail(
-                HttpStatus.NOT_FOUND,
-                "/errors/outbox/not-found",
-                "Not Found",
-                e.getDetail(),
-                request.getRequestURI(),
-                clock.instant()
-        );
+        log.debug("DLQ event not found: {}", request.getRequestURI());
+        return ProblemDetailFactory.dlqEventNotFound(e.getDetail(), request.getRequestURI(), clock.instant());
     }
 
-    @ExceptionHandler(BadRequestException.class)
-    public ProblemDetail handleNotFoundException(BadRequestException e, HttpServletRequest request) {
-        return createProblemDetail(
-                HttpStatus.BAD_REQUEST,
-                "/errors/outbox/bad-request",
-                "Bad Request",
-                e.getDetail(),
-                request.getRequestURI(),
-                clock.instant()
-        );
+    @ExceptionHandler(OutboxDlqEventInProcessException.class)
+    public ProblemDetail handleOutboxDlqEventInProcessException(OutboxDlqEventInProcessException e,
+                                                                HttpServletRequest request) {
+        log.debug("DLQ event is in process: {}", request.getRequestURI());
+        return ProblemDetailFactory.dlqEventInProcess(e.getDetail(), request.getRequestURI(), clock.instant());
     }
 
-    @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class, MethodArgumentTypeMismatchException.class})
-    public ProblemDetail handleValidationExceptions(Exception e, HttpServletRequest request) {
-        ProblemDetail problemDetail = createProblemDetail(
-                HttpStatus.BAD_REQUEST,
-                "/errors/outbox/validation",
-                "Validation Failed",
-                "Request validation failed",
-                request.getRequestURI(),
-                clock.instant()
-        );
+    @ExceptionHandler(InvalidDlqFilterException.class)
+    public ProblemDetail handleInvalidDlqFilterException(InvalidDlqFilterException e, HttpServletRequest request) {
+        log.debug("Invalid DLQ filter: {}", request.getRequestURI());
+        return ProblemDetailFactory.invalidDlqFilter(e.getDetail(), request.getRequestURI(), clock.instant());
+    }
 
+    @ExceptionHandler(Exception.class)
+    public ProblemDetail handleUnexpectedException(Exception e, HttpServletRequest request) {
+        log.error("Unexpected error: {}", request.getRequestURI(), e);
+        return ProblemDetailFactory.internalError(request.getRequestURI(), clock.instant());
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
+                                                                  HttpHeaders headers,
+                                                                  HttpStatusCode status,
+                                                                  WebRequest request) {
         List<Map<String, String>> errors = new ArrayList<>();
-
-        if (e instanceof MethodArgumentNotValidException ex) {
-            ex.getBindingResult().getFieldErrors().forEach(error ->
-                    errors.add(Map.of("field", error.getField(), "message", error.getDefaultMessage()))
-            );
-        } else if (e instanceof BindException ex) {
-            ex.getBindingResult().getFieldErrors().forEach(error ->
-                    errors.add(Map.of("field", error.getField(), "message", error.getDefaultMessage()))
-            );
-        } else {
-            Throwable cause = e.getCause();
-            while (true) {
-                Throwable newCause = cause.getCause();
-                if (newCause == null) {
-                    break;
-                }
-                cause = newCause;
-            }
-            if (cause instanceof UnknownDlqStatusException udse) {
-                problemDetail.setDetail(udse.getDetail());
-            } else {
-                errors.add(Map.of("message", e.getMessage()));
-            }
+        for (FieldError error : ex.getBindingResult().getFieldErrors()) {
+            errors.add(Map.of("field", error.getField(), "message", fieldMessage(error)));
         }
-        problemDetail.setProperty("errors", errors);
-        return problemDetail;
+        for (ObjectError error : ex.getBindingResult().getGlobalErrors()) {
+            errors.add(Map.of("message", Objects.requireNonNullElse(error.getDefaultMessage(), "is invalid")));
+        }
+        ProblemDetail body = ProblemDetailFactory.validationFailed(errors, requestUri(request), clock.instant());
+        return handleExceptionInternal(ex, body, headers, status, request);
     }
 
-    @ExceptionHandler(ConstraintViolationException.class)
-    public ProblemDetail handleConstraintViolation(ConstraintViolationException e, HttpServletRequest request) {
-        ProblemDetail problemDetail = createProblemDetail(
-                HttpStatus.BAD_REQUEST,
-                "/errors/outbox/validation/constraint-violation",
-                "Validation Failed",
-                "Constraint validation failed",
-                request.getRequestURI(),
-                clock.instant()
-        );
-        List<Map<String, String>> violations = e.getConstraintViolations().stream()
-                .map(v -> Map.of("property", v.getPropertyPath().toString(), "message", v.getMessage()))
-                .toList();
-
-        problemDetail.setProperty("errors", violations);
-        return problemDetail;
+    @Override
+    protected ResponseEntity<Object> handleExceptionInternal(Exception ex,
+                                                             @Nullable Object body,
+                                                             HttpHeaders headers,
+                                                             HttpStatusCode statusCode,
+                                                             WebRequest request) {
+        String uri = requestUri(request);
+        if (statusCode.is5xxServerError()) {
+            log.error("DLQ API request failed: {}", uri, ex);
+        } else {
+            log.debug("DLQ API request rejected with {}: {} {}", statusCode.value(), ex.getClass().getSimpleName(), uri);
+        }
+        if (body instanceof ProblemDetail problemDetail) {
+            ProblemDetailFactory.stamp(problemDetail, uri, clock.instant());
+        }
+        return super.handleExceptionInternal(ex, body, headers, statusCode, request);
     }
 
-    @ExceptionHandler(DataAccessException.class)
-    public ProblemDetail handleDatabaseError(DataAccessException e, HttpServletRequest request) {
-        log.error("DLQ database error: {}", request.getRequestURI(), e);
-        return createProblemDetail(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "/errors/outbox/database",
-                "Database Access Error",
-                "A database operation failed: " + e.getMostSpecificCause().getMessage(),
-                request.getRequestURI(),
-                clock.instant()
-        );
+    private String fieldMessage(FieldError error) {
+        if (!error.isBindingFailure()) {
+            return Objects.requireNonNullElse(error.getDefaultMessage(), error.getField() + " is invalid");
+        }
+        if (error.getRejectedValue() == null) {
+            return error.getField() + " must be provided";
+        }
+        Class<?> requiredType = error.contains(TypeMismatchException.class)
+                ? error.unwrap(TypeMismatchException.class).getRequiredType()
+                : null;
+        if (requiredType != null && requiredType.isEnum()) {
+            String constants = Arrays.stream(requiredType.getEnumConstants())
+                    .map(Object::toString)
+                    .collect(Collectors.joining(", "));
+            return "%s must be one of %s".formatted(error.getField(), constants);
+        }
+        String typeName = requiredType == null ? "value" : requiredType.getSimpleName();
+        return "%s must be a valid %s".formatted(error.getField(), typeName);
     }
 
-    private ProblemDetail createProblemDetail(HttpStatus httpStatus,
-                                              String type,
-                                              String title,
-                                              String detail,
-                                              String path,
-                                              Instant timestamp) {
-        ProblemDetail problemDetail = ProblemDetail.forStatus(httpStatus);
-        problemDetail.setType(URI.create(type));
-        problemDetail.setTitle(title);
-        problemDetail.setDetail(detail);
-        problemDetail.setInstance(URI.create(path));
-        problemDetail.setProperty("path", path);
-        problemDetail.setProperty("timestamp", timestamp);
-        return problemDetail;
+    private String requestUri(WebRequest request) {
+        return ((ServletWebRequest) request).getRequest().getRequestURI();
     }
 }

@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -29,6 +31,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(controllers = OutboxDlqController.class)
 class OutboxDlqControllerIntegrationTests {
+
+    private static final UUID EVENT_ID = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
 
     @Autowired
     private MockMvc mockMvc;
@@ -59,9 +63,9 @@ class OutboxDlqControllerIntegrationTests {
 
         mockMvc.perform(get("/api/outbox-dlq/events/{id}", id))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.title").value("Not Found"))
+                .andExpect(jsonPath("$.title").value("DLQ event not found"))
                 .andExpect(jsonPath("$.detail").value("Event not found"))
-                .andExpect(jsonPath("$.type").value("/errors/outbox/not-found"));
+                .andExpect(jsonPath("$.type").value("https://oncebox.io/errors/dlq-event-not-found"));
     }
 
     @Test
@@ -72,8 +76,8 @@ class OutboxDlqControllerIntegrationTests {
 
         mockMvc.perform(get("/api/outbox-dlq/events/{id}", id))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.title").value("Internal Server Error"))
-                .andExpect(jsonPath("$.type").value("/errors/outbox/unexpected"));
+                .andExpect(jsonPath("$.title").value("Internal server error"))
+                .andExpect(jsonPath("$.type").value("https://oncebox.io/errors/internal-error"));
     }
 
     @Test
@@ -84,8 +88,8 @@ class OutboxDlqControllerIntegrationTests {
 
         mockMvc.perform(get("/api/outbox-dlq/events/{id}", id))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.type").value("/errors/outbox/database"))
-                .andExpect(jsonPath("$.title").value("Database Access Error"));
+                .andExpect(jsonPath("$.type").value("https://oncebox.io/errors/internal-error"))
+                .andExpect(jsonPath("$.title").value("Internal server error"));
     }
 
     @Test
@@ -111,7 +115,7 @@ class OutboxDlqControllerIntegrationTests {
                         .param("batchNumber", "1")
                         .param("batchSize", "10"))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.type").value("/errors/outbox/database"));
+                .andExpect(jsonPath("$.type").value("https://oncebox.io/errors/internal-error"));
     }
 
     @Test
@@ -175,7 +179,7 @@ class OutboxDlqControllerIntegrationTests {
         mockMvc.perform(get("/api/outbox-dlq/events/count")
                         .param("status", DlqStatus.RESOLVED.name()))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.type").value("/errors/outbox/database"));
+                .andExpect(jsonPath("$.type").value("https://oncebox.io/errors/internal-error"));
     }
 
     @Test
@@ -269,7 +273,7 @@ class OutboxDlqControllerIntegrationTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\": null}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.type").value("/errors/outbox/validation"))
+                .andExpect(jsonPath("$.type").value("https://oncebox.io/errors/validation-failed"))
                 .andExpect(jsonPath("$.errors").isArray());
     }
 
@@ -284,12 +288,12 @@ class OutboxDlqControllerIntegrationTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.type").value("/errors/outbox/not-found"));
+                .andExpect(jsonPath("$.type").value("https://oncebox.io/errors/dlq-event-not-found"));
     }
 
     @Test
-    @DisplayName("IT PATCH /{id} when bad request should return 400")
-    void updateStatus_badRequest_returns400() throws Exception {
+    @DisplayName("IT PATCH /{id} when event is IN_PROCESS should return 409")
+    void updateStatus_whenEventInProcess_shouldReturn409() throws Exception {
         UUID id = UUID.randomUUID();
         DlqStatusDto dto = new DlqStatusDto(DlqStatus.RESOLVED);
         doThrow(new OutboxDlqEventInProcessException(id))
@@ -298,13 +302,13 @@ class OutboxDlqControllerIntegrationTests {
         mockMvc.perform(patch("/api/outbox-dlq/events/{id}", id)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.type").value("/errors/outbox/bad-request"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.type").value("https://oncebox.io/errors/dlq-event-in-process"))
                 .andExpect(jsonPath("$.detail").value("Outbox DLQ event with id=%s is IN_PROCESS, interaction impossible".formatted(id)));
     }
 
     @Test
-    @DisplayName("IT PATCH /batch when database error should return 500")  // ИСПРАВЛЕН БАГ
+    @DisplayName("IT PATCH /batch when database error should return 500")
     void updateBatchStatus_databaseError_returns500() throws Exception {
         BatchUpdateRequest request = new BatchUpdateRequest(
                 Set.of(UUID.randomUUID()),
@@ -318,7 +322,7 @@ class OutboxDlqControllerIntegrationTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.type").value("/errors/outbox/database"));
+                .andExpect(jsonPath("$.type").value("https://oncebox.io/errors/internal-error"));
     }
 
     @Test
@@ -403,7 +407,7 @@ class OutboxDlqControllerIntegrationTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.type").value("/errors/outbox/validation"))
+                .andExpect(jsonPath("$.type").value("https://oncebox.io/errors/validation-failed"))
                 .andExpect(jsonPath("$.errors").isArray());
     }
 
@@ -416,7 +420,7 @@ class OutboxDlqControllerIntegrationTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.type").value("/errors/outbox/validation"))
+                .andExpect(jsonPath("$.type").value("https://oncebox.io/errors/validation-failed"))
                 .andExpect(jsonPath("$.errors").isArray());
     }
 
@@ -469,9 +473,9 @@ class OutboxDlqControllerIntegrationTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.type").value("/errors/outbox/validation"))
+                .andExpect(jsonPath("$.type").value("https://oncebox.io/errors/validation-failed"))
                 .andExpect(jsonPath("$.errors[0].message")
-                        .value("Either ids or eventType must be provided, but not both"));
+                        .value("exactly one of ids and eventType must be provided"));
     }
 
     @Test
@@ -488,7 +492,7 @@ class OutboxDlqControllerIntegrationTests {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[0].message")
-                        .value("Either ids or eventType must be provided, but not both"));
+                        .value("exactly one of ids and eventType must be provided"));
     }
 
     @Test
@@ -509,7 +513,7 @@ class OutboxDlqControllerIntegrationTests {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[0].message")
-                        .value("Maximum 1000 ids allowed"));
+                        .value("ids must contain at most 1000 elements"));
     }
 
     @Test
@@ -530,7 +534,7 @@ class OutboxDlqControllerIntegrationTests {
 
         mockMvc.perform(delete("/api/outbox-dlq/events/{id}", id))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.type").value("/errors/outbox/not-found"));
+                .andExpect(jsonPath("$.type").value("https://oncebox.io/errors/dlq-event-not-found"));
     }
 
     @Test
@@ -541,7 +545,7 @@ class OutboxDlqControllerIntegrationTests {
 
         mockMvc.perform(delete("/api/outbox-dlq/events/{id}", id))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.type").value("/errors/outbox/unexpected"));
+                .andExpect(jsonPath("$.type").value("https://oncebox.io/errors/internal-error"));
     }
 
     @Test
@@ -552,7 +556,7 @@ class OutboxDlqControllerIntegrationTests {
 
         mockMvc.perform(delete("/api/outbox-dlq/events/{id}", id))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.type").value("/errors/outbox/database"));
+                .andExpect(jsonPath("$.type").value("https://oncebox.io/errors/internal-error"));
     }
 
     @Test
@@ -579,7 +583,7 @@ class OutboxDlqControllerIntegrationTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.type").value("/errors/outbox/validation"))
+                .andExpect(jsonPath("$.type").value("https://oncebox.io/errors/validation-failed"))
                 .andExpect(jsonPath("$.errors").isArray());
     }
 
@@ -602,7 +606,7 @@ class OutboxDlqControllerIntegrationTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.type").value("/errors/outbox/database"));
+                .andExpect(jsonPath("$.type").value("https://oncebox.io/errors/internal-error"));
     }
 
     @Test
@@ -617,10 +621,10 @@ class OutboxDlqControllerIntegrationTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.type").value("/errors/outbox/validation"))
+                .andExpect(jsonPath("$.type").value("https://oncebox.io/errors/validation-failed"))
                 .andExpect(jsonPath("$.errors").isArray())
                 .andExpect(jsonPath("$.errors[0].message")
-                        .value("Either ids or eventType must be provided, but not both"));
+                        .value("exactly one of ids and eventType must be provided"));
     }
 
     @Test
@@ -637,7 +641,7 @@ class OutboxDlqControllerIntegrationTests {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[0].message")
-                        .value("Maximum 1000 ids allowed"));
+                        .value("ids must contain at most 1000 elements"));
     }
 
     @Test
@@ -715,16 +719,187 @@ class OutboxDlqControllerIntegrationTests {
 
 
     @Test
-    @DisplayName("IT DELETE /{id} when event is IN_PROCESS should return 400")
-    void delete_inProcess_returns400() throws Exception {
+    @DisplayName("IT DELETE /{id} when event is IN_PROCESS should return 409")
+    void delete_whenEventInProcess_shouldReturn409() throws Exception {
         UUID id = UUID.randomUUID();
         when(manager.deleteById(id))
                 .thenThrow(new OutboxDlqEventInProcessException(id));
 
         mockMvc.perform(delete("/api/outbox-dlq/events/{id}", id))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.type").value("/errors/outbox/bad-request"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.type").value("https://oncebox.io/errors/dlq-event-in-process"))
+                .andExpect(jsonPath("$.title").value("DLQ event is in process"))
                 .andExpect(jsonPath("$.detail").value("Outbox DLQ event with id=%s is IN_PROCESS, interaction impossible".formatted(id)));
+    }
+
+    @Test
+    @DisplayName("IT PATCH /batch when body is malformed JSON should return 400")
+    void updateBatchStatus_whenBodyIsMalformedJson_shouldReturn400() throws Exception {
+        // when / then
+        mockMvc.perform(patch("/api/outbox-dlq/events/batch")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{bad"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(manager);
+    }
+
+    @Test
+    @DisplayName("IT PATCH /batch when body is missing should return 400")
+    void updateBatchStatus_whenBodyIsMissing_shouldReturn400() throws Exception {
+        // when / then
+        mockMvc.perform(patch("/api/outbox-dlq/events/batch")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(not(containsString("OutboxDlqController"))));
+    }
+
+    @Test
+    @DisplayName("IT PATCH /{id} when body status is not a DlqStatus constant should return 400")
+    void updateStatus_whenBodyStatusIsUnknown_shouldReturn400() throws Exception {
+        // when / then
+        mockMvc.perform(patch("/api/outbox-dlq/events/{id}", EVENT_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\": \"FOO\"}"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(manager);
+    }
+
+    @Test
+    @DisplayName("IT DELETE /batch when ids hold a malformed UUID should return 400")
+    void deleteBatch_whenIdIsMalformed_shouldReturn400() throws Exception {
+        // when / then
+        mockMvc.perform(delete("/api/outbox-dlq/events/batch")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"ids\": [\"x\"]}"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(manager);
+    }
+
+    @Test
+    @DisplayName("IT PATCH /batch when content type is not JSON should return 415")
+    void updateBatchStatus_whenContentTypeIsNotJson_shouldReturn415() throws Exception {
+        // when / then
+        mockMvc.perform(patch("/api/outbox-dlq/events/batch")
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .content("x"))
+                .andExpect(status().isUnsupportedMediaType());
+    }
+
+    @Test
+    @DisplayName("IT GET /{id} when unexpected error should answer a fixed detail without the exception message")
+    void get_whenUnexpectedError_shouldNotExposeExceptionMessage() throws Exception {
+        // given
+        when(manager.findById(EVENT_ID)).thenThrow(new IllegalStateException("secret internal state"));
+
+        // when / then
+        mockMvc.perform(get("/api/outbox-dlq/events/{id}", EVENT_ID))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.detail").value("The operation could not be completed"));
+    }
+
+    @Test
+    @DisplayName("IT GET /{id} when database error should answer like any unexpected error, without the cause")
+    void get_whenDatabaseError_shouldNotExposeCause() throws Exception {
+        // given
+        when(manager.findById(EVENT_ID)).thenThrow(new DataAccessResourceFailureException(
+                "select * from outbox_dlq_events", new RuntimeException("password authentication failed")
+        ));
+
+        // when / then
+        mockMvc.perform(get("/api/outbox-dlq/events/{id}", EVENT_ID))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.type").value("https://oncebox.io/errors/internal-error"))
+                .andExpect(jsonPath("$.detail").value("The operation could not be completed"));
+    }
+
+    @Test
+    @DisplayName("IT PATCH /{id} when target status is IN_PROCESS should return 400 without reaching the service")
+    void updateStatus_whenTargetStatusIsInProcess_shouldReturn400() throws Exception {
+        // when / then
+        mockMvc.perform(patch("/api/outbox-dlq/events/{id}", EVENT_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new DlqStatusDto(DlqStatus.IN_PROCESS))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("status"));
+        verifyNoInteractions(manager);
+    }
+
+    @Test
+    @DisplayName("IT PATCH /batch when target status is IN_PROCESS should return 400 without reaching the service")
+    void updateBatchStatus_whenTargetStatusIsInProcess_shouldReturn400() throws Exception {
+        // given
+        BatchUpdateRequest request = new BatchUpdateRequest(Set.of(EVENT_ID), null, DlqStatus.IN_PROCESS);
+
+        // when / then
+        mockMvc.perform(patch("/api/outbox-dlq/events/batch")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("status"));
+        verifyNoInteractions(manager);
+    }
+
+    @Test
+    @DisplayName("IT PATCH /batch when both ids and eventType provided should report both JSON fields")
+    void updateBatchStatus_whenBothIdsAndEventType_shouldReportBothFields() throws Exception {
+        // given
+        BatchUpdateRequest request = new BatchUpdateRequest(Set.of(EVENT_ID), "event-type", DlqStatus.RESOLVED);
+
+        // when / then
+        mockMvc.perform(patch("/api/outbox-dlq/events/batch")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[*].field", containsInAnyOrder("ids", "eventType")));
+    }
+
+    @Test
+    @DisplayName("IT DELETE /batch when neither ids nor eventType provided should report both JSON fields")
+    void deleteBatch_whenNeitherIdsNorEventType_shouldReportBothFields() throws Exception {
+        // when / then
+        mockMvc.perform(delete("/api/outbox-dlq/events/batch")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[*].field", containsInAnyOrder("ids", "eventType")));
+    }
+
+    @Test
+    @DisplayName("IT GET /batch when status is unknown should name the field without exposing Java types")
+    void getBatch_whenStatusIsUnknown_shouldNotExposeJavaTypes() throws Exception {
+        // when / then
+        mockMvc.perform(get("/api/outbox-dlq/events/batch")
+                        .param("status", "FOO")
+                        .param("batchNumber", "0")
+                        .param("batchSize", "10"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("status"))
+                .andExpect(jsonPath("$.errors[0].message").value(not(containsString("io."))));
+    }
+
+    @Test
+    @DisplayName("IT GET /batch when batch size is below the minimum should say so with the bound")
+    void getBatch_whenBatchSizeBelowMinimum_shouldReturnMessageWithBound() throws Exception {
+        // when / then
+        mockMvc.perform(get("/api/outbox-dlq/events/batch")
+                        .param("batchNumber", "0")
+                        .param("batchSize", "5"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("batchSize"))
+                .andExpect(jsonPath("$.errors[0].message").value("batchSize must be at least 10"));
+    }
+
+    @Test
+    @DisplayName("IT GET /batch when batch number is not a number should name the field and its type")
+    void getBatch_whenBatchNumberIsNotNumber_shouldNameFieldAndType() throws Exception {
+        // when / then
+        mockMvc.perform(get("/api/outbox-dlq/events/batch")
+                        .param("batchNumber", "abc")
+                        .param("batchSize", "10"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("batchNumber"))
+                .andExpect(jsonPath("$.errors[0].message").value("batchNumber must be a valid int"));
+        verifyNoInteractions(manager);
     }
 
     private OutboxDlqEvent buildEvent(UUID id) {

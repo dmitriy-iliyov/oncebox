@@ -2,30 +2,34 @@ package io.github.dmitriyiliyov.oncebox.dlq.api;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-@Schema(description = "Result of a batch operation over DLQ events.")
+@Schema(description = "Result of a batch operation over DLQ events")
 public record BatchModificationResponse(
 
         @Schema(
-                description = "Total number of events requested for processing.",
-                example = "100"
+                description = "Number of ids in the request, 0 when events were selected by event type",
+                example = "100",
+                requiredMode = Schema.RequiredMode.REQUIRED
         )
         int requestedCount,
 
         @Schema(
-                description = "Number of events successfully processed.",
-                example = "95"
+                description = "Number of events successfully processed",
+                example = "95",
+                requiredMode = Schema.RequiredMode.REQUIRED
         )
         int processedCount,
 
         @Schema(
-                description = "Overall status of the batch operation.",
-                example = "PARTIAL_SUCCESS"
+                description = "Overall status of the batch operation",
+                example = "PARTIAL_SUCCESS",
+                requiredMode = Schema.RequiredMode.REQUIRED
         )
         OperationStatus status,
 
         @Schema(
-                description = "Human-readable explanation of the operation result.",
-                example = "Some events were not updated because they were in IN_PROCESS status."
+                description = "Human-readable explanation of the operation result",
+                example = "Some events were not updated because they were in IN_PROCESS status.",
+                requiredMode = Schema.RequiredMode.REQUIRED
         )
         String message
 

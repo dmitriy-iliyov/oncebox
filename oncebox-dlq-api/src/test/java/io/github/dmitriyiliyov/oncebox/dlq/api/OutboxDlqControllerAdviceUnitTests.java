@@ -1,191 +1,271 @@
 package io.github.dmitriyiliyov.oncebox.dlq.api;
 
-import io.github.dmitriyiliyov.oncebox.dlq.api.exception.BadRequestException;
-import io.github.dmitriyiliyov.oncebox.dlq.api.exception.NotFoundException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.ConstraintViolationException;
-import jakarta.validation.Path;
-import org.junit.jupiter.api.BeforeEach;
+import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.DlqStatus;
+import io.github.dmitriyiliyov.oncebox.dlq.api.exception.InvalidDlqFilterException;
+import io.github.dmitriyiliyov.oncebox.dlq.api.exception.OutboxDlqEventInProcessException;
+import io.github.dmitriyiliyov.oncebox.dlq.api.exception.OutboxDlqEventNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataAccessException;
+import org.springframework.beans.TypeMismatchException;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
-import org.springframework.validation.BindException;
-import org.springframework.validation.BindingResult;
+import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.validation.FieldError;
+import org.springframework.validation.MapBindingResult;
+import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 
 import java.net.URI;
 import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@ExtendWith(MockitoExtension.class)
 class OutboxDlqControllerAdviceUnitTests {
 
-    @Mock
-    HttpServletRequest request;
+    private static final Instant NOW = Instant.parse("2026-09-24T10:00:00Z");
+    private static final String URI_PATH = "/api/outbox-dlq/events/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+    private static final UUID EVENT_ID = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
 
-    @Mock
-    Clock clock;
+    private final MockHttpServletRequest request = new MockHttpServletRequest("GET", URI_PATH);
+    private final OutboxDlqControllerAdvice tested = new OutboxDlqControllerAdvice(Clock.fixed(NOW, ZoneOffset.UTC));
 
-    OutboxDlqControllerAdvice tested;
-
-    @BeforeEach
-    void setUp() {
-        tested = new OutboxDlqControllerAdvice(clock);
-        when(request.getRequestURI()).thenReturn("/test/uri");
+    @Test
+    @DisplayName("UT constructor when clock is null should throw NullPointerException")
+    void constructor_whenClockIsNull_shouldThrowNullPointerException() {
+        // when / then
+        assertThatThrownBy(() -> new OutboxDlqControllerAdvice(null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("clock cannot be null");
     }
 
     @Test
-    @DisplayName("UT handleException() should return 500 and ProblemDetail")
-    void handleException_shouldReturn500() {
-        // given
-        Exception ex = new Exception("Unexpected error");
-
+    @DisplayName("UT handleNotFoundException() should answer 404 with the exception detail")
+    void handleNotFoundException_shouldAnswer404() {
         // when
-        ProblemDetail problemDetail = tested.handleException(ex, request);
+        ProblemDetail problemDetail = tested.handleNotFoundException(new OutboxDlqEventNotFoundException(EVENT_ID), request);
 
         // then
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR.value(), problemDetail.getStatus());
-        assertNotNull(problemDetail);
-        assertEquals(URI.create("/errors/outbox/unexpected"), problemDetail.getType());
-        assertEquals("Internal Server Error", problemDetail.getTitle());
-        assertEquals("Unexpected error", problemDetail.getDetail());
-        assertEquals("/test/uri", problemDetail.getProperties().get("path"));
+        assertThat(problemDetail.getStatus()).isEqualTo(HttpStatus.NOT_FOUND.value());
+        assertThat(problemDetail.getType()).isEqualTo(ProblemTypes.DLQ_EVENT_NOT_FOUND);
+        assertThat(problemDetail.getTitle()).isEqualTo("DLQ event not found");
+        assertThat(problemDetail.getDetail()).isEqualTo("No OutboxDlqEvent found with id=" + EVENT_ID);
+        assertStamped(problemDetail);
     }
 
     @Test
-    @DisplayName("UT handleNotFoundException() should return 404 and ProblemDetail")
-    void handleNotFoundException_shouldReturn404() {
-        // given
-        NotFoundException ex = mock(NotFoundException.class);
-        when(ex.getDetail()).thenReturn("Resource not found");
-
+    @DisplayName("UT handleOutboxDlqEventInProcessException() should answer 409 with the exception detail")
+    void handleOutboxDlqEventInProcessException_shouldAnswer409() {
         // when
-        ProblemDetail problemDetail = tested.handleNotFoundException(ex, request);
+        ProblemDetail problemDetail =
+                tested.handleOutboxDlqEventInProcessException(new OutboxDlqEventInProcessException(EVENT_ID), request);
 
         // then
-        assertEquals(HttpStatus.NOT_FOUND.value(), problemDetail.getStatus());
-        assertNotNull(problemDetail);
-        assertEquals(URI.create("/errors/outbox/not-found"), problemDetail.getType());
-        assertEquals("Not Found", problemDetail.getTitle());
-        assertEquals("Resource not found", problemDetail.getDetail());
+        assertThat(problemDetail.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
+        assertThat(problemDetail.getType()).isEqualTo(ProblemTypes.DLQ_EVENT_IN_PROCESS);
+        assertThat(problemDetail.getTitle()).isEqualTo("DLQ event is in process");
+        assertThat(problemDetail.getDetail()).contains(EVENT_ID.toString());
+        assertStamped(problemDetail);
     }
 
     @Test
-    @DisplayName("UT handleBadRequestException() should return 400 and ProblemDetail")
-    void handleBadRequestException_shouldReturn400() {
-        // given
-        BadRequestException ex = mock(BadRequestException.class);
-        when(ex.getDetail()).thenReturn("Bad request detail");
-
+    @DisplayName("UT handleInvalidDlqFilterException() should answer 400 with the exception detail")
+    void handleInvalidDlqFilterException_shouldAnswer400() {
         // when
-        ProblemDetail problemDetail = tested.handleNotFoundException(ex, request);
+        ProblemDetail problemDetail =
+                tested.handleInvalidDlqFilterException(new InvalidDlqFilterException("Filter hasn't both params"), request);
 
         // then
-        assertEquals(HttpStatus.BAD_REQUEST.value(), problemDetail.getStatus());
-        assertNotNull(problemDetail);
-        assertEquals(URI.create("/errors/outbox/bad-request"), problemDetail.getType());
-        assertEquals("Bad Request", problemDetail.getTitle());
-        assertEquals("Bad request detail", problemDetail.getDetail());
+        assertThat(problemDetail.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(problemDetail.getType()).isEqualTo(ProblemTypes.INVALID_DLQ_FILTER);
+        assertThat(problemDetail.getDetail()).isEqualTo("Filter hasn't both params");
+        assertStamped(problemDetail);
     }
 
     @Test
-    @DisplayName("UT handleValidationExceptions() with MethodArgumentNotValidException should return 400 and errors")
-    void handleValidationExceptions_withMethodArgumentNotValid_shouldReturn400() {
+    @DisplayName("UT handleUnexpectedException() should answer 500 with a fixed detail, never the cause")
+    void handleUnexpectedException_shouldAnswer500WithFixedDetail() {
         // given
-        BindingResult bindingResult = mock(BindingResult.class);
-        FieldError fieldError = new FieldError("object", "field", "defaultMessage");
-        when(bindingResult.getFieldErrors()).thenReturn(List.of(fieldError));
-        MethodArgumentNotValidException ex = new MethodArgumentNotValidException(null, bindingResult);
+        Exception exception = new DataAccessResourceFailureException(
+                "select * from outbox_dlq_events", new RuntimeException("password authentication failed")
+        );
 
         // when
-        ProblemDetail problemDetail = tested.handleValidationExceptions(ex, request);
+        ProblemDetail problemDetail = tested.handleUnexpectedException(exception, request);
 
         // then
-        assertEquals(HttpStatus.BAD_REQUEST.value(), problemDetail.getStatus());
-        assertNotNull(problemDetail);
-        assertEquals(URI.create("/errors/outbox/validation"), problemDetail.getType());
-        List<Map<String, String>> errors = (List<Map<String, String>>) problemDetail.getProperties().get("errors");
-        assertEquals(1, errors.size());
-        assertEquals("field", errors.get(0).get("field"));
-        assertEquals("defaultMessage", errors.get(0).get("message"));
+        assertThat(problemDetail.getStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR.value());
+        assertThat(problemDetail.getType()).isEqualTo(ProblemTypes.INTERNAL_ERROR);
+        assertThat(problemDetail.getTitle()).isEqualTo("Internal server error");
+        assertThat(problemDetail.getDetail()).isEqualTo("The operation could not be completed");
+        assertStamped(problemDetail);
     }
 
     @Test
-    @DisplayName("UT handleValidationExceptions() with BindException should return 400 and errors")
-    void handleValidationExceptions_withBindException_shouldReturn400() {
+    @DisplayName("UT handleMethodArgumentNotValid() should list each field error under errors")
+    void handleMethodArgumentNotValid_whenConstraintViolated_shouldListFieldErrors() {
         // given
-        BindingResult bindingResult = mock(BindingResult.class);
-        FieldError fieldError = new FieldError("object", "field", "defaultMessage");
-        when(bindingResult.getFieldErrors()).thenReturn(List.of(fieldError));
-        BindException ex = new BindException(bindingResult);
+        MapBindingResult bindingResult = new MapBindingResult(new HashMap<>(), "request");
+        bindingResult.addError(new FieldError("request", "batchSize", "batchSize must be at least 10"));
 
         // when
-        ProblemDetail problemDetail = tested.handleValidationExceptions(ex, request);
+        ProblemDetail problemDetail = validationProblem(bindingResult);
 
         // then
-        assertEquals(HttpStatus.BAD_REQUEST.value(), problemDetail.getStatus());
-        assertNotNull(problemDetail);
-        assertEquals(URI.create("/errors/outbox/validation"), problemDetail.getType());
-        List<Map<String, String>> errors = (List<Map<String, String>>) problemDetail.getProperties().get("errors");
-        assertEquals(1, errors.size());
-        assertEquals("field", errors.get(0).get("field"));
-        assertEquals("defaultMessage", errors.get(0).get("message"));
+        assertThat(problemDetail.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(problemDetail.getType()).isEqualTo(ProblemTypes.VALIDATION_FAILED);
+        assertThat(errors(problemDetail))
+                .containsExactly(Map.of("field", "batchSize", "message", "batchSize must be at least 10"));
+        assertStamped(problemDetail);
     }
 
     @Test
-    @DisplayName("UT handleConstraintViolation() should return 400 and errors")
-    void handleConstraintViolation_shouldReturn400() {
+    @DisplayName("UT handleMethodArgumentNotValid() when an enum fails to bind should list its constants, not Java types")
+    void handleMethodArgumentNotValid_whenEnumFailsToBind_shouldListConstants() {
         // given
-        ConstraintViolation<?> violation = mock(ConstraintViolation.class);
-        Path path = mock(Path.class);
-        when(path.toString()).thenReturn("prop");
-        when(violation.getPropertyPath()).thenReturn(path);
-        when(violation.getMessage()).thenReturn("violation message");
-        ConstraintViolationException ex = new ConstraintViolationException(Set.of(violation));
+        MapBindingResult bindingResult = new MapBindingResult(new HashMap<>(), "request");
+        bindingResult.addError(bindingFailure("status", "FOO", new TypeMismatchException("FOO", DlqStatus.class)));
 
         // when
-        ProblemDetail problemDetail = tested.handleConstraintViolation(ex, request);
+        ProblemDetail problemDetail = validationProblem(bindingResult);
 
         // then
-        assertEquals(HttpStatus.BAD_REQUEST.value(), problemDetail.getStatus());
-        assertNotNull(problemDetail);
-        assertEquals(URI.create("/errors/outbox/validation/constraint-violation"), problemDetail.getType());
-        List<Map<String, String>> errors = (List<Map<String, String>>) problemDetail.getProperties().get("errors");
-        assertEquals(1, errors.size());
-        assertEquals("prop", errors.get(0).get("property"));
-        assertEquals("violation message", errors.get(0).get("message"));
+        assertThat(errors(problemDetail)).containsExactly(Map.of(
+                "field", "status",
+                "message", "status must be one of MOVED, IN_PROCESS, RESOLVED, TO_RETRY"
+        ));
     }
 
     @Test
-    @DisplayName("UT handleDatabaseError() should return 500 and ProblemDetail")
-    void handleDatabaseError_shouldReturn500() {
+    @DisplayName("UT handleMethodArgumentNotValid() when a required primitive is missing should say it must be provided")
+    void handleMethodArgumentNotValid_whenPrimitiveMissing_shouldSayMustBeProvided() {
         // given
-        DataAccessException ex = mock(DataAccessException.class);
-        Throwable cause = new RuntimeException("Connection refused");
-        when(ex.getMostSpecificCause()).thenReturn(cause);
+        MapBindingResult bindingResult = new MapBindingResult(new HashMap<>(), "request");
+        bindingResult.addError(bindingFailure("batchNumber", null, new TypeMismatchException((Object) null, int.class)));
 
         // when
-        ProblemDetail problemDetail = tested.handleDatabaseError(ex, request);
+        ProblemDetail problemDetail = validationProblem(bindingResult);
 
         // then
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR.value(), problemDetail.getStatus());
-        assertNotNull(problemDetail);
-        assertEquals(URI.create("/errors/outbox/database"), problemDetail.getType());
-        assertEquals("Database Access Error", problemDetail.getTitle());
-        assertEquals("A database operation failed: Connection refused", problemDetail.getDetail());
+        assertThat(errors(problemDetail))
+                .containsExactly(Map.of("field", "batchNumber", "message", "batchNumber must be provided"));
+    }
+
+    @Test
+    @DisplayName("UT handleMethodArgumentNotValid() when a number fails to bind should name the required type")
+    void handleMethodArgumentNotValid_whenNumberFailsToBind_shouldNameRequiredType() {
+        // given
+        MapBindingResult bindingResult = new MapBindingResult(new HashMap<>(), "request");
+        bindingResult.addError(bindingFailure("batchNumber", "abc", new TypeMismatchException("abc", int.class)));
+
+        // when
+        ProblemDetail problemDetail = validationProblem(bindingResult);
+
+        // then
+        assertThat(errors(problemDetail))
+                .containsExactly(Map.of("field", "batchNumber", "message", "batchNumber must be a valid int"));
+    }
+
+    @Test
+    @DisplayName("UT handleMethodArgumentNotValid() when a binding failure carries no type mismatch should not guess a type")
+    void handleMethodArgumentNotValid_whenBindingFailureWithoutTypeMismatch_shouldSayValidValue() {
+        // given
+        MapBindingResult bindingResult = new MapBindingResult(new HashMap<>(), "request");
+        bindingResult.addError(new FieldError("request", "eventType", "x", true, null, null, "Failed to bind"));
+
+        // when
+        ProblemDetail problemDetail = validationProblem(bindingResult);
+
+        // then
+        assertThat(errors(problemDetail))
+                .containsExactly(Map.of("field", "eventType", "message", "eventType must be a valid value"));
+    }
+
+    @Test
+    @DisplayName("UT handleMethodArgumentNotValid() when an error is not about a field should list its message without a field")
+    void handleMethodArgumentNotValid_whenGlobalError_shouldListMessageWithoutField() {
+        // given
+        MapBindingResult bindingResult = new MapBindingResult(new HashMap<>(), "request");
+        bindingResult.addError(new ObjectError("request", "request must select events"));
+
+        // when
+        ProblemDetail problemDetail = validationProblem(bindingResult);
+
+        // then
+        assertThat(errors(problemDetail)).containsExactly(Map.of("message", "request must select events"));
+    }
+
+    @Test
+    @DisplayName("UT handleExceptionInternal() when a standard Spring failure is a 5xx should keep its status and stamp it")
+    void handleExceptionInternal_whenStandard5xx_shouldKeepStatusAndStamp() {
+        // given
+        ProblemDetail body = ProblemDetail.forStatus(HttpStatus.SERVICE_UNAVAILABLE);
+
+        // when
+        ResponseEntity<Object> response = tested.handleExceptionInternal(
+                new AsyncRequestTimeoutException(), body, new HttpHeaders(), HttpStatus.SERVICE_UNAVAILABLE,
+                new ServletWebRequest(request)
+        );
+
+        // then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        assertStamped((ProblemDetail) response.getBody());
+    }
+
+    @Test
+    @DisplayName("UT handleExceptionInternal() should stamp path and timestamp onto a standard Spring problem")
+    void handleExceptionInternal_whenStandardProblem_shouldStampPathAndTimestamp() {
+        // given
+        ProblemDetail body = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Failed to read request");
+
+        // when
+        ResponseEntity<Object> response = tested.handleExceptionInternal(
+                new IllegalStateException(), body, new HttpHeaders(), HttpStatus.BAD_REQUEST, new ServletWebRequest(request)
+        );
+
+        // then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        ProblemDetail problemDetail = (ProblemDetail) response.getBody();
+        assertThat(problemDetail.getType()).isEqualTo(URI.create("about:blank"));
+        assertStamped(problemDetail);
+    }
+
+    private ProblemDetail validationProblem(MapBindingResult bindingResult) {
+        ResponseEntity<Object> response = tested.handleMethodArgumentNotValid(
+                new MethodArgumentNotValidException(null, bindingResult),
+                new HttpHeaders(),
+                HttpStatus.BAD_REQUEST,
+                new ServletWebRequest(request)
+        );
+        return (ProblemDetail) response.getBody();
+    }
+
+    private FieldError bindingFailure(String field, Object rejectedValue, TypeMismatchException cause) {
+        FieldError error = new FieldError("request", field, rejectedValue, true, null, null, "Failed to convert");
+        error.wrap(cause);
+        return error;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, String>> errors(ProblemDetail problemDetail) {
+        return (List<Map<String, String>>) problemDetail.getProperties().get("errors");
+    }
+
+    private void assertStamped(ProblemDetail problemDetail) {
+        assertThat(problemDetail.getInstance()).isEqualTo(URI.create(URI_PATH));
+        assertThat(problemDetail.getProperties())
+                .containsEntry("path", URI_PATH)
+                .containsEntry("timestamp", NOW);
     }
 }
