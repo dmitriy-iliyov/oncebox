@@ -44,7 +44,7 @@ class OutboxConsumerCacheAutoConfigurationConditionTests {
     }
 
     @Test
-    @DisplayName("IT should NOT load configuration when outbox.consumer.enabled is false")
+    @DisplayName("IT should NOT load configuration when 'oncebox.consumer.enabled' is false")
     void shouldNotLoadWhenConsumerEnabledIsFalse() {
         contextRunner
                 .withPropertyValues(
@@ -55,7 +55,7 @@ class OutboxConsumerCacheAutoConfigurationConditionTests {
     }
 
     @Test
-    @DisplayName("IT should NOT load configuration when outbox.consumer.enabled is missing")
+    @DisplayName("IT should NOT load configuration when 'oncebox.consumer.enabled' is missing")
     void shouldNotLoadWhenConsumerEnabledIsMissing() {
         contextRunner
                 .withPropertyValues(
@@ -65,7 +65,7 @@ class OutboxConsumerCacheAutoConfigurationConditionTests {
     }
 
     @Test
-    @DisplayName("IT should NOT load configuration when outbox.consumer.cache.enabled is false")
+    @DisplayName("IT should NOT load configuration when 'oncebox.consumer.cache.enabled' is false")
     void shouldNotLoadWhenCacheEnabledIsFalse() {
         contextRunner
                 .withPropertyValues(
@@ -76,7 +76,7 @@ class OutboxConsumerCacheAutoConfigurationConditionTests {
     }
 
     @Test
-    @DisplayName("IT should NOT load configuration when outbox.consumer.cache.enabled is missing")
+    @DisplayName("IT should NOT load configuration when 'oncebox.consumer.cache.enabled' is missing")
     void shouldNotLoadWhenCacheEnabledIsMissing() {
         contextRunner
                 .withPropertyValues(

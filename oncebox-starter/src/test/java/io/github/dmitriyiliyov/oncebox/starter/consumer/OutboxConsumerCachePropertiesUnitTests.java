@@ -54,7 +54,7 @@ public class OutboxConsumerCachePropertiesUnitTests {
         properties.cacheName = null;
 
         NullPointerException exception = assertThrows(NullPointerException.class, properties::applyDefaults);
-        assertEquals("cacheName cannot be null", exception.getMessage());
+        assertEquals("'cache-name' cannot be null", exception.getMessage());
     }
 
     @Test
@@ -65,11 +65,11 @@ public class OutboxConsumerCachePropertiesUnitTests {
 
         properties.cacheName = "";
         IllegalArgumentException exception1 = assertThrows(IllegalArgumentException.class, properties::applyDefaults);
-        assertEquals("cacheName cannot be empty or blank", exception1.getMessage());
+        assertEquals("'cache-name' cannot be empty or blank", exception1.getMessage());
 
         properties.cacheName = "   ";
         IllegalArgumentException exception2 = assertThrows(IllegalArgumentException.class, properties::applyDefaults);
-        assertEquals("cacheName cannot be empty or blank", exception2.getMessage());
+        assertEquals("'cache-name' cannot be empty or blank", exception2.getMessage());
     }
 
     @Test

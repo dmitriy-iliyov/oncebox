@@ -568,7 +568,7 @@ class OutboxPropertiesUnitTests {
 
         assertThatThrownBy(properties::applyDefaults)
                 .isInstanceOf(NullPointerException.class)
-                .hasMessage("lockAtLeastFor cannot be null");
+                .hasMessage("'lock-at-least-for' cannot be null");
     }
 
     @Test
@@ -579,7 +579,7 @@ class OutboxPropertiesUnitTests {
 
         assertThatThrownBy(properties::applyDefaults)
                 .isInstanceOf(NullPointerException.class)
-                .hasMessage("lockAtMostFor cannot be null");
+                .hasMessage("'lock-at-most-for' cannot be null");
     }
 
     @Test

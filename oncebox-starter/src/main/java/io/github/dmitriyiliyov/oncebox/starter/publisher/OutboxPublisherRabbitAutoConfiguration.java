@@ -46,7 +46,7 @@ public class OutboxPublisherRabbitAutoConfiguration {
         String beanName = senderProperties.getBeanName();
         RabbitTemplate rabbitTemplate;
         if (beanName == null || beanName.isEmpty()) {
-            log.warn("Sender bean-name is not specified. Will try to resolve by type");
+            log.warn("'sender.bean-name' is not specified, resolving the template by type");
             String [] beanNames = context.getBeanNamesForType(RabbitTemplate.class);
             if (beanNames.length == 0) {
                 throw new IllegalStateException("Cannot create OutboxSender: no RabbitTemplate bean found");
@@ -55,8 +55,8 @@ public class OutboxPublisherRabbitAutoConfiguration {
                 throw new IllegalStateException(
                         "Cannot create OutboxSender: found more then one RabbitTemplate bean: " +
                                 Arrays.toString(beanNames) +
-                                "Please define a RabbitTemplate bean with this name, " +
-                                "or configure 'outbox.publisher.sender.bean-name' property"
+                                ". Please define a RabbitTemplate bean with this name, " +
+                                "or configure 'sender.bean-name'"
                 );
             }
             beanName = beanNames[0];
@@ -65,14 +65,14 @@ public class OutboxPublisherRabbitAutoConfiguration {
             throw new IllegalArgumentException(
                     "Cannot create OutboxSender: RabbitTemplate bean '" + beanName + "' not found. " +
                             "Please define a RabbitTemplate bean with this name, " +
-                            "or configure 'outbox.publisher.sender.bean-name' property"
+                            "or configure 'sender.bean-name'"
             );
         }
         senderProperties.setBeanName(beanName);
         rabbitTemplate = context.getBean(beanName, RabbitTemplate.class);
         if (!rabbitTemplate.isMandatoryFor(new Message(Boolean.FALSE.toString().getBytes(StandardCharsets.UTF_8)))) {
             log.error("RabbitTemplate '{}' mandatory flag is false. " +
-                    "ReturnedMessage will not be received. You should set mandatory=true for at-least-once", beanName);
+                    "ReturnedMessage will not be received. You should set 'mandatory=true' for at-least-once", beanName);
         }
         return new RabbitOutboxSender(rabbitTemplate, senderProperties.getEmergencyTimeout().toSeconds());
     }

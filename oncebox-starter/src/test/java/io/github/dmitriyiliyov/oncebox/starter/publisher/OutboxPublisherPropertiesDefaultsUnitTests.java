@@ -177,12 +177,12 @@ class OutboxPublisherPropertiesDefaultsUnitTests {
             event.setEventType(null);
             assertThatThrownBy(() -> event.applyDefaults(configuredDefaults))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("eventType cannot be null");
+                    .hasMessageContaining("'events' key cannot be null");
 
             event.setEventType("   ");
             assertThatThrownBy(() -> event.applyDefaults(configuredDefaults))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("eventType cannot be blank");
+                    .hasMessageContaining("'events' key cannot be blank");
         }
 
         @Test
@@ -194,12 +194,12 @@ class OutboxPublisherPropertiesDefaultsUnitTests {
             event.setTopic(null);
             assertThatThrownBy(() -> event.applyDefaults(configuredDefaults))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("topic cannot be null");
+                    .hasMessageContaining("'topic' cannot be null");
 
             event.setTopic("   ");
             assertThatThrownBy(() -> event.applyDefaults(configuredDefaults))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("topic cannot be blank");
+                    .hasMessageContaining("'topic' cannot be blank");
         }
 
         @Test

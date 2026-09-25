@@ -40,7 +40,7 @@ public class OutboxPublisherProperties implements OutboxPublisherPropertiesHolde
             enabled = true;
 
             if (sender == null) {
-                throw new IllegalArgumentException("sender cannot be null");
+                throw new IllegalArgumentException("'sender' cannot be null");
             }
             sender.applyDefaults();
 
@@ -48,10 +48,10 @@ public class OutboxPublisherProperties implements OutboxPublisherPropertiesHolde
             defaults.applyDefaults();
 
             if (events == null) {
-                throw new IllegalArgumentException("events cannot be null");
+                throw new IllegalArgumentException("'events' cannot be null");
             }
             if (events.isEmpty()) {
-                log.warn("Outbox is configured without events");
+                log.warn("Outbox is configured with empty 'events'");
             }
             events = applyDefaults(events);
 
@@ -72,7 +72,7 @@ public class OutboxPublisherProperties implements OutboxPublisherPropertiesHolde
             }
             cleanUp.applyDefaults();
             if (!cleanUp.isEnabled()) {
-                log.warn("Outbox Publisher is configured with disabled clean-up, processed outbox storage will not be cleaned automatically");
+                log.warn("Outbox Publisher is configured with 'clean-up.enabled=false', processed outbox storage will not be cleaned automatically");
             }
 
             if (dlq == null) {
@@ -81,7 +81,7 @@ public class OutboxPublisherProperties implements OutboxPublisherPropertiesHolde
             }
             dlq.applyDefaults();
             if (!dlq.isEnabled()) {
-                log.warn("Outbox is configured with disabled DLQ, failed outbox events will not be managed automatically.");
+                log.warn("Outbox is configured with 'dlq.enabled=false', failed outbox events will not be managed automatically");
             }
 
             if (metrics == null) {
@@ -118,10 +118,10 @@ public class OutboxPublisherProperties implements OutboxPublisherPropertiesHolde
                         e -> {
                             String eventType = e.getKey();
                             if (eventType == null) {
-                                throw new IllegalArgumentException("eventType cannot be null");
+                                throw new IllegalArgumentException("'events' key cannot be null");
                             }
                             if (eventType.isBlank()) {
-                                throw new IllegalArgumentException("eventType cannot be blank");
+                                throw new IllegalArgumentException("'events' key cannot be blank");
                             }
                             return eventType;
                         },
@@ -238,7 +238,7 @@ public class OutboxPublisherProperties implements OutboxPublisherPropertiesHolde
 
         public void applyDefaults() {
             if (type == null) {
-                throw new IllegalArgumentException("sender type cannot be null");
+                throw new IllegalArgumentException("'sender.type' cannot be null");
             }
             emergencyTimeout = emergencyTimeout == null ? DEFAULT_EMERGENCY_TIMEOUT : emergencyTimeout;
         }
@@ -364,16 +364,16 @@ public class OutboxPublisherProperties implements OutboxPublisherPropertiesHolde
 
         public void applyDefaults(Defaults defaults) {
             if (eventType == null) {
-                throw new IllegalArgumentException("eventType cannot be null");
+                throw new IllegalArgumentException("'events' key cannot be null");
             }
             if (eventType.isBlank()) {
-                throw new IllegalArgumentException("eventType cannot be blank");
+                throw new IllegalArgumentException("'events' key cannot be blank");
             }
             if (topic == null) {
-                throw new IllegalArgumentException("topic cannot be null");
+                throw new IllegalArgumentException("'topic' cannot be null");
             }
             if (topic.isBlank()) {
-                throw new IllegalArgumentException("topic cannot be blank");
+                throw new IllegalArgumentException("'topic' cannot be blank");
             }
             batchSize = batchSize == null ? defaults.getBatchSize() : batchSize;
             polling = polling == null ? defaults.getPolling() : polling;

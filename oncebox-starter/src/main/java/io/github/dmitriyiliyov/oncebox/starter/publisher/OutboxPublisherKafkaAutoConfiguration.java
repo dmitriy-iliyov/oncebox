@@ -45,7 +45,7 @@ public class OutboxPublisherKafkaAutoConfiguration {
         String beanName = senderProperties.getBeanName();
         KafkaTemplate<String, String> kafkaTemplate;
         if (beanName == null || beanName.isEmpty()) {
-            log.warn("Sender bean-name is not specified. Will try to resolve by type");
+            log.warn("'sender.bean-name' is not specified, resolving the template by type");
             String [] beanNames = context.getBeanNamesForType(KafkaTemplate.class);
             if (beanNames.length == 0) {
                 throw new IllegalStateException("Cannot create OutboxSender: no KafkaTemplate bean found");
@@ -54,8 +54,8 @@ public class OutboxPublisherKafkaAutoConfiguration {
                 throw new IllegalStateException(
                         "Cannot create OutboxSender: found more then one KafkaTemplate bean: " +
                                 Arrays.toString(beanNames) +
-                                "Please define a KafkaTemplate<String, String> bean with this name, " +
-                                "or configure 'outbox.publisher.sender.bean-name' property"
+                                ". Please define a KafkaTemplate<String, String> bean with this name, " +
+                                "or configure 'sender.bean-name'"
                 );
             }
             beanName = beanNames[0];
@@ -64,7 +64,7 @@ public class OutboxPublisherKafkaAutoConfiguration {
             throw new IllegalArgumentException(
                     "Cannot create OutboxSender: KafkaTemplate bean '" + beanName + "' not found. " +
                             "Please define a KafkaTemplate<String, String> bean with this name, " +
-                            "or configure 'outbox.publisher.sender.bean-name' property"
+                            "or configure 'sender.bean-name'"
             );
         }
         senderProperties.setBeanName(beanName);
@@ -82,7 +82,7 @@ public class OutboxPublisherKafkaAutoConfiguration {
             idempotence = Boolean.parseBoolean((String) idempotenceObj);
         }
         if (idempotence == null || !idempotence) {
-            log.warn("Kafka producer is not idempotent. It is recommended to enabled 'enabled.idempotence=true' to avoid message duplication");
+            log.warn("Kafka producer is not idempotent. It is recommended to enabled 'enable.idempotence=true' to avoid message duplication");
         }
         return new KafkaOutboxSender(kafkaTemplate, senderProperties.getEmergencyTimeout().toSeconds());
     }

@@ -33,7 +33,7 @@ class OutboxConsumerCacheMetricsAutoConfigurationConditionTests {
     }
 
     @Test
-    @DisplayName("IT should NOT load configuration when oncebox.consumer.enabled is false")
+    @DisplayName("IT should NOT load configuration when 'oncebox.consumer.enabled' is false")
     void shouldNotLoadWhenConsumerEnabledIsFalse() {
         contextRunner
                 .withPropertyValues(
@@ -45,7 +45,7 @@ class OutboxConsumerCacheMetricsAutoConfigurationConditionTests {
     }
 
     @Test
-    @DisplayName("IT should NOT load configuration when oncebox.consumer.cache.enabled is false")
+    @DisplayName("IT should NOT load configuration when 'oncebox.consumer.cache.enabled' is false")
     void shouldNotLoadWhenCacheEnabledIsFalse() {
         contextRunner
                 .withPropertyValues(
@@ -57,7 +57,7 @@ class OutboxConsumerCacheMetricsAutoConfigurationConditionTests {
     }
 
     @Test
-    @DisplayName("IT should NOT load configuration when oncebox.consumer.cache.enabled is missing")
+    @DisplayName("IT should NOT load configuration when 'oncebox.consumer.cache.enabled' is missing")
     void shouldNotLoadWhenCacheEnabledIsMissing() {
         contextRunner
                 .withPropertyValues(
@@ -68,7 +68,7 @@ class OutboxConsumerCacheMetricsAutoConfigurationConditionTests {
     }
 
     @Test
-    @DisplayName("IT should NOT load configuration when oncebox.consumer.metrics.enabled is false")
+    @DisplayName("IT should NOT load configuration when 'oncebox.consumer.metrics.enabled' is false")
     void shouldNotLoadWhenMetricsEnabledIsFalse() {
         contextRunner
                 .withPropertyValues(
@@ -80,7 +80,7 @@ class OutboxConsumerCacheMetricsAutoConfigurationConditionTests {
     }
 
     @Test
-    @DisplayName("IT should NOT load configuration when oncebox.consumer.metrics.enabled is missing")
+    @DisplayName("IT should NOT load configuration when 'oncebox.consumer.metrics.enabled' is missing")
     void shouldNotLoadWhenMetricsEnabledIsMissing() {
         contextRunner
                 .withPropertyValues(

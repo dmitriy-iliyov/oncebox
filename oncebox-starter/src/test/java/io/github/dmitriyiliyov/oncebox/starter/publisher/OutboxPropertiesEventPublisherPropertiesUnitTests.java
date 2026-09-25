@@ -26,7 +26,7 @@ public class OutboxPropertiesEventPublisherPropertiesUnitTests {
                 () -> event.applyDefaults(defaults));
 
         // then
-        assertEquals("eventType cannot be null", e.getMessage());
+        assertEquals("'events' key cannot be null", e.getMessage());
     }
 
     @Test
@@ -44,7 +44,7 @@ public class OutboxPropertiesEventPublisherPropertiesUnitTests {
                 () -> event.applyDefaults(defaults));
 
         // then
-        assertEquals("eventType cannot be blank", e.getMessage());
+        assertEquals("'events' key cannot be blank", e.getMessage());
     }
 
     @Test
@@ -62,7 +62,7 @@ public class OutboxPropertiesEventPublisherPropertiesUnitTests {
                 () -> event.applyDefaults(defaults));
 
         // then
-        assertEquals("topic cannot be null", e.getMessage());
+        assertEquals("'topic' cannot be null", e.getMessage());
     }
 
     @Test
@@ -80,7 +80,7 @@ public class OutboxPropertiesEventPublisherPropertiesUnitTests {
                 () -> event.applyDefaults(defaults));
 
         // then
-        assertEquals("topic cannot be blank", e.getMessage());
+        assertEquals("'topic' cannot be blank", e.getMessage());
     }
 
     @Test

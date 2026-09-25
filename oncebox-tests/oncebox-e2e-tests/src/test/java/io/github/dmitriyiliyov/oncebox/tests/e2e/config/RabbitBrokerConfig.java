@@ -34,8 +34,8 @@ public class RabbitBrokerConfig {
     }
 
     /**
-     * Dedicated sender template resolved by the library via outbox.publisher.sender.bean-name.
-     * mandatory=true is required for at-least-once so unroutable messages are reported back.
+     * Dedicated sender template resolved by the library via {@code oncebox.publisher.sender.bean-name}.
+     * {@code mandatory=true} is required for at-least-once so unroutable messages are reported back.
      */
     @Bean
     public RabbitTemplate outboxRabbitTemplate(ConnectionFactory connectionFactory) {

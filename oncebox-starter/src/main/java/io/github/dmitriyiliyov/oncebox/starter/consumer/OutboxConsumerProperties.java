@@ -29,7 +29,7 @@ public class OutboxConsumerProperties {
             source.applyDefaults();
 
             if (mappings == null || mappings.isEmpty()) {
-                log.warn("Outbox consumer mappings is null or empty");
+                log.warn("Outbox Consumer is configured with empty 'mappings'");
             }
 
             if (cleanUp == null) {
@@ -38,7 +38,7 @@ public class OutboxConsumerProperties {
             }
             cleanUp.applyDefaults();
             if (!cleanUp.isEnabled()) {
-                log.warn("Consumer Outbox is configured with disabled clean-up, consumed outbox storage will not be cleaned automatically");
+                log.warn("Outbox Consumer is configured with 'clean-up.enabled=false', consumed outbox storage will not be cleaned automatically");
             }
 
             if (cache == null) {
@@ -47,7 +47,7 @@ public class OutboxConsumerProperties {
             }
             cache.applyDefaults();
             if (!cache.isEnabled()) {
-                log.warn("Consumer Outbox is configured with disabled cache");
+                log.warn("Outbox Consumer is configured with 'cache.enabled=false'");
             }
 
             if (metrics == null) {
@@ -142,7 +142,7 @@ public class OutboxConsumerProperties {
 
         public void applyDefaults() {
             if (type == null) {
-                throw new IllegalArgumentException("source type cannot be null");
+                throw new IllegalArgumentException("'source.type' cannot be null");
             }
         }
 
@@ -170,9 +170,9 @@ public class OutboxConsumerProperties {
         public void applyDefaults() {
             if (enabled == null || enabled) {
                 enabled = true;
-                Objects.requireNonNull(cacheName, "cacheName cannot be null");
+                Objects.requireNonNull(cacheName, "'cache-name' cannot be null");
                 if (cacheName.isBlank()) {
-                    throw new IllegalArgumentException("cacheName cannot be empty or blank");
+                    throw new IllegalArgumentException("'cache-name' cannot be empty or blank");
                 }
             } else {
                 enabled = false;

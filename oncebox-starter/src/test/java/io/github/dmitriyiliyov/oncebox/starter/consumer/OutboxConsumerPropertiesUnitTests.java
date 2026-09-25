@@ -132,7 +132,7 @@ class OutboxConsumerPropertiesUnitTests {
 
         // when + then
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, props::applyDefaults);
-        assertEquals("source type cannot be null", exception.getMessage());
+        assertEquals("'source.type' cannot be null", exception.getMessage());
     }
 
     @Test

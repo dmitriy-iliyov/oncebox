@@ -433,20 +433,20 @@ public class OutboxProperties implements OutboxPropertiesHolder {
         public void validate() {
             switch (type) {
                 case FIXED -> {
-                    Objects.requireNonNull(initialDelay, "initialDelay cannot be null");
-                    Objects.requireNonNull(fixedDelay, "fixedDelay cannot be null");
+                    Objects.requireNonNull(initialDelay, "'initial-delay' cannot be null");
+                    Objects.requireNonNull(fixedDelay, "'fixed-delay' cannot be null");
                 }
                 case ADAPTIVE -> {
                     Objects.requireNonNull(type, "type cannot be null");
-                    Objects.requireNonNull(initialDelay, "initialDelay cannot be null");
-                    Objects.requireNonNull(minFixedDelay, "minFixedDelay cannot be null");
-                    Objects.requireNonNull(maxFixedDelay, "maxFixedDelay cannot be null");
+                    Objects.requireNonNull(initialDelay, "'initial-delay' cannot be null");
+                    Objects.requireNonNull(minFixedDelay, "'min-fixed-delay' cannot be null");
+                    Objects.requireNonNull(maxFixedDelay, "'max-fixed-delay' cannot be null");
                     if (minFixedDelay.compareTo(maxFixedDelay) > 0) {
-                        throw new IllegalArgumentException("minFixedDelay cannot be greater than maxFixedDelay");
+                        throw new IllegalArgumentException("'min-fixed-delay' cannot be greater than 'max-fixed-delay'");
                     }
-                    Objects.requireNonNull(multiplier, "multiplier cannot be null");
+                    Objects.requireNonNull(multiplier, "'multiplier' cannot be null");
                     if (multiplier <= 0) {
-                        throw new IllegalArgumentException("multiplier cannot be negative or 0");
+                        throw new IllegalArgumentException("'multiplier' cannot be negative or 0");
                     }
                 }
             }
@@ -542,22 +542,22 @@ public class OutboxProperties implements OutboxPropertiesHolder {
             private static void validateForAdaptive(PollingType type, Duration initialDelay, Duration minFixedDelay,
                                                     Duration maxFixedDelay, Double multiplier) {
                 Objects.requireNonNull(type, "type cannot be null");
-                Objects.requireNonNull(initialDelay, "initialDelay cannot be null");
-                Objects.requireNonNull(minFixedDelay, "minFixedDelay cannot be null");
-                Objects.requireNonNull(maxFixedDelay, "maxFixedDelay cannot be null");
+                Objects.requireNonNull(initialDelay, "'initial-delay' cannot be null");
+                Objects.requireNonNull(minFixedDelay, "'min-fixed-delay' cannot be null");
+                Objects.requireNonNull(maxFixedDelay, "'max-fixed-delay' cannot be null");
                 if (minFixedDelay.compareTo(maxFixedDelay) > 0) {
-                    throw new IllegalArgumentException("minFixedDelay cannot be greater than maxFixedDelay");
+                    throw new IllegalArgumentException("'min-fixed-delay' cannot be greater than 'max-fixed-delay'");
                 }
-                Objects.requireNonNull(multiplier, "multiplier cannot be null");
+                Objects.requireNonNull(multiplier, "'multiplier' cannot be null");
                 if (multiplier <= 0) {
-                    throw new IllegalArgumentException("multiplier cannot be negative or 0");
+                    throw new IllegalArgumentException("'multiplier' cannot be negative or 0");
                 }
             }
 
             private static void validateForFixed(PollingType type, Duration initialDelay, Duration fixedDelay) {
                 Objects.requireNonNull(type, "type cannot be null");
-                Objects.requireNonNull(initialDelay, "initialDelay cannot be null");
-                Objects.requireNonNull(fixedDelay, "fixedDelay cannot be null");
+                Objects.requireNonNull(initialDelay, "'initial-delay' cannot be null");
+                Objects.requireNonNull(fixedDelay, "'fixed-delay' cannot be null");
             }
 
             public static Defaults ofAdaptive(PollingType type, Duration initialDelay, Duration minFixedDelay,
@@ -607,8 +607,8 @@ public class OutboxProperties implements OutboxPropertiesHolder {
         private Boolean resolveByPollingProperties = true;
 
         public void applyDefaults() {
-            Objects.requireNonNull(lockAtLeastFor, "lockAtLeastFor cannot be null");
-            Objects.requireNonNull(lockAtMostFor, "lockAtMostFor cannot be null");
+            Objects.requireNonNull(lockAtLeastFor, "'lock-at-least-for' cannot be null");
+            Objects.requireNonNull(lockAtMostFor, "'lock-at-most-for' cannot be null");
             if (resolveByPollingProperties) {
                 lockAtLeastFor = Duration.ZERO;
                 lockAtMostFor = Duration.ZERO;
