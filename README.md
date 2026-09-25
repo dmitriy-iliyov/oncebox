@@ -215,7 +215,7 @@ oncebox:
       # Your specific mappings    
     enabled: true
     cache:
-      cache-name: "oncebox:consumed"
+      cache-name: "<service-name>:oncebox:consumed"
 ```
 
 Read more about the configuration [here](#consumer-2).
@@ -563,6 +563,14 @@ As mentioned earlier, when consuming a batch of events, already-consumed events 
 
 For improved performance, consumed event identifiers can be cached in a distributed cache. When using this feature, ensure that cleanup of successfully processed events occurs after cache cleanup to prevent data loss.
 The library uses `CacheManager` from the application context. Cache configuration must be provided by the developer.
+
+> [!CAUTION]
+> **The cache name must be unique for each service.** A cache hit skips the operation without reaching the
+> database, and the cache key is the event id alone. Services that consume the same event and share a cache
+> store (for example, one Redis) under the same `cache-name` see each other's entries: the first service to
+> consume an event marks it for all of them, and every other service silently skips it. Prefix the name with
+> the service name (`<service-name>:oncebox:consumed`), or give each service its own key prefix
+> (`spring.cache.redis.key-prefix`) or its own cache store.
 
 ---
 
@@ -1115,7 +1123,7 @@ oncebox:
   consumer:
     cache:
       enabled: true
-      cache-name: "oncebox:consumed"
+      cache-name: "<service-name>:oncebox:consumed"
 ```
 
 > [!WARNING]
@@ -1124,7 +1132,7 @@ oncebox:
 | Property     | Description                                                                                                                                           |  Default  |
 |--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|:---------:|
 | `enabled`    | Enable distributed caching of consumed event ids                                                                                                      |  `false`  |
-| `cache-name` | Name of the cache in CacheManager (**required** when `consumer.cache.enabled` is true). Must match cache name configured in your `CacheManager` bean. |     —     |
+| `cache-name` | Name of the cache in CacheManager (**required** when `consumer.cache.enabled` is true). Must match cache name configured in your `CacheManager` bean. Must be unique for each service sharing a cache store, see [Idempotent Processing](#idempotent-processing). |     —     |
 
 ---
 
@@ -1263,7 +1271,7 @@ oncebox:
     mappings:
       # Your specific mappings
     cache:
-      cache-name: "oncebox:consumed"
+      cache-name: "<service-name>:oncebox:consumed"
 ```
 
 Minimal with all features:
@@ -1278,7 +1286,7 @@ oncebox:
     mappings:
       # Your specific mappings
     cache:
-      cache-name: "oncebox:consumed"
+      cache-name: "<service-name>:oncebox:consumed"
     metrics:
       enabled: true
 ```
@@ -1311,7 +1319,7 @@ oncebox:
         multiplier: 2.0
     cache:
       enabled: true
-      cache-name: "oncebox:consumed"
+      cache-name: "<service-name>:oncebox:consumed"
     metrics:
       enabled: true
 ```
