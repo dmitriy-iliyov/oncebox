@@ -72,7 +72,7 @@ class RabbitOutboxSenderIntegrationTests {
 
     @BeforeEach
     void setUp() {
-        sender = new RabbitOutboxSender(rabbitTemplate, 5L);
+        sender = new RabbitOutboxSender(rabbitTemplate, 5_000L);
 
         DirectExchange exchange = new DirectExchange(EXCHANGE, true, false);
         Queue queue = new Queue(QUEUE, true);

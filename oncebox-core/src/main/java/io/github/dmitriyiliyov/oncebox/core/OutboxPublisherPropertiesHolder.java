@@ -80,7 +80,7 @@ public interface OutboxPublisherPropertiesHolder {
         Double backoffMultiplier();
 
         /**
-         * The base delay for exponential backoff retry strategy.
+         * The base delay for exponential backoff retry strategy, in milliseconds.
          */
         Long backoffDelay();
     }

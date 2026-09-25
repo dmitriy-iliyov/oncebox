@@ -84,6 +84,6 @@ public class OutboxPublisherKafkaAutoConfiguration {
         if (idempotence == null || !idempotence) {
             log.warn("Kafka producer is not idempotent. It is recommended to enabled 'enable.idempotence=true' to avoid message duplication");
         }
-        return new KafkaOutboxSender(kafkaTemplate, senderProperties.getEmergencyTimeout().toSeconds());
+        return new KafkaOutboxSender(kafkaTemplate, senderProperties.getEmergencyTimeout().toMillis());
     }
 }

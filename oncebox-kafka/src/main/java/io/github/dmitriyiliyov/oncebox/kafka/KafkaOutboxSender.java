@@ -33,11 +33,11 @@ public class KafkaOutboxSender implements OutboxSender {
     );
 
     private final KafkaTemplate<String, String> kafkaTemplate;
-    private final long emergencyTimeout;
+    private final long emergencyTimeoutMillis;
 
-    public KafkaOutboxSender(KafkaTemplate<String, String> kafkaTemplate, long emergencyTimeout) {
+    public KafkaOutboxSender(KafkaTemplate<String, String> kafkaTemplate, long emergencyTimeoutMillis) {
         this.kafkaTemplate = Objects.requireNonNull(kafkaTemplate, "kafkaTemplate cannot be null");
-        this.emergencyTimeout = emergencyTimeout;
+        this.emergencyTimeoutMillis = emergencyTimeoutMillis;
     }
 
     @Override
@@ -78,7 +78,7 @@ public class KafkaOutboxSender implements OutboxSender {
 
         try {
             CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-                    .orTimeout(emergencyTimeout, TimeUnit.SECONDS)
+                    .orTimeout(emergencyTimeoutMillis, TimeUnit.MILLISECONDS)
                     .join();
         } catch (CompletionException e) {
             events.stream()

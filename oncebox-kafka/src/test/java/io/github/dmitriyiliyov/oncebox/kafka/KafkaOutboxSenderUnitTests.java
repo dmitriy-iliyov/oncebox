@@ -33,19 +33,19 @@ public class KafkaOutboxSenderUnitTests {
     @Mock
     KafkaTemplate<String, String> kafkaTemplate;
 
-    long emergencyTimeout = 120L;
+    long emergencyTimeoutMillis = 120_000L;
 
     KafkaOutboxSender tested;
 
     @BeforeEach
     void setup() {
-        tested = new KafkaOutboxSender(kafkaTemplate, emergencyTimeout);
+        tested = new KafkaOutboxSender(kafkaTemplate, emergencyTimeoutMillis);
     }
 
     @Test
     @DisplayName("UT constructor when kafkaTemplate is null should throw NullPointerException")
     void constructor_whenKafkaTemplateIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new KafkaOutboxSender(null, emergencyTimeout))
+        assertThatThrownBy(() -> new KafkaOutboxSender(null, emergencyTimeoutMillis))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("kafkaTemplate cannot be null");
     }

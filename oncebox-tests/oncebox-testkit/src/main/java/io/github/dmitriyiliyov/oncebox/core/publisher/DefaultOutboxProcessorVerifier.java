@@ -60,7 +60,7 @@ public class DefaultOutboxProcessorVerifier {
     }
 
     public void process_emptyOutbox_doesNothing() {
-        OutboxPublisherPropertiesHolder.EventPropertiesHolder properties = createProperties(10, 3, 2, 10L);
+        OutboxPublisherPropertiesHolder.EventPropertiesHolder properties = createProperties(10, 3, 2, 10_000L);
         processor.process(properties);
         verify(outboxSenderMock, never()).sendEvents(any(), any());
     }
@@ -68,7 +68,7 @@ public class DefaultOutboxProcessorVerifier {
     public void process_allEventsSentSuccessfully_statusChangedToProcessed() {
         OutboxEvent event1 = saveOutboxEvent(EventStatus.PENDING, 0);
         OutboxEvent event2 = saveOutboxEvent(EventStatus.PENDING, 0);
-        OutboxPublisherPropertiesHolder.EventPropertiesHolder properties = createProperties(10, 3, 2, 10L);
+        OutboxPublisherPropertiesHolder.EventPropertiesHolder properties = createProperties(10, 3, 2, 10_000L);
 
         when(outboxSenderMock.sendEvents(eq(properties.getTopic()), any())).thenAnswer(invocation -> {
             List<OutboxEvent> events = invocation.getArgument(1);
@@ -87,7 +87,7 @@ public class DefaultOutboxProcessorVerifier {
     public void process_someEventsFailed_retryCountIncrementedAndNextRetryUpdated() {
         OutboxEvent successEvent = saveOutboxEvent(EventStatus.PENDING, 1);
         OutboxEvent failEvent = saveOutboxEvent(EventStatus.PENDING, 1);
-        OutboxPublisherPropertiesHolder.EventPropertiesHolder properties = createProperties(10, 3, 2, 10L);
+        OutboxPublisherPropertiesHolder.EventPropertiesHolder properties = createProperties(10, 3, 2, 10_000L);
 
         when(outboxSenderMock.sendEvents(eq(properties.getTopic()), any())).thenReturn(
                 new SenderResult(
@@ -103,8 +103,8 @@ public class DefaultOutboxProcessorVerifier {
         OutboxEvent event = getEvent(failEvent.getId());
         assertThat(event.getStatus()).isEqualTo(EventStatus.PENDING);
         assertThat(event.getRetryCount()).isEqualTo(2);
-        long expectedDelaySeconds = (long) Math.pow(properties.backoffMultiplier(), failEvent.getRetryCount() + 1) * properties.backoffDelay();
-        Instant expectedTime = Instant.now().plusSeconds(expectedDelaySeconds);
+        long expectedDelayMillis = (long) (Math.pow(properties.backoffMultiplier(), failEvent.getRetryCount() + 1) * properties.backoffDelay());
+        Instant expectedTime = Instant.now().plusMillis(expectedDelayMillis);
 
         assertThat(event.getNextRetryAt()).isCloseTo(expectedTime, within(2, ChronoUnit.SECONDS));
     }
@@ -112,7 +112,7 @@ public class DefaultOutboxProcessorVerifier {
     public void process_senderThrowsException_allEventsTreatedAsFailed() {
         OutboxEvent event1 = saveOutboxEvent(EventStatus.PENDING, 0);
         OutboxEvent event2 = saveOutboxEvent(EventStatus.PENDING, 0);
-        OutboxPublisherPropertiesHolder.EventPropertiesHolder properties = createProperties(10, 3, 2, 10L);
+        OutboxPublisherPropertiesHolder.EventPropertiesHolder properties = createProperties(10, 3, 2, 10_000L);
 
         when(outboxSenderMock.sendEvents(eq(properties.getTopic()), any()))
                 .thenThrow(new RuntimeException("Kafka is down"));
@@ -129,7 +129,7 @@ public class DefaultOutboxProcessorVerifier {
     public void process_maxRetriesExceeded_statusChangedToFailed() {
         int maxRetries = 3;
         OutboxEvent event = saveOutboxEvent(EventStatus.PENDING, maxRetries);
-        OutboxPublisherPropertiesHolder.EventPropertiesHolder properties = createProperties(10, maxRetries, 2, 10L);
+        OutboxPublisherPropertiesHolder.EventPropertiesHolder properties = createProperties(10, maxRetries, 2, 10_000L);
 
         when(outboxSenderMock.sendEvents(eq(properties.getTopic()), any())).thenReturn(
                 new SenderResult(Collections.emptySet(), Set.of(event.getId()))

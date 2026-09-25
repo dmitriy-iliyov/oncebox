@@ -52,7 +52,7 @@ class OutboxPublishingComponentTests {
         when(eventProperties.getBatchSize()).thenReturn(10);
         when(eventProperties.getMaxRetries()).thenReturn(3);
         when(eventProperties.backoffMultiplier()).thenReturn(2.0);
-        when(eventProperties.backoffDelay()).thenReturn(10L);
+        when(eventProperties.backoffDelay()).thenReturn(10_000L);
 
         manager = new DefaultOutboxManager(repository, clock);
         publisher = new DefaultOutboxPublisher(

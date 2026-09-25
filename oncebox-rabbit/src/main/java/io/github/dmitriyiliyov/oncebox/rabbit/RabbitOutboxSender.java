@@ -22,11 +22,11 @@ public class RabbitOutboxSender implements OutboxSender {
     private static final Logger log = LoggerFactory.getLogger(RabbitOutboxSender.class);
 
     private final RabbitTemplate rabbitTemplate;
-    private final long emergencyTimeout;
+    private final long emergencyTimeoutMillis;
 
-    public RabbitOutboxSender(RabbitTemplate rabbitTemplate, long emergencyTimeout) {
+    public RabbitOutboxSender(RabbitTemplate rabbitTemplate, long emergencyTimeoutMillis) {
         this.rabbitTemplate = Objects.requireNonNull(rabbitTemplate, "rabbitTemplate cannot be null");
-        this.emergencyTimeout = emergencyTimeout;
+        this.emergencyTimeoutMillis = emergencyTimeoutMillis;
     }
 
     @Override
@@ -69,7 +69,7 @@ public class RabbitOutboxSender implements OutboxSender {
                 }
                 return null;
             });
-            boolean completed = latch.await(emergencyTimeout, TimeUnit.SECONDS);
+            boolean completed = latch.await(emergencyTimeoutMillis, TimeUnit.MILLISECONDS);
             if (!completed) {
                 events.stream()
                         .filter(e -> !processedIds.contains(e.getId()) && !failedIds.contains(e.getId()))

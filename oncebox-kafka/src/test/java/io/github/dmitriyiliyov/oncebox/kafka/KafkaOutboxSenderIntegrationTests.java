@@ -73,7 +73,7 @@ class KafkaOutboxSenderIntegrationTests {
     @BeforeEach
     void setUp() {
         receiver.clear();
-        sender = new KafkaOutboxSender(kafkaTemplate, 5L);
+        sender = new KafkaOutboxSender(kafkaTemplate, 5_000L);
     }
 
     @Test

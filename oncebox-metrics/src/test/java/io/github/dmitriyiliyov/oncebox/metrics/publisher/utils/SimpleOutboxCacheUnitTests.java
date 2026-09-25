@@ -30,7 +30,7 @@ class SimpleOutboxCacheUnitTests {
     @Test
     @DisplayName("UT getCount() should return null when cache is empty")
     void getCount_shouldReturnNull_whenCacheIsEmpty() {
-        SimpleOutboxCache<TestStatus> cache = new SimpleOutboxCache<>(1, 2, 2);
+        SimpleOutboxCache<TestStatus> cache = new SimpleOutboxCache<>(1_000L, 2_000L, 2_000L);
 
         assertNull(cache.getCount());
     }
@@ -38,7 +38,7 @@ class SimpleOutboxCacheUnitTests {
     @Test
     @DisplayName("UT getCount() should return value when cache is not empty")
     void getCount_shouldReturnValue_whenCacheIsNotEmpty() {
-        SimpleOutboxCache<TestStatus> cache = new SimpleOutboxCache<>(1, 2, 2);
+        SimpleOutboxCache<TestStatus> cache = new SimpleOutboxCache<>(1_000L, 2_000L, 2_000L);
 
         cache.putCount(10L);
 
@@ -48,7 +48,7 @@ class SimpleOutboxCacheUnitTests {
     @Test
     @DisplayName("UT getCount() should return null when ttl expired")
     void getCount_shouldReturnNull_whenTtlExpired() throws InterruptedException {
-        SimpleOutboxCache<TestStatus> cache = new SimpleOutboxCache<>(1, 2, 2);
+        SimpleOutboxCache<TestStatus> cache = new SimpleOutboxCache<>(1_000L, 2_000L, 2_000L);
 
         cache.putCount(10L);
         TimeUnit.SECONDS.sleep(2);
@@ -59,7 +59,7 @@ class SimpleOutboxCacheUnitTests {
     @Test
     @DisplayName("UT getCountByStatus() should return null when cache is empty")
     void getCountByStatus_shouldReturnNull_whenCacheIsEmpty() {
-        SimpleOutboxCache<TestStatus> cache = new SimpleOutboxCache<>(1, 2, 2);
+        SimpleOutboxCache<TestStatus> cache = new SimpleOutboxCache<>(1_000L, 2_000L, 2_000L);
 
         assertNull(cache.getCountByStatus(TestStatus.STATUS_A));
     }
@@ -67,7 +67,7 @@ class SimpleOutboxCacheUnitTests {
     @Test
     @DisplayName("UT getCountByStatus() should return value when cache is not empty")
     void getCountByStatus_shouldReturnValue_whenCacheIsNotEmpty() {
-        SimpleOutboxCache<TestStatus> cache = new SimpleOutboxCache<>(1, 1, 2);
+        SimpleOutboxCache<TestStatus> cache = new SimpleOutboxCache<>(1_000L, 1_000L, 2_000L);
 
         cache.putCountByStatus(TestStatus.STATUS_A, 5L);
 
@@ -78,7 +78,7 @@ class SimpleOutboxCacheUnitTests {
     @Test
     @DisplayName("UT getCountByStatus() should return null when ttl expired")
     void getCountByStatus_shouldReturnNull_whenTtlExpired() throws InterruptedException {
-        SimpleOutboxCache<TestStatus> cache = new SimpleOutboxCache<>(1, 2, 2);
+        SimpleOutboxCache<TestStatus> cache = new SimpleOutboxCache<>(1_000L, 2_000L, 2_000L);
 
         cache.putCountByStatus(TestStatus.STATUS_A, 5L);
         TimeUnit.SECONDS.sleep(3);
@@ -89,7 +89,7 @@ class SimpleOutboxCacheUnitTests {
     @Test
     @DisplayName("UT getCountByEventTypeAndStatus() should return null when cache is empty")
     void getCountByEventTypeAndStatus_shouldReturnNull_whenCacheIsEmpty() {
-        SimpleOutboxCache<TestStatus> cache = new SimpleOutboxCache<>(1, 2, 2);
+        SimpleOutboxCache<TestStatus> cache = new SimpleOutboxCache<>(1_000L, 2_000L, 2_000L);
 
         assertNull(cache.getCountByEventTypeAndStatus("typeA", TestStatus.STATUS_A));
     }
@@ -97,7 +97,7 @@ class SimpleOutboxCacheUnitTests {
     @Test
     @DisplayName("UT getCountByEventTypeAndStatus() should return value when cache is not empty")
     void getCountByEventTypeAndStatus_shouldReturnValue_whenCacheIsNotEmpty() {
-        SimpleOutboxCache<TestStatus> cache = new SimpleOutboxCache<>(1, 2, 1);
+        SimpleOutboxCache<TestStatus> cache = new SimpleOutboxCache<>(1_000L, 2_000L, 1_000L);
 
         cache.putCountByEventTypeAndStatus("typeA", TestStatus.STATUS_A, 3L);
 
@@ -109,12 +109,24 @@ class SimpleOutboxCacheUnitTests {
     @Test
     @DisplayName("UT getCountByEventTypeAndStatus() should return null when ttl expired")
     void getCountByEventTypeAndStatus_shouldReturnNull_whenTtlExpired() throws InterruptedException {
-        SimpleOutboxCache<TestStatus> cache = new SimpleOutboxCache<>(1, 1, 2);
+        SimpleOutboxCache<TestStatus> cache = new SimpleOutboxCache<>(1_000L, 1_000L, 2_000L);
 
         cache.putCountByEventTypeAndStatus("typeA", TestStatus.STATUS_A, 3L);
         TimeUnit.SECONDS.sleep(3);
 
         assertNull(cache.getCountByEventTypeAndStatus("typeA", TestStatus.STATUS_A));
+    }
+
+    @Test
+    @DisplayName("UT getCount() when ttl is below a second should keep the value until it expires")
+    void getCount_whenTtlIsBelowSecond_shouldKeepValueUntilItExpires() throws InterruptedException {
+        SimpleOutboxCache<TestStatus> cache = new SimpleOutboxCache<>(500L, 500L, 500L);
+
+        cache.putCount(10L);
+        assertEquals(10L, cache.getCount());
+
+        TimeUnit.MILLISECONDS.sleep(700);
+        assertNull(cache.getCount());
     }
 
     private enum TestStatus {

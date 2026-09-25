@@ -37,7 +37,7 @@ import static org.mockito.Mockito.*;
 class RabbitOutboxSenderUnitTests {
 
     private static final String EXCHANGE = "test-exchange";
-    private static final long TIMEOUT_SECONDS = 5;
+    private static final long TIMEOUT_MILLIS = 5_000L;
     private static final Instant CREATED_AT = Instant.parse("2026-09-24T10:00:00Z");
     private static final OutboxEvent FIRST = event("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "type1", "payload1");
     private static final OutboxEvent SECOND = event("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", "type2", "payload2");
@@ -53,7 +53,7 @@ class RabbitOutboxSenderUnitTests {
     @DisplayName("UT constructor when rabbitTemplate is null should throw NullPointerException")
     void constructor_whenRabbitTemplateIsNull_shouldThrowNullPointerException() {
         // when / then
-        assertThatThrownBy(() -> new RabbitOutboxSender(null, TIMEOUT_SECONDS))
+        assertThatThrownBy(() -> new RabbitOutboxSender(null, TIMEOUT_MILLIS))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("rabbitTemplate cannot be null");
     }
@@ -62,7 +62,7 @@ class RabbitOutboxSenderUnitTests {
     @DisplayName("UT sendEvents() when events is null should return an empty result without touching the broker")
     void sendEvents_whenEventsIsNull_shouldReturnEmptyResult() {
         // when
-        SenderResult result = new RabbitOutboxSender(rabbitTemplate, TIMEOUT_SECONDS).sendEvents(EXCHANGE, null);
+        SenderResult result = new RabbitOutboxSender(rabbitTemplate, TIMEOUT_MILLIS).sendEvents(EXCHANGE, null);
 
         // then
         assertThat(result.processedIds()).isEmpty();
@@ -74,7 +74,7 @@ class RabbitOutboxSenderUnitTests {
     @DisplayName("UT sendEvents() when events is empty should return an empty result without touching the broker")
     void sendEvents_whenEventsIsEmpty_shouldReturnEmptyResult() {
         // when
-        SenderResult result = new RabbitOutboxSender(rabbitTemplate, TIMEOUT_SECONDS)
+        SenderResult result = new RabbitOutboxSender(rabbitTemplate, TIMEOUT_MILLIS)
                 .sendEvents(EXCHANGE, Collections.emptyList());
 
         // then
@@ -206,7 +206,7 @@ class RabbitOutboxSenderUnitTests {
         doThrow(new AmqpException("Connection failed")).when(rabbitTemplate).execute(any(ChannelCallback.class));
 
         // when
-        SenderResult result = new RabbitOutboxSender(rabbitTemplate, TIMEOUT_SECONDS).sendEvents(EXCHANGE, List.of(FIRST));
+        SenderResult result = new RabbitOutboxSender(rabbitTemplate, TIMEOUT_MILLIS).sendEvents(EXCHANGE, List.of(FIRST));
 
         // then
         assertThat(result.failedIds()).containsExactly(FIRST.getId());
@@ -217,7 +217,7 @@ class RabbitOutboxSenderUnitTests {
     @DisplayName("UT sendEvents() when the timeout expires before every confirm should report the unconfirmed events as failed")
     void sendEvents_whenTimeoutExpires_shouldReportUnconfirmedFailed() throws Exception {
         // given
-        RabbitOutboxSender sender = senderConfirming(2, 1, listener -> listener.handleAck(1L, false));
+        RabbitOutboxSender sender = senderConfirming(2, 1_000L, listener -> listener.handleAck(1L, false));
 
         // when
         SenderResult result = sender.sendEvents(EXCHANGE, List.of(FIRST, SECOND));
@@ -231,7 +231,7 @@ class RabbitOutboxSenderUnitTests {
     @DisplayName("UT sendEvents() when the timeout expires with a publish failure among them should report both unfinished events as failed")
     void sendEvents_whenTimeoutExpiresWithPublishFailure_shouldReportBothFailed() throws Exception {
         // given
-        RabbitOutboxSender sender = senderConfirming(3, 1, listener -> listener.handleAck(1L, false));
+        RabbitOutboxSender sender = senderConfirming(3, 1_000L, listener -> listener.handleAck(1L, false));
         lenient().doThrow(new IOException("Publish failed")).when(channel)
                 .basicPublish(eq(EXCHANGE), eq("type2"), anyBoolean(), any(AMQP.BasicProperties.class), any(byte[].class));
 
@@ -263,14 +263,14 @@ class RabbitOutboxSenderUnitTests {
     }
 
     private RabbitOutboxSender senderConfirming(int events, Confirms confirms) throws IOException {
-        return senderConfirming(events, TIMEOUT_SECONDS, confirms);
+        return senderConfirming(events, TIMEOUT_MILLIS, confirms);
     }
 
     /**
      * Runs the channel callback against the mocked channel and then delivers {@code confirms} to the listener the
      * sender registered, still inside {@code execute} - so they arrive after every publish and before the wait.
      */
-    private RabbitOutboxSender senderConfirming(int events, long timeoutSeconds, Confirms confirms)
+    private RabbitOutboxSender senderConfirming(int events, long timeoutMillis, Confirms confirms)
             throws IOException {
         Long[] tags = new Long[events - 1];
         for (int i = 0; i < tags.length; i++) {
@@ -288,7 +288,7 @@ class RabbitOutboxSenderUnitTests {
             confirms.deliver(listener.get());
             return result;
         }).when(rabbitTemplate).execute(any(ChannelCallback.class));
-        return new RabbitOutboxSender(rabbitTemplate, timeoutSeconds);
+        return new RabbitOutboxSender(rabbitTemplate, timeoutMillis);
     }
 
     private static OutboxEvent event(String id, String eventType, String payload) {

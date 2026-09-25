@@ -472,7 +472,7 @@ public class OutboxPublisherProperties implements OutboxPublisherPropertiesHolde
 
         @Override
         public Long backoffDelay() {
-            return backoff.getDelay().toSeconds();
+            return backoff.getDelay().toMillis();
         }
 
         @Override

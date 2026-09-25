@@ -394,7 +394,7 @@ class OutboxPublisherPropertiesDefaultsUnitTests {
                     () -> assertThat(event.getFixedDelay()).isEqualTo(Duration.ofSeconds(0)),
                     () -> assertThat(event.getMultiplier()).isEqualTo(1.8),
                     () -> assertThat(event.backoffMultiplier()).isEqualTo(3.3),
-                    () -> assertThat(event.backoffDelay()).isEqualTo(55L)
+                    () -> assertThat(event.backoffDelay()).isEqualTo(55_000L)
             );
         }
     }

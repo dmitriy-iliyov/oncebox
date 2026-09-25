@@ -62,7 +62,7 @@ public class DefaultOutboxProcessor implements OutboxProcessor {
                 retryCount -> {
                     double currentMultiplier = Math.pow(properties.backoffMultiplier(), retryCount);
                     return clock.instant()
-                            .plusSeconds((long) currentMultiplier * properties.backoffDelay());
+                            .plusMillis((long) (currentMultiplier * properties.backoffDelay()));
                 },
                 lockToken
         );

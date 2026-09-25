@@ -25,7 +25,7 @@ public class DefaultOutboxMetricsServiceIntegrationTests {
     void setUp() {
         service = new DefaultOutboxMetricsService(
                 repository,
-                new SimpleOutboxCache<>(60L, 60L, 60L)
+                new SimpleOutboxCache<>(60_000L, 60_000L, 60_000L)
         );
     }
 
@@ -54,7 +54,7 @@ public class DefaultOutboxMetricsServiceIntegrationTests {
     void count_cacheExpired_callsRepositoryAgain() throws InterruptedException {
         service = new DefaultOutboxMetricsService(
                 repository,
-                new SimpleOutboxCache<>(0L, 60L, 60L)
+                new SimpleOutboxCache<>(0L, 60_000L, 60_000L)
         );
         when(repository.count()).thenReturn(3L, 7L);
 
@@ -118,7 +118,7 @@ public class DefaultOutboxMetricsServiceIntegrationTests {
     void countByStatus_cacheExpired_callsRepositoryAgain() throws InterruptedException {
         service = new DefaultOutboxMetricsService(
                 repository,
-                new SimpleOutboxCache<>(60L, 0L, 60L)
+                new SimpleOutboxCache<>(60_000L, 0L, 60_000L)
         );
         when(repository.countByStatus(EventStatus.PENDING)).thenReturn(1L, 9L);
 
@@ -199,7 +199,7 @@ public class DefaultOutboxMetricsServiceIntegrationTests {
     void countByEventTypeAndStatus_cacheExpired_callsRepositoryAgain() throws InterruptedException {
         service = new DefaultOutboxMetricsService(
                 repository,
-                new SimpleOutboxCache<>(60L, 60L, 0L)
+                new SimpleOutboxCache<>(60_000L, 60_000L, 0L)
         );
         when(repository.countByEventTypeAndStatus("ORDER_CREATED", EventStatus.PENDING)).thenReturn(1L, 8L);
 

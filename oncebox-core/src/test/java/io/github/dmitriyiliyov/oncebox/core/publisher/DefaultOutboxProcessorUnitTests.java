@@ -202,7 +202,7 @@ class DefaultOutboxProcessorUnitTests {
     @DisplayName("UT process() when batch fails should make each retry wait multiplier times the previous one")
     void process_whenBatchFails_shouldGrowRetryDelayByMultiplier() {
         // given
-        Function<Integer, Instant> nextRetryAt = captureNextRetryAt(3.0, 10L);
+        Function<Integer, Instant> nextRetryAt = captureNextRetryAt(3.0, 10_000L);
 
         // when
         Duration first = Duration.between(NOW, nextRetryAt.apply(1));
@@ -211,6 +211,20 @@ class DefaultOutboxProcessorUnitTests {
         // then
         assertThat(first).isPositive();
         assertThat(second).isEqualTo(first.multipliedBy(3));
+    }
+
+    @Test
+    @DisplayName("UT process() when multiplier is fractional should grow the retry delay by the exact multiplier")
+    void process_whenMultiplierIsFractional_shouldGrowRetryDelayByExactMultiplier() {
+        // given
+        Function<Integer, Instant> nextRetryAt = captureNextRetryAt(1.5, 10_000L);
+
+        // when
+        Duration first = Duration.between(NOW, nextRetryAt.apply(1));
+        Duration second = Duration.between(NOW, nextRetryAt.apply(2));
+
+        // then
+        assertThat(second.toMillis()).isEqualTo(first.toMillis() * 3 / 2);
     }
 
     private static final Instant NOW = Instant.parse("2026-09-24T10:00:00Z");

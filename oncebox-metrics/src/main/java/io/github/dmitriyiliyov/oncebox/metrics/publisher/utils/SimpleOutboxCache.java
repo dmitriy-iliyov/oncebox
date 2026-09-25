@@ -16,15 +16,15 @@ public final class SimpleOutboxCache<S extends Enum<S>> implements OutboxCache<S
     private final Duration countByEventTypeAndStatusTtl;
     private final Map<String, CachedCount> countByEventTypeAndStatus;
 
-    public SimpleOutboxCache(long ... ttls) {
-        Objects.requireNonNull(ttls, "ttls cannot be null");
-        if (ttls.length != 3) {
+    public SimpleOutboxCache(long ... ttlsMillis) {
+        Objects.requireNonNull(ttlsMillis, "ttlsMillis cannot be null");
+        if (ttlsMillis.length != 3) {
             throw new IllegalArgumentException("Ttls should contain three values");
         }
-        this.currentTotalCount = new CachedCount(Duration.ofSeconds(ttls[0]));
-        this.countByStatusTtl = Duration.ofSeconds(ttls[1]);
+        this.currentTotalCount = new CachedCount(Duration.ofMillis(ttlsMillis[0]));
+        this.countByStatusTtl = Duration.ofMillis(ttlsMillis[1]);
         this.countByStatus = new ConcurrentHashMap<>();
-        this.countByEventTypeAndStatusTtl = Duration.ofSeconds(ttls[2]);
+        this.countByEventTypeAndStatusTtl = Duration.ofMillis(ttlsMillis[2]);
         this.countByEventTypeAndStatus = new ConcurrentHashMap<>();
     }
 

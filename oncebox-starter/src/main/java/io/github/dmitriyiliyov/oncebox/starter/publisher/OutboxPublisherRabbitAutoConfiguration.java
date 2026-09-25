@@ -74,6 +74,6 @@ public class OutboxPublisherRabbitAutoConfiguration {
             log.error("RabbitTemplate '{}' mandatory flag is false. " +
                     "ReturnedMessage will not be received. You should set 'mandatory=true' for at-least-once", beanName);
         }
-        return new RabbitOutboxSender(rabbitTemplate, senderProperties.getEmergencyTimeout().toSeconds());
+        return new RabbitOutboxSender(rabbitTemplate, senderProperties.getEmergencyTimeout().toMillis());
     }
 }

@@ -53,7 +53,7 @@ public class OutboxPublisherMetricsAutoConfiguration {
                 if (cacheProperties != null && !Boolean.FALSE.equals(cacheProperties.isEnabled())) {
                     List<Duration> ttls = cacheProperties.getTtls();
                     return new SimpleOutboxCache<>(
-                            ttls.get(0).toSeconds(), ttls.get(1).toSeconds(), ttls.get(2).toSeconds()
+                            ttls.get(0).toMillis(), ttls.get(1).toMillis(), ttls.get(2).toMillis()
                     );
                 }
             }

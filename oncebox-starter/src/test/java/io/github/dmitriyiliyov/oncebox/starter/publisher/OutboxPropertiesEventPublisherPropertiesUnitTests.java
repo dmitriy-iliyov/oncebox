@@ -108,7 +108,7 @@ public class OutboxPropertiesEventPublisherPropertiesUnitTests {
         assertEquals(defaults.getPolling().getInitialDelay(), event.getInitialDelay());
         assertEquals(defaults.getPolling().getType(), event.getPolling().getType());
 
-        assertEquals(defaults.getBackoff().getDelay().toSeconds(), event.backoffDelay());
+        assertEquals(defaults.getBackoff().getDelay().toMillis(), event.backoffDelay());
         assertEquals(defaults.getBackoff().getMultiplier(), event.backoffMultiplier());
     }
 
@@ -158,7 +158,7 @@ public class OutboxPropertiesEventPublisherPropertiesUnitTests {
     }
 
     @Test
-    @DisplayName("UT backoffDelay() should return correct delay in seconds")
+    @DisplayName("UT backoffDelay() should return correct delay in milliseconds")
     public void backoffDelay_shouldReturnCorrectValue() {
         // given
         OutboxPublisherProperties.BackoffProperties backoff = new OutboxPublisherProperties.BackoffProperties(true, Duration.ofSeconds(15), 3.5);
@@ -175,7 +175,27 @@ public class OutboxPropertiesEventPublisherPropertiesUnitTests {
         long delay = event.backoffDelay();
 
         // then
-        assertEquals(15L, delay);
+        assertEquals(15_000L, delay);
+    }
+
+    @Test
+    @DisplayName("UT backoffDelay() when delay is below a second should keep it instead of truncating to 0")
+    public void backoffDelay_whenDelayIsBelowSecond_shouldKeepIt() {
+        // given
+        OutboxPublisherProperties.BackoffProperties backoff = new OutboxPublisherProperties.BackoffProperties(true, Duration.ofMillis(500), 2.0);
+        OutboxPublisherProperties.EventProperties event = new OutboxPublisherProperties.EventProperties();
+        event.setEventType("event");
+        event.setTopic("topic");
+        event.setBackoff(backoff);
+
+        OutboxPublisherProperties.EventProperties.Defaults defaults = new OutboxPublisherProperties.EventProperties.Defaults();
+        defaults.applyDefaults();
+
+        // when
+        event.applyDefaults(defaults);
+
+        // then
+        assertEquals(500L, event.backoffDelay());
     }
 
     @Test
@@ -214,7 +234,7 @@ public class OutboxPropertiesEventPublisherPropertiesUnitTests {
         assertEquals(Duration.ofSeconds(10), event.getFixedDelay());
 
         assertEquals(backoff, event.getBackoff());
-        assertEquals(10L, event.backoffDelay());
+        assertEquals(10_000L, event.backoffDelay());
         assertEquals(5.3, event.backoffMultiplier());
     }
 
