@@ -202,7 +202,7 @@ You can also add `oncebox-consumer-cache` to enable the cache on consumer side, 
 7. Minimal YAML config:
 
 > [!NOTE]
-> Cleanup and cache are enabled by default.
+> Cleanup is enabled by default, cache is enabled once `cache.cache-name` is set.
 
 ```yaml
 oncebox:
@@ -682,8 +682,8 @@ These timers help identify performance bottlenecks during bulk recovery or DLQ r
 #### Thread Pool Size
 When calculating the thread pool size, it's important to account for all background system processes. 
 
-Publisher requires four threads for its background operations (stuck event recovery, cleanup, DLQ transfers and cleanup), 
-plus one additional thread for each configured event type. Therefore, the recommended number of threads is `4 + n`, where `n` is the number of event types.
+Publisher requires two threads for its background operations (stuck event recovery and cleanup), three more when DLQ is enabled (transfer to DLQ, transfer from DLQ and DLQ cleanup), 
+plus one additional thread for each configured event type. Therefore, the recommended number of threads is `2 + n` without DLQ and `5 + n` with DLQ, where `n` is the number of event types.
 
 Consumer side requires only one thread for cleanup as background operation, the number of threads is `1`.
 
@@ -705,9 +705,9 @@ oncebox:
 | Property                                         | Description                                                                                                                                                                                                                                                               | Default                        |
 |--------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-------------------------------|
 | `thread-pool-size`                               | Size of the thread pool for parallel event processing                                                                                                                                                                                                                     | `min(available_processors, 5)` |
-| `auto-create`                                    | Automatically create outbox tables on startup. Create 4 tables: <br/>- `outbox_events` and `outbox_jobs`; <br/>- `outbox_dlq_events` (when `outbox.publisher.dlq.enabled` is `true`); <br/>- `outbox_consumed_events` (when `outbox.consumer.enabled` is `true`).         | `true`                         |
-| `distributed-lock.lock-at-least-for`             | Minimum time duration betwean lock. Used when `resolve-by-polling-properties` is false.                                                                                                                                                                                   | `1s`                           |
-| `distributed-lock.lock-at-most-for`              | Maximum time duration betwean lock, the lock will be released by another instance even if it is not released by another. Used when `resolve-by-polling-properties` is false.                                                                                              | `1m`                           |
+| `tables.auto-create`                             | Automatically create outbox tables on startup. Create 4 tables: <br/>- `outbox_events` and `outbox_jobs`; <br/>- `outbox_dlq_events` (when `oncebox.publisher.dlq.enabled` is `true`); <br/>- `outbox_consumed_events` (when `oncebox.consumer.enabled` is `true`).       | `true`                         |
+| `distributed-lock.lock-at-least-for`             | Minimum time duration between locks. Used when `resolve-by-polling-properties` is false.                                                                                                                                                                                 | `1s`                           |
+| `distributed-lock.lock-at-most-for`              | Maximum time duration between locks, the lock can be taken by another instance even if the holder has not released it. Used when `resolve-by-polling-properties` is false.                                                                                        | `1m`                           |
 | `distributed-lock.resolve-by-polling-properties` | When this property is enabled, `lock-at-least-for` and `lock-at-most-for` are calculated as follows: <br/> - if `polling.type` of clean-up is `fixed`, they are based on `fixed-delay`; <br/> - if `adaptive`, they are based on `min-fixed-delay` and `max-fixed-delay`. | `true`                         |
 
 ### Publisher
@@ -725,7 +725,7 @@ oncebox:
 | Property            | Description                                  | Default                                               |
 |---------------------|----------------------------------------------|:------------------------------------------------------|
 | `type`              | Message broker type (`kafka` or `rabbit`)    | —                                                     |
-| `bean-name`         | Custom sender bean name for multiple senders | Try resolving by Java type according to `sender.type` |
+| `bean-name`         | Custom sender bean name for multiple senders | Resolved by Java type according to `type`             |
 | `emergency-timeout` | Maximum time to wait for a send operation    | `120s`                                                |
 
 ---
@@ -761,7 +761,8 @@ polling:
 | `multiplier`      | Multiplier for exponential backoff between polling iterations          |
 
 > [!NOTE]
-> Polling does not have global defaults. Each property group-such as defaults, current event, cleanup, stuck recovery, and DLQ transfers-has its own polling default values. 
+> Polling does not have global defaults. Each property group — such as defaults, current event, cleanup, stuck recovery, and DLQ transfers — has its own polling default values.
+
 ---
 
 #### Defaults & Events
@@ -892,7 +893,8 @@ oncebox:
     events:
       high-priority:
         topic: events
-        min-fixed-delay: 250ms  # Override: faster polling
+        polling:
+          min-fixed-delay: 250ms  # Override: faster polling
         # Inherits: batch-size=200, other polling settings, max-retries=3, backoff 
       
       low-priority:
@@ -993,7 +995,7 @@ oncebox:
           max-fixed-delay: 1m
           multiplier: 2.0
 ```
-DLQ has shared section with `batch-size`, `polling`. Values from this section will be used in `transfer-to` and `transfer-from` as defaults.
+DLQ has a shared section with `batch-size`, `polling`. Values from this section will be used in `transfer-to` and `transfer-from` as defaults.
 > [!WARNING]
 > When disabled, failed events are not managed automatically and stay in `outbox_events` as `FAILED`.
 
@@ -1024,12 +1026,12 @@ oncebox:
         max-fixed-delay: 2m
         multiplier: 10.0
       transfer-to:
-        pooling:
+        polling:
           multiplier: 2.5
-      # Inherits: batch-size=500, other polling settings except multiplier
+        # Inherits: batch-size=500, other polling settings except multiplier
       transfer-from:
         batch-size: 1000
-        pooling:
+        polling:
           type: fixed
           initial-delay: 5m
           fixed-delay: 1m
@@ -1055,7 +1057,7 @@ oncebox:
 | `gauge.cache.enabled` | Enable cache (false when `gauge.enabled` is false) |       `false`       |
 | `gauge.cache.ttls`    | TTL for caching different gauge metric values      |  `[60s, 60s, 60s]`  |
 
-This enable metrics collecting and gauges with cache default ttls:
+This enables metrics collection only, gauges stay disabled until `gauge.enabled` is set to `true`:
 ```yaml
 oncebox:
   publisher:
@@ -1093,7 +1095,7 @@ oncebox:
 
 | Property   | Description                                                                                                                                                                                                                                                                                          |
 |------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `mappings` | A map where keys are event types and values are the target event object classes. The keys in this map must exactly match the keys used for configuring the consumption parameters (e.g., `topics`, `batch-size`, `polling`, `backoff`). For example: `create-order`, `update-order`, `delete-order`. |
+| `mappings` | A map where keys are event types and values are the target event object classes. The keys in this map must exactly match the event types configured on the publisher side under `oncebox.publisher.events`. For example: `create-order`, `update-order`, `delete-order`. |
 
 ---
 
@@ -1131,7 +1133,7 @@ oncebox:
 
 | Property     | Description                                                                                                                                           |  Default  |
 |--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|:---------:|
-| `enabled`    | Enable distributed caching of consumed event ids                                                                                                      |  `false`  |
+| `enabled`    | Enable distributed caching of consumed event ids. Disabled when the `cache` section is absent, enabled when it is present and `enabled` is not set      |  `false`  |
 | `cache-name` | Name of the cache in CacheManager (**required** when `consumer.cache.enabled` is true). Must match cache name configured in your `CacheManager` bean. Must be unique for each service sharing a cache store, see [Idempotent Processing](#idempotent-processing). |     —     |
 
 ---
@@ -1154,7 +1156,7 @@ oncebox:
 #### Publisher-Only
 Minimal:
 > [!WARNING]
-> Dead Letter Queue and Metrics Collecting are disabled by default. All other values will use defaults.
+> Dead Letter Queue and metrics collection are disabled by default. All other values will use defaults.
 
 ```yaml
 oncebox:
@@ -1258,7 +1260,7 @@ oncebox:
 Minimal:
 
 > [!WARNING]
-> Clean up and cache enable by default, metrics disable.
+> Cleanup is enabled by default, cache is enabled once `cache.cache-name` is set, metrics are disabled.
 
 ```yaml
 oncebox:
