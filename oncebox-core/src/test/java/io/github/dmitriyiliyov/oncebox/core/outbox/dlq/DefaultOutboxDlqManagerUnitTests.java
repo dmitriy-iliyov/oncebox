@@ -49,6 +49,16 @@ public class DefaultOutboxDlqManagerUnitTests {
     }
 
     @Test
+    @DisplayName("UT saveBatch() when events is null should save nothing")
+    void saveBatch_whenEventsIsNull_shouldSaveNothing() {
+        // when
+        tested.saveBatch(null);
+
+        // then
+        verifyNoInteractions(repository);
+    }
+
+    @Test
     @DisplayName("UT saveBatch(), should early return if List.isEmpty")
     public void saveBatch_whenEventsIsEmpty_shouldEarlyReturn() {
         // given

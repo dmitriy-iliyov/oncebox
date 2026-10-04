@@ -22,10 +22,15 @@ import org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerA
 import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
 import org.springframework.boot.autoconfigure.transaction.TransactionAutoConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.ApplicationContext;
+import org.springframework.transaction.IllegalTransactionStateException;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class OutboxAutoConfigurationVerifier {
 
@@ -444,5 +449,33 @@ public class OutboxAutoConfigurationVerifier {
                     OutboxManager primary = ctx.getBean(OutboxManager.class);
                     assertThat(primary).isInstanceOf(OutboxManagerMetricsDecorator.class);
                 });
+    }
+
+    public void loadBatchByStatus_whenNoActiveTransaction_shouldThrowIllegalTransactionStateException() {
+        getBaseContextRunner()
+                .run(ctx -> {
+                    OutboxManager manager = ctx.getBean(OutboxManager.class);
+
+                    assertThatThrownBy(() -> manager.loadBatch(EventStatus.FAILED, 10))
+                            .isInstanceOf(IllegalTransactionStateException.class);
+                });
+    }
+
+
+    public void loadBatchByStatus_whenInsideTransaction_shouldRun() {
+        getBaseContextRunner()
+                .withPropertyValues("oncebox.tables.auto-create=true")
+                .run(ctx -> {
+                    OutboxManager manager = ctx.getBean(OutboxManager.class);
+
+                    transactionTemplate(ctx).executeWithoutResult(status -> {
+                        assertThat(manager.loadBatch(EventStatus.FAILED, 10)).isNotNull();
+                        status.setRollbackOnly();
+                    });
+                });
+    }
+
+    private static TransactionTemplate transactionTemplate(ApplicationContext ctx) {
+        return new TransactionTemplate(ctx.getBean(PlatformTransactionManager.class));
     }
 }

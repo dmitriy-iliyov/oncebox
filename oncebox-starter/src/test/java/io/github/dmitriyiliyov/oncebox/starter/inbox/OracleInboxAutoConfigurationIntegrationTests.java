@@ -128,4 +128,22 @@ public class OracleInboxAutoConfigurationIntegrationTests {
     void shouldRegisterIdempotentConsumerCacheDecorator_asPrimary_whenCacheEnableAndMetricsMissed() {
         verifier.shouldRegisterIdempotentConsumerCacheDecorator_asPrimary_whenCacheEnableAndMetricsMissed();
     }
+
+    @Test
+    @DisplayName("IT InboxManager tryConsume(UUID) when no active transaction should throw IllegalTransactionStateException")
+    void tryConsume_whenNoActiveTransaction_shouldThrowIllegalTransactionStateException() {
+        verifier.tryConsume_whenNoActiveTransaction_shouldThrowIllegalTransactionStateException();
+    }
+
+    @Test
+    @DisplayName("IT InboxManager tryConsumeAndGetDuplicates(Set) when no active transaction should throw IllegalTransactionStateException")
+    void tryConsumeAndGetDuplicates_whenNoActiveTransaction_shouldThrowIllegalTransactionStateException() {
+        verifier.tryConsumeAndGetDuplicates_whenNoActiveTransaction_shouldThrowIllegalTransactionStateException();
+    }
+
+    @Test
+    @DisplayName("IT InboxManager tryConsume and tryConsumeAndGetDuplicates when inside a transaction should run")
+    void inboxManagerMandatoryMethods_whenInsideTransaction_shouldRun() {
+        verifier.inboxManagerMandatoryMethods_whenInsideTransaction_shouldRun();
+    }
 }

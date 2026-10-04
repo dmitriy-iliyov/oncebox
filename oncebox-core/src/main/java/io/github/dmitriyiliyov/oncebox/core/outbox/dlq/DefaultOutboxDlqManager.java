@@ -2,6 +2,7 @@ package io.github.dmitriyiliyov.oncebox.core.outbox.dlq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
@@ -27,14 +28,14 @@ public class DefaultOutboxDlqManager implements OutboxDlqManager {
     @Transactional
     @Override
     public void saveBatch(List<OutboxDlqEvent> events) {
-        if (events.isEmpty()) {
+        if (events == null || events.isEmpty()) {
             log.debug("List of submitted events is empty, so saving was rejected");
             return;
         }
         repository.saveBatch(events);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     @Override
     public List<OutboxDlqEvent> loadAndLockBatch(DlqStatus status, int batchSize) {
         return repository.findAndLockBatchByStatus(status, batchSize, DlqStatus.IN_PROCESS);

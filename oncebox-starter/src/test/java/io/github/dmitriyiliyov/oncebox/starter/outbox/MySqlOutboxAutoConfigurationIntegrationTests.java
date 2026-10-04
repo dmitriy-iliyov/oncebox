@@ -193,4 +193,17 @@ class MySqlOutboxAutoConfigurationIntegrationTests {
     void shouldNotRegisterCleanUpJobCreateCommand_whenDisabled() {
         verifier.shouldNotRegisterCleanUpJobCreateCommand_whenDisabled();
     }
+
+    @Test
+    @DisplayName("IT OutboxManager loadBatch(EventStatus, int) when no active transaction should throw IllegalTransactionStateException")
+    void loadBatchByStatus_whenNoActiveTransaction_shouldThrowIllegalTransactionStateException() {
+        verifier.loadBatchByStatus_whenNoActiveTransaction_shouldThrowIllegalTransactionStateException();
+    }
+
+
+    @Test
+    @DisplayName("IT OutboxManager loadBatch(EventStatus, int) when inside a transaction should run")
+    void loadBatchByStatus_whenInsideTransaction_shouldRun() {
+        verifier.loadBatchByStatus_whenInsideTransaction_shouldRun();
+    }
 }

@@ -38,6 +38,9 @@ public class DefaultOutboxManager implements OutboxManager {
     @Transactional(propagation = Propagation.MANDATORY)
     @Override
     public void saveBatch(List<OutboxEvent> eventBatch) {
+        if (eventBatch == null || eventBatch.isEmpty()) {
+            return;
+        }
         repository.saveBatch(eventBatch);
     }
 
@@ -54,7 +57,7 @@ public class DefaultOutboxManager implements OutboxManager {
         );
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     @Override
     public List<OutboxEvent> loadBatch(EventStatus status, int batchSize) {
         return repository.findAndLockBatchByStatus(status, batchSize, EventStatus.IN_PROCESS);
@@ -69,6 +72,9 @@ public class DefaultOutboxManager implements OutboxManager {
                               Function<Integer, Instant> nextRetryAtSupplier,
                               UUID lockToken) {
         Objects.requireNonNull(lockToken, "lockToken cannot be null");
+        if (maxRetryCount < 0) {
+            throw new IllegalArgumentException("maxRetryCount cannot be negative");
+        }
 
         boolean hasProcessed = !SetUtils.isEmpty(processedIds);
         boolean hasFailed = !SetUtils.isEmpty(failedIds);

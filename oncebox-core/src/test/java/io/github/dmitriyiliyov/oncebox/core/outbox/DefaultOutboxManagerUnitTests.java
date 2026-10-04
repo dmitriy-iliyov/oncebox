@@ -124,6 +124,39 @@ public class DefaultOutboxManagerUnitTests {
     }
 
     @Test
+    @DisplayName("UT finalizeBatch() when maxRetryCount is negative should throw and write nothing")
+    void finalizeBatch_whenMaxRetryCountIsNegative_shouldThrowAndWriteNothing() {
+        // given
+        Set<UUID> failedIds = Set.of(UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"));
+
+        // when / then
+        assertThatThrownBy(() -> tested.finalizeBatch(List.of(), null, failedIds, -1, i -> Instant.now(), LOCK_TOKEN))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("maxRetryCount cannot be negative");
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    @DisplayName("UT saveBatch() when eventBatch is null should save nothing")
+    void saveBatch_whenEventBatchIsNull_shouldSaveNothing() {
+        // when
+        tested.saveBatch(null);
+
+        // then
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    @DisplayName("UT saveBatch() when eventBatch is empty should save nothing")
+    void saveBatch_whenEventBatchIsEmpty_shouldSaveNothing() {
+        // when
+        tested.saveBatch(List.of());
+
+        // then
+        verifyNoInteractions(repository);
+    }
+
+    @Test
     @DisplayName("UT loadBatch(EventStatus, int, String) when events is not empty, should update status and return event list")
     public void loadBatch2_whenEventsIsNotEmpty_shouldUpdateStatusAndReturnEvents() {
         // given

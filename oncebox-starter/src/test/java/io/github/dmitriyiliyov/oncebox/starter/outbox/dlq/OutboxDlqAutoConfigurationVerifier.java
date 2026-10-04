@@ -17,11 +17,16 @@ import org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerA
 import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
 import org.springframework.boot.autoconfigure.transaction.TransactionAutoConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.IllegalTransactionStateException;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class OutboxDlqAutoConfigurationVerifier {
 
@@ -298,5 +303,34 @@ public class OutboxDlqAutoConfigurationVerifier {
                     assertThat(ctx).doesNotHaveBean(OutboxDlqMetricsRepository.class);
                     assertThat(ctx).doesNotHaveBean(OutboxDlqMetrics.class);
                 });
+    }
+
+
+    public void loadAndLockBatch_whenNoActiveTransaction_shouldThrowIllegalTransactionStateException() {
+        getBaseContextRunner()
+                .run(ctx -> {
+                    OutboxDlqManager manager = ctx.getBean(OutboxDlqManager.class);
+
+                    assertThatThrownBy(() -> manager.loadAndLockBatch(DlqStatus.TO_RETRY, 10))
+                            .isInstanceOf(IllegalTransactionStateException.class);
+                });
+    }
+
+
+    public void loadAndLockBatch_whenInsideTransaction_shouldRun() {
+        getBaseContextRunner()
+                .withPropertyValues("oncebox.tables.auto-create=true")
+                .run(ctx -> {
+                    OutboxDlqManager manager = ctx.getBean(OutboxDlqManager.class);
+
+                    transactionTemplate(ctx).executeWithoutResult(status -> {
+                        assertThat(manager.loadAndLockBatch(DlqStatus.TO_RETRY, 10)).isNotNull();
+                        status.setRollbackOnly();
+                    });
+                });
+    }
+
+    private static TransactionTemplate transactionTemplate(ApplicationContext ctx) {
+        return new TransactionTemplate(ctx.getBean(PlatformTransactionManager.class));
     }
 }

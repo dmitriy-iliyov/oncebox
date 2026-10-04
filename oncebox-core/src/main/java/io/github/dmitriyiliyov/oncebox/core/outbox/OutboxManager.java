@@ -19,20 +19,20 @@ import java.util.function.Function;
 public interface OutboxManager {
 
     /**
-     * Saves a single outbox event within an existing transaction.
+     * Saves a single outbox event in the caller's transaction.
      * <p>
-     * Must be called within an active transaction - uses MANDATORY propagation.
-     * Throws an exception if no transaction is active at the time of the call.
+     * The caller must hold an active transaction: the event is committed or rolled back together with the
+     * change that produced it.
      *
      * @param event the event to save.
      */
     void save(OutboxEvent event);
 
     /**
-     * Saves a batch of outbox events within an existing transaction.
+     * Saves a batch of outbox events in the caller's transaction.
      * <p>
-     * Must be called within an active transaction - uses MANDATORY propagation.
-     * Throws an exception if no transaction is active at the time of the call.
+     * The caller must hold an active transaction: the events are committed or rolled back together with the
+     * change that produced them.
      * Does nothing if the list is null or empty.
      *
      * @param eventBatch the list of events to save.
@@ -44,7 +44,7 @@ public interface OutboxManager {
      * <p>
      * Locked events have their status changed to {@link EventStatus#IN_PROCESS}
      * to prevent concurrent processing by other instances.
-     * Only events with status {@link EventStatus#PENDING} are returned.
+     * Only {@link EventStatus#PENDING} events whose next retry time has come are returned.
      *
      * @param eventType the type of events to load.
      * @param batchSize the maximum number of events to load and lock.
@@ -59,6 +59,9 @@ public interface OutboxManager {
      * <p>
      * Locked events have their status changed to {@link EventStatus#IN_PROCESS}.
      * Used for DLQ transfer.
+     * <p>
+     * The caller must hold an active transaction: the rows stay locked only until it ends, so whatever is done
+     * with the batch has to happen in that same transaction.
      *
      * @param status    the status of events to load.
      * @param batchSize the maximum number of events to load and lock.
@@ -81,8 +84,9 @@ public interface OutboxManager {
      * @param events              the original list of events in the batch.
      * @param processedIds        the IDs of successfully processed events.
      * @param failedIds           the IDs of failed events.
-     * @param maxRetryCount       the maximum number of retries allowed; must be non-negative.
-     * @param nextRetryAtSupplier a function that calculates the next retry time given the current retry count.
+     * @param maxRetryCount       the maximum number of retries allowed.
+     * @param nextRetryAtSupplier a function that calculates the next retry time from the retry count the failed
+     *                            event will have after this attempt.
      * @param lockToken           the token the batch was loaded with.
      * @throws IllegalArgumentException if {@code maxRetryCount} is negative.
      */
@@ -107,7 +111,7 @@ public interface OutboxManager {
     int recoverStuckBatch(Duration maxBatchProcessingTime, int batchSize);
 
     /**
-     * Deletes processed events with {@code updated_at} strictly before the given threshold.
+     * Deletes processed events whose {@code updated_at} is at or before {@code now - ttl}.
      * <p>
      * At most {@code batchSize} records are deleted per call.
      *

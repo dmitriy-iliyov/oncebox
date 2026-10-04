@@ -19,11 +19,18 @@ import org.springframework.boot.autoconfigure.transaction.TransactionAutoConfigu
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
+import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.IllegalTransactionStateException;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
+import java.util.Set;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class InboxAutoConfigurationVerifier {
 
@@ -373,5 +380,43 @@ public class InboxAutoConfigurationVerifier {
                     assertThat(ctx).hasBean("inboxCleanUpScheduler");
                     assertThat(ctx).hasBean("inboxCleanUpJobCreateCommand");
                 });
+    }
+
+    public void tryConsume_whenNoActiveTransaction_shouldThrowIllegalTransactionStateException() {
+        getBaseContextRunner()
+                .run(ctx -> {
+                    InboxManager manager = ctx.getBean(InboxManager.class);
+
+                    assertThatThrownBy(() -> manager.tryConsume(UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")))
+                            .isInstanceOf(IllegalTransactionStateException.class);
+                });
+    }
+
+    public void tryConsumeAndGetDuplicates_whenNoActiveTransaction_shouldThrowIllegalTransactionStateException() {
+        getBaseContextRunner()
+                .run(ctx -> {
+                    InboxManager manager = ctx.getBean(InboxManager.class);
+
+                    assertThatThrownBy(() -> manager.tryConsumeAndGetDuplicates(Set.of(UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"))))
+                            .isInstanceOf(IllegalTransactionStateException.class);
+                });
+    }
+
+    public void inboxManagerMandatoryMethods_whenInsideTransaction_shouldRun() {
+        getBaseContextRunner()
+                .withPropertyValues("oncebox.tables.auto-create=true")
+                .run(ctx -> {
+                    InboxManager manager = ctx.getBean(InboxManager.class);
+
+                    transactionTemplate(ctx).executeWithoutResult(status -> {
+                        assertThat(manager.tryConsume(UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"))).isTrue();
+                        assertThat(manager.tryConsumeAndGetDuplicates(Set.of(UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")))).isEmpty();
+                        status.setRollbackOnly();
+                    });
+                });
+    }
+
+    private static TransactionTemplate transactionTemplate(ApplicationContext ctx) {
+        return new TransactionTemplate(ctx.getBean(PlatformTransactionManager.class));
     }
 }

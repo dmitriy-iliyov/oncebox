@@ -127,4 +127,18 @@ class MySqlOutboxDlqAutoConfigurationIntegrationTests {
     void shouldRegisterDlqManagerDecorator_asPrimary_whenMetricsEnabled() {
         verifier.shouldRegisterDlqManagerDecorator_asPrimary_whenMetricsEnabled();
     }
+
+
+    @Test
+    @DisplayName("IT OutboxDlqManager loadAndLockBatch(DlqStatus, int) when no active transaction should throw IllegalTransactionStateException")
+    void loadAndLockBatch_whenNoActiveTransaction_shouldThrowIllegalTransactionStateException() {
+        verifier.loadAndLockBatch_whenNoActiveTransaction_shouldThrowIllegalTransactionStateException();
+    }
+
+
+    @Test
+    @DisplayName("IT OutboxDlqManager loadAndLockBatch(DlqStatus, int) when inside a transaction should run")
+    void loadAndLockBatch_whenInsideTransaction_shouldRun() {
+        verifier.loadAndLockBatch_whenInsideTransaction_shouldRun();
+    }
 }
