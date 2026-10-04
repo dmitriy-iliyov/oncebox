@@ -36,25 +36,39 @@ class OutboxDlqOpenApiIntegrationTests {
     private OutboxDlqApiService service;
 
     @Test
-    @DisplayName("IT api-docs every error response should carry no content instead of the success body")
-    void apiDocs_everyErrorResponse_shouldHaveNoContent() throws Exception {
+    @DisplayName("IT api-docs every error response should carry the problem schema instead of the success body")
+    void apiDocs_everyErrorResponse_shouldReferenceProblemSchema() throws Exception {
         // given
         JsonNode paths = apiDocs().path("paths");
 
         // when
-        List<String> withContent = new ArrayList<>();
+        List<String> withoutProblem = new ArrayList<>();
         for (Map.Entry<String, JsonNode> path : paths.properties()) {
             for (Map.Entry<String, JsonNode> operation : path.getValue().properties()) {
                 for (Map.Entry<String, JsonNode> response : operation.getValue().path("responses").properties()) {
-                    if (response.getKey().charAt(0) >= '4' && response.getValue().has("content")) {
-                        withContent.add("%s %s %s".formatted(operation.getKey(), path.getKey(), response.getKey()));
+                    if (response.getKey().charAt(0) >= '4' && !referencesProblem(response.getValue())) {
+                        withoutProblem.add("%s %s %s".formatted(operation.getKey(), path.getKey(), response.getKey()));
                     }
                 }
             }
         }
 
         // then
-        assertThat(withContent).isEmpty();
+        assertThat(withoutProblem).isEmpty();
+    }
+
+    @Test
+    @DisplayName("IT api-docs DlqProblem should have the keys of the real error body and nothing else")
+    void apiDocs_dlqProblem_shouldHaveKeysOfRealErrorBody() throws Exception {
+        // when
+        JsonNode schemas = apiDocs().path("components").path("schemas");
+
+        // then
+        assertThat(fieldNames(schemas.path("DlqProblem").path("properties")))
+                .containsExactlyInAnyOrder("type", "title", "status", "detail", "instance", "path", "timestamp",
+                        "errors");
+        assertThat(fieldNames(schemas.path("DlqFieldError").path("properties")))
+                .containsExactlyInAnyOrder("field", "message");
     }
 
     @Test
@@ -124,6 +138,11 @@ class OutboxDlqOpenApiIntegrationTests {
     private JsonNode apiDocs() throws Exception {
         String body = mockMvc.perform(get("/v3/api-docs")).andReturn().getResponse().getContentAsString();
         return objectMapper.readTree(body);
+    }
+
+    private boolean referencesProblem(JsonNode response) {
+        return response.path("content").path("application/problem+json").path("schema").path("$ref").asText()
+                .endsWith("/DlqProblem");
     }
 
     private List<String> fieldNames(JsonNode node) {

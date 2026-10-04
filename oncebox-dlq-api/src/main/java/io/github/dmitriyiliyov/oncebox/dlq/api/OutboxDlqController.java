@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -33,7 +34,14 @@ public class OutboxDlqController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Event successfully retrieved",
                     content = @Content(schema = @Schema(implementation = OutboxDlqEvent.class))),
-            @ApiResponse(responseCode = "404", description = "Event not found", content = @Content)
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Event not found",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                            schema = @Schema(implementation = DlqProblem.class)
+                    )
+            )
     })
     @GetMapping("/{id}")
     public OutboxDlqEvent get(@Parameter(description = "Id of the DLQ event", required = true)
@@ -47,7 +55,14 @@ public class OutboxDlqController {
                     responseCode = "200", description = "Event batch successfully retrieved",
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = OutboxDlqEvent.class)))
             ),
-            @ApiResponse(responseCode = "400", description = "Request validation failed", content = @Content)
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Request validation failed",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                            schema = @Schema(implementation = DlqProblem.class)
+                    )
+            )
     })
     @GetMapping("/batch")
     public List<OutboxDlqEvent> getBatch(@ParameterObject @ModelAttribute @Valid BatchRequest request) {
@@ -60,7 +75,14 @@ public class OutboxDlqController {
                     responseCode = "200", description = "Event count successfully retrieved",
                     content = @Content(schema = @Schema(implementation = Long.class))
             ),
-            @ApiResponse(responseCode = "400", description = "Request validation failed", content = @Content)
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Request validation failed",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                            schema = @Schema(implementation = DlqProblem.class)
+                    )
+            )
     })
     @GetMapping("/count")
     public Long getCount(@Parameter(description = "Filter by DLQ status")
@@ -73,9 +95,30 @@ public class OutboxDlqController {
     @Operation(summary = "Update DLQ status of event by id")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Event successfully updated"),
-            @ApiResponse(responseCode = "400", description = "Request validation failed", content = @Content),
-            @ApiResponse(responseCode = "404", description = "Event not found", content = @Content),
-            @ApiResponse(responseCode = "409", description = "Event is IN_PROCESS", content = @Content)
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Request validation failed",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                            schema = @Schema(implementation = DlqProblem.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Event not found",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                            schema = @Schema(implementation = DlqProblem.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "Event is IN_PROCESS",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                            schema = @Schema(implementation = DlqProblem.class)
+                    )
+            )
     })
     @PatchMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -91,7 +134,14 @@ public class OutboxDlqController {
                     responseCode = "200", description = "Event batch successfully updated",
                     content = @Content(schema = @Schema(implementation = BatchModificationResponse.class))
             ),
-            @ApiResponse(responseCode = "400", description = "Request validation failed", content = @Content)
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Request validation failed",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                            schema = @Schema(implementation = DlqProblem.class)
+                    )
+            )
     })
     @PatchMapping("/batch")
     public BatchModificationResponse updateBatchStatus(@RequestBody @Valid BatchUpdateRequest request) {
@@ -101,8 +151,22 @@ public class OutboxDlqController {
     @Operation(summary = "Delete event by id")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Event successfully deleted"),
-            @ApiResponse(responseCode = "404", description = "Event not found", content = @Content),
-            @ApiResponse(responseCode = "409", description = "Event is IN_PROCESS", content = @Content)
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Event not found",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                            schema = @Schema(implementation = DlqProblem.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "Event is IN_PROCESS",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                            schema = @Schema(implementation = DlqProblem.class)
+                    )
+            )
     })
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -117,7 +181,14 @@ public class OutboxDlqController {
                     responseCode = "200", description = "Event batch successfully deleted",
                     content = @Content(schema = @Schema(implementation = BatchModificationResponse.class))
             ),
-            @ApiResponse(responseCode = "400", description = "Request validation failed", content = @Content)
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Request validation failed",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                            schema = @Schema(implementation = DlqProblem.class)
+                    )
+            )
     })
     @DeleteMapping("/batch")
     public BatchModificationResponse deleteBatch(@RequestBody @Valid BatchDeleteRequest request) {
