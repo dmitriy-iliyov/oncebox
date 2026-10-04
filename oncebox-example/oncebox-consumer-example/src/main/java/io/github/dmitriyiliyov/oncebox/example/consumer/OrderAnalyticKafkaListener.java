@@ -7,7 +7,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
 import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.messaging.Message;
 import org.springframework.stereotype.Component;
 
@@ -28,17 +27,12 @@ public class OrderAnalyticKafkaListener {
      * This demonstrates how Outbox pattern headers can be used to dynamically dispatch messages.
      */
     @KafkaListener(topics = "orders", groupId = "analytics", containerFactory = "inboxKafkaListenerContainerFactory")
-    public void listen(Message<?> message, Acknowledgment ack) {
-        try {
-            idempotentConsumer.consume(
-                    message,
-                    OnceboxHeadersUtils::extractId,
-                    m -> log.info("Analytics receive '{}' event {}", OnceboxHeadersUtils.extractEventType(m), m.getPayload())
-            );
-            ack.acknowledge();
-        } catch (Exception e) {
-            throw e;
-        }
+    public void listen(Message<?> message) {
+        idempotentConsumer.consume(
+                message,
+                OnceboxHeadersUtils::extractId,
+                m -> log.info("Analytics receive '{}' event {}", OnceboxHeadersUtils.extractEventType(m), m.getPayload())
+        );
     }
 
     /**
@@ -47,18 +41,13 @@ public class OrderAnalyticKafkaListener {
      * and process them together for better throughput and efficiency.
      */
     @KafkaListener(topics = "orders.created", groupId = "analytics", containerFactory = "kafkaBatchListenerContainerFactory")
-    public void listenBatch(List<Message<OrderDto>> messages, Acknowledgment ack) {
-        try {
-            idempotentConsumer.consume(
-                    messages,
-                    OnceboxHeadersUtils::extractId,
-                    messageList -> messageList.forEach(
-                            message -> log.info("Analytics receive 'created-order' {}", message.getPayload())
-                    )
-            );
-            ack.acknowledge();
-        } catch (Exception e) {
-            throw e;
-        }
+    public void listenBatch(List<Message<OrderDto>> messages) {
+        idempotentConsumer.consume(
+                messages,
+                OnceboxHeadersUtils::extractId,
+                messageList -> messageList.forEach(
+                        message -> log.info("Analytics receive 'created-order' {}", message.getPayload())
+                )
+        );
     }
 }

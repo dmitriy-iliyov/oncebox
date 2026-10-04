@@ -2,6 +2,7 @@ package io.github.dmitriyiliyov.oncebox.starter.inbox;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.dmitriyiliyov.oncebox.core.OnceboxHeaders;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -13,7 +14,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
-import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
@@ -68,15 +68,28 @@ public class InboxKafkaAutoConfiguration {
         configurer.configure(factory, kafkaConsumerFactory);
         factory.setRecordMessageConverter(recordMessageConverter);
         if (Boolean.TRUE.equals(factory.isBatchListener())) {
-        } else {
-            factory.setRecordMessageConverter(recordMessageConverter);
             factory.setBatchMessageConverter(new BatchMessagingMessageConverter(recordMessageConverter));
         }
-        if (!ContainerProperties.AckMode.MANUAL.equals(factory.getContainerProperties().getAckMode()) &&
-                !ContainerProperties.AckMode.MANUAL_IMMEDIATE.equals(factory.getContainerProperties().getAckMode())) {
-            log.warn("Outbox Consumer AckMode isn't MANUAL. It is highly recommended to set " +
-                    "'spring.kafka.listener.ack-mode=manual' for 'at-least-once' delivery guarantees.");
+        if (isAutoCommitEnabled(factory, kafkaConsumerFactory)) {
+            log.warn("""
+                    Inbox Kafka consumer has 'enable.auto.commit=true', offsets may be committed before an event \
+                    is processed and the event lost. Set 'spring.kafka.consumer.enable-auto-commit=false'.""");
         }
         return factory;
+    }
+
+    private static boolean isAutoCommitEnabled(ConcurrentKafkaListenerContainerFactory<Object, Object> factory,
+                                               ConsumerFactory<Object, Object> consumerFactory) {
+        Object value = factory.getContainerProperties()
+                .getKafkaConsumerProperties()
+                .get(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG);
+        if (value == null) {
+            try {
+                value = consumerFactory.getConfigurationProperties().get(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG);
+            } catch (UnsupportedOperationException e) {
+                return false;
+            }
+        }
+        return value != null && Boolean.parseBoolean(value.toString());
     }
 }

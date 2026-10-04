@@ -575,6 +575,23 @@ The library uses `CacheManager` from the application context. Cache configuratio
 
 ---
 
+#### Broker Acknowledgement
+The inbox expects the broker to redeliver an event that was not processed, and skips the ones that were. No manual
+acknowledgement is required for that: the default listener settings acknowledge a message only after the handler returns.
+
+For **Apache Kafka**, the default `AckMode` (`BATCH`) commits offsets only after the listener returns, so
+`spring.kafka.listener.ack-mode=manual` is not needed. Two settings break at-least-once delivery:
+- `enable.auto.commit=true` - the Kafka client commits offsets on a timer, before an event may be processed, and an event
+  lost to a crash is never redelivered. Spring Kafka disables it unless it is set explicitly; the starter logs a warning
+  when it is enabled.
+- the default `DefaultErrorHandler` retries a failing record a few times and then logs it and commits its offset, whatever
+  the `AckMode`. To keep such an event, configure a recoverer, for example a `DeadLetterPublishingRecoverer`.
+
+For **RabbitMQ**, the default `AUTO` acknowledge mode acknowledges a message after the listener returns and requeues it
+when the listener throws. Setting `defaultRequeueRejected=false` without a dead letter exchange drops a failed message.
+
+---
+
 #### Event Headers
 
 > [!IMPORTANT]

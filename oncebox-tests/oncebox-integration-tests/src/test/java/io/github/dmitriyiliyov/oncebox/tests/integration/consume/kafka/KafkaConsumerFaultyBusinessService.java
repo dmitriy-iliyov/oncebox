@@ -6,7 +6,6 @@ import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.Consumer
 import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.ConsumerVariant;
 import io.github.dmitriyiliyov.oncebox.tests.integration.domain.BusinessEvent;
 import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.messaging.Message;
 
 import java.util.List;
@@ -62,90 +61,70 @@ public class KafkaConsumerFaultyBusinessService {
     }
 
     @KafkaListener(topics = "#{__listener.name('" + SINGLE_FAILING_TOPIC + "')}", groupId = CONSUMER_GROUP, containerFactory = "testSingleKafkaListenerContainerFactory")
-    public void listenFailing(Message<BusinessEvent> message, Acknowledgment ack) {
-        try {
-            idempotentConsumer.consume(
-                    message,
-                    OnceboxHeadersUtils::extractId,
-                    msg -> {
-                        repository.save(msg.getPayload());
-                        if (shouldFail.get()) {
-                            failures.incrementAndGet();
-                            throw new RuntimeException("Exception in business operation");
-                        }
+    public void listenFailing(Message<BusinessEvent> message) {
+        idempotentConsumer.consume(
+                message,
+                OnceboxHeadersUtils::extractId,
+                msg -> {
+                    repository.save(msg.getPayload());
+                    if (shouldFail.get()) {
+                        failures.incrementAndGet();
+                        throw new RuntimeException("Exception in business operation");
                     }
-            );
-            ack.acknowledge();
-        } catch (Exception e) {
-            throw e;
-        }
+                }
+        );
     }
 
     @KafkaListener(topics = "#{__listener.name('" + BATCH_FAILING_TOPIC + "')}", groupId = CONSUMER_GROUP, containerFactory = "testBatchKafkaListenerContainerFactory")
-    public void listenBatchFailing(List<Message<BusinessEvent>> messages, Acknowledgment ack) {
-        try {
-            idempotentConsumer.consume(
-                    messages,
-                    OnceboxHeadersUtils::extractId,
-                    deduped -> {
-                        repository.saveAll(deduped.stream().map(Message::getPayload).toList());
-                        if (shouldFail.get()) {
-                            failures.incrementAndGet();
-                            throw new RuntimeException("Exception in business operation");
-                        }
+    public void listenBatchFailing(List<Message<BusinessEvent>> messages) {
+        idempotentConsumer.consume(
+                messages,
+                OnceboxHeadersUtils::extractId,
+                deduped -> {
+                    repository.saveAll(deduped.stream().map(Message::getPayload).toList());
+                    if (shouldFail.get()) {
+                        failures.incrementAndGet();
+                        throw new RuntimeException("Exception in business operation");
                     }
-            );
-            ack.acknowledge();
-        } catch (Exception e) {
-            throw e;
-        }
+                }
+        );
     }
 
     @KafkaListener(topics = "#{__listener.name('" + SINGLE_ID_FAILING_TOPIC + "')}", groupId = CONSUMER_GROUP, containerFactory = "testSingleKafkaListenerContainerFactory")
-    public void listenSingleIdFailing(Message<BusinessEvent> message, Acknowledgment ack) {
-        try {
-            UUID eventId = OnceboxHeadersUtils.extractId(message);
-            idempotentConsumer.consume(
-                    eventId,
-                    () -> {
-                        repository.save(message.getPayload());
-                        if (shouldFail.get()) {
-                            failures.incrementAndGet();
-                            throw new RuntimeException("Exception in business operation");
-                        }
+    public void listenSingleIdFailing(Message<BusinessEvent> message) {
+        UUID eventId = OnceboxHeadersUtils.extractId(message);
+        idempotentConsumer.consume(
+                eventId,
+                () -> {
+                    repository.save(message.getPayload());
+                    if (shouldFail.get()) {
+                        failures.incrementAndGet();
+                        throw new RuntimeException("Exception in business operation");
                     }
-            );
-            ack.acknowledge();
-        } catch (Exception e) {
-            throw e;
-        }
+                }
+        );
     }
 
     @KafkaListener(topics = "#{__listener.name('" + BATCH_ID_FAILING_TOPIC + "')}", groupId = CONSUMER_GROUP, containerFactory = "testBatchKafkaListenerContainerFactory")
-    public void listenBatchIdsFailing(List<Message<BusinessEvent>> messages, Acknowledgment ack) {
-        try {
-            Set<UUID> allIds = messages.stream()
-                    .map(OnceboxHeadersUtils::extractId)
-                    .collect(Collectors.toSet());
+    public void listenBatchIdsFailing(List<Message<BusinessEvent>> messages) {
+        Set<UUID> allIds = messages.stream()
+                .map(OnceboxHeadersUtils::extractId)
+                .collect(Collectors.toSet());
 
-            idempotentConsumer.consume(
-                    allIds,
-                    newIds -> {
-                        List<BusinessEvent> eventsToSave = messages.stream()
-                                .filter(msg -> newIds.contains(OnceboxHeadersUtils.extractId(msg)))
-                                .map(Message::getPayload)
-                                .toList();
+        idempotentConsumer.consume(
+                allIds,
+                newIds -> {
+                    List<BusinessEvent> eventsToSave = messages.stream()
+                            .filter(msg -> newIds.contains(OnceboxHeadersUtils.extractId(msg)))
+                            .map(Message::getPayload)
+                            .toList();
 
-                        repository.saveAll(eventsToSave);
-                        if (shouldFail.get()) {
-                            failures.incrementAndGet();
-                            throw new RuntimeException("Exception in business operation");
-                        }
+                    repository.saveAll(eventsToSave);
+                    if (shouldFail.get()) {
+                        failures.incrementAndGet();
+                        throw new RuntimeException("Exception in business operation");
                     }
-            );
-            ack.acknowledge();
-        } catch (Exception e) {
-            throw e;
-        }
+                }
+        );
     }
 }

@@ -8,7 +8,6 @@ import io.github.dmitriyiliyov.oncebox.tests.e2e.repository.TestOutboxRepository
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.messaging.Message;
 
 public class KafkaConsumerBusinessService {
@@ -26,14 +25,13 @@ public class KafkaConsumerBusinessService {
     }
 
     @KafkaListener(topics = E2eEvents.TOPIC, groupId = CONSUMER_GROUP, containerFactory = "inboxKafkaListenerContainerFactory")
-    public void listen(Message<BusinessEvent> message, Acknowledgment ack) {
+    public void listen(Message<BusinessEvent> message) {
         try {
             idempotentConsumer.consume(
                     message,
                     OnceboxHeadersUtils::extractId,
                     msg -> repository.saveConsumedBusiness(msg.getPayload().verifyId())
             );
-            ack.acknowledge();
         } catch (Exception e) {
             log.error("Error when consuming message", e);
             throw e;

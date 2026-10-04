@@ -8,7 +8,6 @@ import io.github.dmitriyiliyov.oncebox.tests.integration.domain.BusinessEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.messaging.Message;
 
 import java.util.List;
@@ -50,14 +49,13 @@ public class KafkaConsumerBusinessService {
     }
 
     @KafkaListener(topics = "#{__listener.name('" + SINGLE_TOPIC + "')}", groupId = CONSUMER_GROUP, containerFactory = "testSingleKafkaListenerContainerFactory")
-    public void listenSingleMessage(Message<BusinessEvent> message, Acknowledgment ack) {
+    public void listenSingleMessage(Message<BusinessEvent> message) {
         try {
             idempotentConsumer.consume(
                     message,
                     OnceboxHeadersUtils::extractId,
                     msg -> repository.save(msg.getPayload())
             );
-            ack.acknowledge();
         } catch (Exception e) {
             log.error("Error when consuming single message", e);
             throw e;
@@ -65,7 +63,7 @@ public class KafkaConsumerBusinessService {
     }
 
     @KafkaListener(topics = "#{__listener.name('" + BATCH_TOPIC + "')}", groupId = CONSUMER_GROUP, containerFactory = "testBatchKafkaListenerContainerFactory")
-    public void listenBatchMessages(List<Message<BusinessEvent>> messages, Acknowledgment ack) {
+    public void listenBatchMessages(List<Message<BusinessEvent>> messages) {
         try {
             idempotentConsumer.consume(
                     messages,
@@ -74,7 +72,6 @@ public class KafkaConsumerBusinessService {
                             dedupedMessages.stream().map(Message::getPayload).toList()
                     )
             );
-            ack.acknowledge();
         } catch (Exception e) {
             log.error("Error when consuming batch of messages", e);
             throw e;
@@ -82,14 +79,13 @@ public class KafkaConsumerBusinessService {
     }
 
     @KafkaListener(topics = "#{__listener.name('" + SINGLE_ID_TOPIC + "')}", groupId = CONSUMER_GROUP, containerFactory = "testSingleKafkaListenerContainerFactory")
-    public void listenSingleId(Message<BusinessEvent> message, Acknowledgment ack) {
+    public void listenSingleId(Message<BusinessEvent> message) {
         try {
             UUID eventId = OnceboxHeadersUtils.extractId(message);
             idempotentConsumer.consume(
                     eventId,
                     () -> repository.save(message.getPayload())
             );
-            ack.acknowledge();
         } catch (Exception e) {
             log.error("Error when consuming single ID", e);
             throw e;
@@ -97,7 +93,7 @@ public class KafkaConsumerBusinessService {
     }
 
     @KafkaListener(topics = "#{__listener.name('" + BATCH_ID_TOPIC + "')}", groupId = CONSUMER_GROUP, containerFactory = "testBatchKafkaListenerContainerFactory")
-    public void listenBatchIds(List<Message<BusinessEvent>> messages, Acknowledgment ack) {
+    public void listenBatchIds(List<Message<BusinessEvent>> messages) {
         try {
             Set<UUID> allIds = messages.stream()
                     .map(OnceboxHeadersUtils::extractId)
@@ -114,7 +110,6 @@ public class KafkaConsumerBusinessService {
                         repository.saveAll(eventsToSave);
                     }
             );
-            ack.acknowledge();
         } catch (Exception e) {
             log.error("Error when consuming batch of IDs", e);
             throw e;

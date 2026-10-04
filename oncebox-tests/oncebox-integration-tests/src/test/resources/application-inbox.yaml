@@ -10,9 +10,6 @@ spring:
         format_sql: true
     hibernate:
       ddl-auto: none
-  kafka:
-    listener:
-      ack-mode: manual
 logging:
   level:
     io.github.dmitriyiliyov.oncebox: DEBUG

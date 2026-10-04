@@ -13,5 +13,3 @@ spring:
       properties:
         spring.json.trusted.packages: "*"
       enable-auto-commit: false
-    listener:
-      ack-mode: manual

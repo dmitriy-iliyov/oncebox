@@ -18,7 +18,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.*;
-import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 
@@ -84,7 +83,6 @@ public class KafkaIntegrationTestsConfig {
         configurer.configure(factory, testConsumerFactory);
 
         factory.setRecordMessageConverter(inboxKafkaRecordMessageConverter);
-        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL);
         factory.setBatchListener(false);
         return factory;
     }
@@ -100,7 +98,6 @@ public class KafkaIntegrationTestsConfig {
         configurer.configure(factory, testConsumerFactory);
 
         factory.setBatchMessageConverter(new BatchMessagingMessageConverter(inboxKafkaRecordMessageConverter));
-        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL);
         factory.setBatchListener(true);
         return factory;
     }
