@@ -18,9 +18,9 @@ logging:
     io.github.dmitriyiliyov.oncebox: DEBUG
 oncebox:
   thread-pool-size: 2
-  publisher:
+  outbox:
     enabled: false
-  consumer:
+  inbox:
     enabled: true
     mappings:
       test-business-event: io.github.dmitriyiliyov.oncebox.tests.integration.domain.BusinessEvent

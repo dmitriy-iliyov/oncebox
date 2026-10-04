@@ -27,10 +27,10 @@ class OnAnyCleanUpEnabledConditionIntegrationTests {
     }
 
     @Test
-    @DisplayName("IT should match when only publisher clean-up enabled")
-    void shouldMatch_whenOnlyPublisherCleanUpEnabled() {
+    @DisplayName("IT should match when only outbox clean-up enabled")
+    void shouldMatch_whenOnlyOutboxCleanUpEnabled() {
         baseRunner()
-                .withPropertyValues("oncebox.publisher.clean-up.enabled=true")
+                .withPropertyValues("oncebox.outbox.clean-up.enabled=true")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context).hasBean("conditionalBean");
@@ -38,10 +38,10 @@ class OnAnyCleanUpEnabledConditionIntegrationTests {
     }
 
     @Test
-    @DisplayName("IT should match when only consumer clean-up enabled")
-    void shouldMatch_whenOnlyConsumerCleanUpEnabled() {
+    @DisplayName("IT should match when only inbox clean-up enabled")
+    void shouldMatch_whenOnlyInboxCleanUpEnabled() {
         baseRunner()
-                .withPropertyValues("oncebox.consumer.clean-up.enabled=true")
+                .withPropertyValues("oncebox.inbox.clean-up.enabled=true")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context).hasBean("conditionalBean");
@@ -49,12 +49,12 @@ class OnAnyCleanUpEnabledConditionIntegrationTests {
     }
 
     @Test
-    @DisplayName("IT should match when both publisher and consumer clean-up enabled")
+    @DisplayName("IT should match when both outbox and inbox clean-up enabled")
     void shouldMatch_whenBothCleanUpEnabled() {
         baseRunner()
                 .withPropertyValues(
-                        "oncebox.publisher.clean-up.enabled=true",
-                        "oncebox.consumer.clean-up.enabled=true"
+                        "oncebox.outbox.clean-up.enabled=true",
+                        "oncebox.inbox.clean-up.enabled=true"
                 )
                 .run(context -> {
                     assertThat(context).hasNotFailed();
@@ -63,12 +63,12 @@ class OnAnyCleanUpEnabledConditionIntegrationTests {
     }
 
     @Test
-    @DisplayName("IT should match when publisher clean-up enabled and consumer explicitly disabled")
-    void shouldMatch_whenPublisherEnabledAndConsumerDisabled() {
+    @DisplayName("IT should match when outbox clean-up enabled and inbox explicitly disabled")
+    void shouldMatch_whenOutboxEnabledAndInboxDisabled() {
         baseRunner()
                 .withPropertyValues(
-                        "oncebox.publisher.clean-up.enabled=true",
-                        "oncebox.consumer.clean-up.enabled=false"
+                        "oncebox.outbox.clean-up.enabled=true",
+                        "oncebox.inbox.clean-up.enabled=false"
                 )
                 .run(context -> {
                     assertThat(context).hasNotFailed();
@@ -77,12 +77,12 @@ class OnAnyCleanUpEnabledConditionIntegrationTests {
     }
 
     @Test
-    @DisplayName("IT should match when consumer clean-up enabled and publisher explicitly disabled")
-    void shouldMatch_whenConsumerEnabledAndPublisherDisabled() {
+    @DisplayName("IT should match when inbox clean-up enabled and outbox explicitly disabled")
+    void shouldMatch_whenInboxEnabledAndOutboxDisabled() {
         baseRunner()
                 .withPropertyValues(
-                        "oncebox.publisher.clean-up.enabled=false",
-                        "oncebox.consumer.clean-up.enabled=true"
+                        "oncebox.outbox.clean-up.enabled=false",
+                        "oncebox.inbox.clean-up.enabled=true"
                 )
                 .run(context -> {
                     assertThat(context).hasNotFailed();
@@ -95,8 +95,8 @@ class OnAnyCleanUpEnabledConditionIntegrationTests {
     void shouldNotMatch_whenBothCleanUpDisabled() {
         baseRunner()
                 .withPropertyValues(
-                        "oncebox.publisher.clean-up.enabled=false",
-                        "oncebox.consumer.clean-up.enabled=false"
+                        "oncebox.outbox.clean-up.enabled=false",
+                        "oncebox.inbox.clean-up.enabled=false"
                 )
                 .run(context -> {
                     assertThat(context).hasNotFailed();
@@ -115,10 +115,10 @@ class OnAnyCleanUpEnabledConditionIntegrationTests {
     }
 
     @Test
-    @DisplayName("IT should match when publisher absent and consumer explicitly disabled")
-    void shouldNotMatch_whenPublisherAbsentAndConsumerDisabled() {
+    @DisplayName("IT should match when outbox absent and inbox explicitly disabled")
+    void shouldNotMatch_whenOutboxAbsentAndInboxDisabled() {
         baseRunner()
-                .withPropertyValues("oncebox.consumer.clean-up.enabled=false")
+                .withPropertyValues("oncebox.inbox.clean-up.enabled=false")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context).hasBean("conditionalBean");
@@ -126,10 +126,10 @@ class OnAnyCleanUpEnabledConditionIntegrationTests {
     }
 
     @Test
-    @DisplayName("IT should not match when consumer absent and publisher explicitly disabled")
-    void shouldNotMatch_whenConsumerAbsentAndPublisherDisabled() {
+    @DisplayName("IT should not match when inbox absent and outbox explicitly disabled")
+    void shouldNotMatch_whenInboxAbsentAndOutboxDisabled() {
         baseRunner()
-                .withPropertyValues("oncebox.publisher.clean-up.enabled=false")
+                .withPropertyValues("oncebox.outbox.clean-up.enabled=false")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context).doesNotHaveBean("conditionalBean");

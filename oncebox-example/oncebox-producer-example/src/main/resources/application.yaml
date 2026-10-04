@@ -31,7 +31,7 @@ oncebox:
     auto-create: true
   distributed-lock:
     resolve-by-polling-properties: true
-  publisher:
+  outbox:
     defaults:
       batch-size: 200
       polling:

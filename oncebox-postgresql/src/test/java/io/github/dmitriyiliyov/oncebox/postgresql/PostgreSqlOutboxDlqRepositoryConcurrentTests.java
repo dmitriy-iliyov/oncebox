@@ -1,9 +1,9 @@
 package io.github.dmitriyiliyov.oncebox.postgresql;
 
-import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.DlqStatus;
-import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.OutboxDlqEvent;
-import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.OutboxDlqRepository;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.OutboxEvent;
+import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DlqStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.OutboxDlqEvent;
+import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.OutboxDlqRepository;
+import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

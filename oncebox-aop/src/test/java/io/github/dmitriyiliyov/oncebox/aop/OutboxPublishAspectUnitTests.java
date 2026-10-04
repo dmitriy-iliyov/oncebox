@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.aop;
 
-import io.github.dmitriyiliyov.oncebox.core.publisher.OutboxPublisher;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxPublisher;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.junit.jupiter.api.BeforeEach;

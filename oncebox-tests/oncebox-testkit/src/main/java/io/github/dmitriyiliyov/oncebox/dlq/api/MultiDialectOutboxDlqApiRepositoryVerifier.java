@@ -1,8 +1,8 @@
 package io.github.dmitriyiliyov.oncebox.dlq.api;
 
-import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.DlqStatus;
-import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.OutboxDlqEvent;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DlqStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.OutboxDlqEvent;
+import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
 import io.github.dmitriyiliyov.oncebox.core.utils.RepositoryUtils;
 import io.github.dmitriyiliyov.oncebox.core.utils.ResultSetMapper;
 import io.github.dmitriyiliyov.oncebox.core.utils.SqlUuidHelper;

@@ -113,7 +113,7 @@ public class DistributedLockRepositoryVerifier {
 
     private UUID getLockedBy(String jobName) {
         return jdbcTemplate.query(
-                "SELECT locked_by FROM outbox_jobs WHERE job_name = ?",
+                "SELECT locked_by FROM oncebox_jobs WHERE job_name = ?",
                 ps -> ps.setString(1, jobName),
                 (rs, n) -> idExtractor.extract(rs.getObject("locked_by"))
         ).stream().findFirst().orElse(null);

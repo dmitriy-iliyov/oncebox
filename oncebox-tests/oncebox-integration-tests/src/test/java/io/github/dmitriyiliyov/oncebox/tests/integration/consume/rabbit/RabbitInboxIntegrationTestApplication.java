@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.tests.integration.consume.rabbit;
 
-import io.github.dmitriyiliyov.oncebox.starter.EnableOutbox;
+import io.github.dmitriyiliyov.oncebox.starter.EnableOncebox;
 import io.github.dmitriyiliyov.oncebox.tests.integration.ClockConfig;
 import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.InboxIntegrationTestsConfig;
 import org.springframework.amqp.rabbit.annotation.EnableRabbit;
@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @EntityScan(basePackages = "io.github.dmitriyiliyov.oncebox.tests.integration.domain")
 @EnableJpaRepositories(basePackages = "io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared")
 @EnableTransactionManagement
-@EnableOutbox
+@EnableOncebox
 @EnableRabbit
 @Import({
         InboxIntegrationTestsConfig.class,

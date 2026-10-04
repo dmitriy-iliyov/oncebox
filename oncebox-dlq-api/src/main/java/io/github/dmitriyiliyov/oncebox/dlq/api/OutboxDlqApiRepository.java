@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.dlq.api;
 
-import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.DlqStatus;
-import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.OutboxDlqEvent;
+import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DlqStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.OutboxDlqEvent;
 
 import java.util.List;
 import java.util.Optional;

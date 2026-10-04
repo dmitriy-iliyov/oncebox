@@ -1,9 +1,9 @@
 package io.github.dmitriyiliyov.oncebox.core.utils;
 
-import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.DlqStatus;
-import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.OutboxDlqEvent;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.OutboxEvent;
+import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DlqStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.OutboxDlqEvent;
+import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;

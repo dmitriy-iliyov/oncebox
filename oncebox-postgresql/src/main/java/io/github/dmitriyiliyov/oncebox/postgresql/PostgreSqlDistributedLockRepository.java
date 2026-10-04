@@ -20,7 +20,7 @@ public class PostgreSqlDistributedLockRepository implements DistributedLockRepos
     @Override
     public boolean tryLock(String jobName, UUID workerId) {
         String sql = """
-            UPDATE outbox_jobs
+            UPDATE oncebox_jobs
             SET lock_until = clock_timestamp() + (lock_at_most_for * INTERVAL '1 millisecond'), 
                 locked_by = ?,
                 locked_at = clock_timestamp()
@@ -38,7 +38,7 @@ public class PostgreSqlDistributedLockRepository implements DistributedLockRepos
     @Override
     public void unlock(String jobName, UUID workerId) {
         String sql = """
-            UPDATE outbox_jobs 
+            UPDATE oncebox_jobs 
             SET lock_until = GREATEST(
                 clock_timestamp(), 
                 locked_at + (lock_at_least_for * INTERVAL '1 millisecond')

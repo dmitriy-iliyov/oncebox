@@ -38,7 +38,7 @@ class PostgreSqlDistributedLockRepositoryIntegrationTests extends BasePostgresSq
                 (jdbcTemplate, idPreparer, jobName, lockAtLeastFor, lockAtMostFor) -> {
                     Timestamp stub = Timestamp.from(Instant.now().minus(1, ChronoUnit.HOURS));
                     String sql = """
-                        INSERT INTO outbox_jobs (job_name, lock_until, locked_by, locked_at, lock_at_least_for, lock_at_most_for) 
+                        INSERT INTO oncebox_jobs (job_name, lock_until, locked_by, locked_at, lock_at_least_for, lock_at_most_for) 
                         VALUES (?, ?, ?, ?, ?, ?)
                     """;
                     jdbcTemplate.update(

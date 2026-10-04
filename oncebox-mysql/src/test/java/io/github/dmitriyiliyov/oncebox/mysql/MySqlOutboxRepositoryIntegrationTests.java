@@ -1,8 +1,8 @@
 package io.github.dmitriyiliyov.oncebox.mysql;
 
-import io.github.dmitriyiliyov.oncebox.core.publisher.AbstractOutboxRepositoryIntegrationTests;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.OutboxEvent;
+import io.github.dmitriyiliyov.oncebox.core.outbox.AbstractOutboxRepositoryIntegrationTests;
+import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.utils.DefaultBytesResultSetMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

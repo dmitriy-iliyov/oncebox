@@ -1,10 +1,10 @@
 package io.github.dmitriyiliyov.oncebox.oracle;
 
-import io.github.dmitriyiliyov.oncebox.core.consumer.ConsumedOutboxRepository;
-import io.github.dmitriyiliyov.oncebox.core.publisher.DefaultOutboxManager;
-import io.github.dmitriyiliyov.oncebox.core.publisher.OutboxManager;
-import io.github.dmitriyiliyov.oncebox.core.publisher.OutboxRepository;
-import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.*;
+import io.github.dmitriyiliyov.oncebox.core.inbox.InboxRepository;
+import io.github.dmitriyiliyov.oncebox.core.outbox.DefaultOutboxManager;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxManager;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxRepository;
+import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.*;
 import io.github.dmitriyiliyov.oncebox.core.utils.DefaultBytesResultSetMapper;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -31,8 +31,8 @@ public class OracleIntegrationTestsConfig {
         populator.setScripts(
                 new ClassPathResource("oracle/oracle_outbox_table.sql"),
                 new ClassPathResource("oracle/oracle_outbox_dlq_table.sql"),
-                new ClassPathResource("oracle/oracle_outbox_consumed_table.sql"),
-                new ClassPathResource("oracle/oracle_outbox_jobs_table.sql"),
+                new ClassPathResource("oracle/oracle_inbox_table.sql"),
+                new ClassPathResource("oracle/oracle_oncebox_jobs_table.sql"),
                 new ClassPathResource("oracle/oracle_business_table.sql")
         );
         populator.setContinueOnError(false);
@@ -58,8 +58,8 @@ public class OracleIntegrationTestsConfig {
     }
 
     @Bean
-    public ConsumedOutboxRepository oracleConsumedOutboxRepository(DataSource dataSource, Clock clock) {
-        return new OracleConsumedOutboxRepository(new JdbcTemplate(dataSource), clock, new OracleSqlUuidHelper(), new DefaultBytesResultSetMapper());
+    public InboxRepository oracleInboxRepository(DataSource dataSource, Clock clock) {
+        return new OracleInboxRepository(new JdbcTemplate(dataSource), clock, new OracleSqlUuidHelper(), new DefaultBytesResultSetMapper());
     }
 
     @Bean

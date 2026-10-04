@@ -5,8 +5,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.ScheduledExecutorService;
 
-import static io.github.dmitriyiliyov.oncebox.starter.OutboxScheduledExecutorServiceConstants.TIMEOUT;
-import static io.github.dmitriyiliyov.oncebox.starter.OutboxScheduledExecutorServiceConstants.TIME_UNIT;
+import static io.github.dmitriyiliyov.oncebox.starter.OnceboxScheduledExecutorServiceConstants.TIMEOUT;
+import static io.github.dmitriyiliyov.oncebox.starter.OnceboxScheduledExecutorServiceConstants.TIME_UNIT;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 

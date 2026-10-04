@@ -2,10 +2,10 @@ package io.github.dmitriyiliyov.oncebox.tests.classpath;
 
 import io.github.dmitriyiliyov.oncebox.dlq.api.OutboxDlqApiRepository;
 import io.github.dmitriyiliyov.oncebox.postgresql.PostgreSqlOutboxDlqApiRepository;
-import io.github.dmitriyiliyov.oncebox.starter.OutboxAutoConfiguration;
-import io.github.dmitriyiliyov.oncebox.starter.OutboxRepositoryFactory;
-import io.github.dmitriyiliyov.oncebox.starter.PostgreSqlOutboxRepositoryFactory;
-import io.github.dmitriyiliyov.oncebox.starter.publisher.dlq.OutboxDlqApiAutoConfiguration;
+import io.github.dmitriyiliyov.oncebox.starter.OnceboxAutoConfiguration;
+import io.github.dmitriyiliyov.oncebox.starter.OnceboxRepositoryFactory;
+import io.github.dmitriyiliyov.oncebox.starter.PostgreSqlOnceboxRepositoryFactory;
+import io.github.dmitriyiliyov.oncebox.starter.outbox.dlq.OutboxDlqApiAutoConfiguration;
 import io.github.dmitriyiliyov.oncebox.tests.fixtures.PostgresTestContainerSingleton;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,8 +25,8 @@ import static org.assertj.core.api.Assertions.*;
  * classpath (mysql / oracle modules absent).
  * <p>
  * The core outbox auto-configuration boots fine, because it delegates dialect construction to
- * starter-local factory classes ({@code PostgreSqlOutboxRepositoryFactory} etc.) — introspecting
- * {@code OutboxAutoConfiguration} never resolves the dialect module classes themselves.
+ * starter-local factory classes ({@code PostgreSqlOnceboxRepositoryFactory} etc.) — introspecting
+ * {@code OnceboxAutoConfiguration} never resolves the dialect module classes themselves.
  * <p>
  * {@code OutboxDlqApiAutoConfiguration}, on the other hand, references the dialect id-helper /
  * repository classes directly in its bean-method bodies, so Spring's configuration-class
@@ -80,13 +80,13 @@ class PostgresOnlyClasspathIsolationTests {
                         DataSourceAutoConfiguration.class,
                         DataSourceTransactionManagerAutoConfiguration.class,
                         TransactionAutoConfiguration.class,
-                        OutboxAutoConfiguration.class
+                        OnceboxAutoConfiguration.class
                 ))
                 .run(ctx -> {
                     assertThat(ctx).hasNotFailed();
-                    assertThat(ctx).hasSingleBean(OutboxRepositoryFactory.class);
-                    assertThat(ctx.getBean(OutboxRepositoryFactory.class))
-                            .isInstanceOf(PostgreSqlOutboxRepositoryFactory.class);
+                    assertThat(ctx).hasSingleBean(OnceboxRepositoryFactory.class);
+                    assertThat(ctx.getBean(OnceboxRepositoryFactory.class))
+                            .isInstanceOf(PostgreSqlOnceboxRepositoryFactory.class);
                 });
     }
 
@@ -98,13 +98,13 @@ class PostgresOnlyClasspathIsolationTests {
                         DataSourceAutoConfiguration.class,
                         DataSourceTransactionManagerAutoConfiguration.class,
                         TransactionAutoConfiguration.class,
-                        OutboxAutoConfiguration.class,
+                        OnceboxAutoConfiguration.class,
                         OutboxDlqApiAutoConfiguration.class
                 ))
                 .withPropertyValues(
-                        "oncebox.publisher.dlq.enabled=true",
-                        "oncebox.publisher.sender.type=kafka",
-                        "oncebox.publisher.events.my-event.topic=my.topic"
+                        "oncebox.outbox.dlq.enabled=true",
+                        "oncebox.outbox.sender.type=kafka",
+                        "oncebox.outbox.events.my-event.topic=my.topic"
                 )
                 .run(ctx -> {
                     assertThat(ctx).hasNotFailed();

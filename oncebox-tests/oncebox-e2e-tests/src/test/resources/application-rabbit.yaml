@@ -5,10 +5,10 @@ spring:
     connection-timeout: 2s
 
 oncebox:
-  publisher:
+  outbox:
     sender:
       type: rabbit
       bean-name: outboxRabbitTemplate
-  consumer:
+  inbox:
     source:
       type: rabbit

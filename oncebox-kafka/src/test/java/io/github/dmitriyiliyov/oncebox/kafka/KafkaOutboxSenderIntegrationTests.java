@@ -1,10 +1,10 @@
 package io.github.dmitriyiliyov.oncebox.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.OutboxEvent;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.OutboxHeaders;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.SenderResult;
+import io.github.dmitriyiliyov.oncebox.core.OnceboxHeaders;
+import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
+import io.github.dmitriyiliyov.oncebox.core.outbox.domain.SenderResult;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -94,10 +94,10 @@ class KafkaOutboxSenderIntegrationTests {
 
         assertThat(received).isNotNull();
 
-        byte[] eventIdHeader = received.headers().lastHeader(OutboxHeaders.EVENT_ID.getValue()).value();
+        byte[] eventIdHeader = received.headers().lastHeader(OnceboxHeaders.EVENT_ID.getValue()).value();
         assertThat(new String(eventIdHeader)).isEqualTo(eventId.toString());
 
-        byte[] eventTypeHeader = received.headers().lastHeader(OutboxHeaders.EVENT_TYPE.getValue()).value();
+        byte[] eventTypeHeader = received.headers().lastHeader(OnceboxHeaders.EVENT_TYPE.getValue()).value();
         assertThat(new String(eventTypeHeader)).isEqualTo("TEST_EVENT");
 
         assertThat(received.value()).isInstanceOf(String.class);
@@ -204,7 +204,7 @@ class KafkaOutboxSenderIntegrationTests {
             while (System.currentTimeMillis() < endTime) {
                 ConsumerRecord<String, Object> record = records.poll(1, TimeUnit.SECONDS);
                 if (record != null) {
-                    var header = record.headers().lastHeader(OutboxHeaders.EVENT_ID.getValue());
+                    var header = record.headers().lastHeader(OnceboxHeaders.EVENT_ID.getValue());
                     if (header != null && targetEventId.toString().equals(new String(header.value()))) {
                         return record;
                     }

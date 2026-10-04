@@ -39,7 +39,7 @@ public class RabbitConfig {
     @Bean
     public SimpleRabbitListenerContainerFactory rabbitBatchListenerContainerFactory(
             ConnectionFactory connectionFactory,
-            @Qualifier("outboxRabbitMessageConverter") MessageConverter messageConverter
+            @Qualifier("inboxRabbitMessageConverter") MessageConverter messageConverter
     ) {
         SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
         factory.setConnectionFactory(connectionFactory);

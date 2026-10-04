@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.tests.integration.publish.config;
 
-import io.github.dmitriyiliyov.oncebox.core.publisher.OutboxPublisher;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxPublisher;
 import io.github.dmitriyiliyov.oncebox.tests.integration.*;
 import io.github.dmitriyiliyov.oncebox.tests.integration.publish.BusinessRepository;
 import io.github.dmitriyiliyov.oncebox.tests.integration.publish.JdbcBusinessRepository;
@@ -69,7 +69,7 @@ public class OutboxIntegrationTestsConfig {
 
     @Bean
     public AopBusinessService aopJdbcBusinessService(
-            @Qualifier("outboxJdbcTemplate") JdbcTemplate jdbcTemplate,
+            @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate,
             IdPreparer idPreparer
     ) {
         return new AopBusinessService(

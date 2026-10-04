@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.tests.integration.consume.kafka;
 
-import io.github.dmitriyiliyov.oncebox.core.consumer.OutboxIdempotentConsumer;
-import io.github.dmitriyiliyov.oncebox.messaging.OutboxHeadersUtils;
+import io.github.dmitriyiliyov.oncebox.core.OnceboxHeadersUtils;
+import io.github.dmitriyiliyov.oncebox.core.inbox.IdempotentConsumer;
 import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.ConsumerBusinessRepository;
 import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.ConsumerVariant;
 import io.github.dmitriyiliyov.oncebox.tests.integration.domain.BusinessEvent;
@@ -24,16 +24,16 @@ public class KafkaConsumerFaultyBusinessService {
     public static final String BATCH_ID_FAILING_TOPIC = "test.outbox.batch.id.failing";
     public static final String CONSUMER_GROUP = "test-outbox-faulty-consumer";
 
-    private final OutboxIdempotentConsumer outboxConsumer;
+    private final IdempotentConsumer idempotentConsumer;
     private final ConsumerBusinessRepository repository;
     private final ConsumerVariant variant;
     private final AtomicBoolean shouldFail = new AtomicBoolean(true);
     private final AtomicInteger failures = new AtomicInteger();
 
-    public KafkaConsumerFaultyBusinessService(OutboxIdempotentConsumer outboxConsumer,
+    public KafkaConsumerFaultyBusinessService(IdempotentConsumer idempotentConsumer,
                                               ConsumerBusinessRepository repository,
                                               ConsumerVariant variant) {
-        this.outboxConsumer = outboxConsumer;
+        this.idempotentConsumer = idempotentConsumer;
         this.repository = repository;
         this.variant = variant;
     }
@@ -64,9 +64,9 @@ public class KafkaConsumerFaultyBusinessService {
     @KafkaListener(topics = "#{__listener.name('" + SINGLE_FAILING_TOPIC + "')}", groupId = CONSUMER_GROUP, containerFactory = "testSingleKafkaListenerContainerFactory")
     public void listenFailing(Message<BusinessEvent> message, Acknowledgment ack) {
         try {
-            outboxConsumer.consume(
+            idempotentConsumer.consume(
                     message,
-                    OutboxHeadersUtils::extractId,
+                    OnceboxHeadersUtils::extractId,
                     msg -> {
                         repository.save(msg.getPayload());
                         if (shouldFail.get()) {
@@ -84,9 +84,9 @@ public class KafkaConsumerFaultyBusinessService {
     @KafkaListener(topics = "#{__listener.name('" + BATCH_FAILING_TOPIC + "')}", groupId = CONSUMER_GROUP, containerFactory = "testBatchKafkaListenerContainerFactory")
     public void listenBatchFailing(List<Message<BusinessEvent>> messages, Acknowledgment ack) {
         try {
-            outboxConsumer.consume(
+            idempotentConsumer.consume(
                     messages,
-                    OutboxHeadersUtils::extractId,
+                    OnceboxHeadersUtils::extractId,
                     deduped -> {
                         repository.saveAll(deduped.stream().map(Message::getPayload).toList());
                         if (shouldFail.get()) {
@@ -104,8 +104,8 @@ public class KafkaConsumerFaultyBusinessService {
     @KafkaListener(topics = "#{__listener.name('" + SINGLE_ID_FAILING_TOPIC + "')}", groupId = CONSUMER_GROUP, containerFactory = "testSingleKafkaListenerContainerFactory")
     public void listenSingleIdFailing(Message<BusinessEvent> message, Acknowledgment ack) {
         try {
-            UUID eventId = OutboxHeadersUtils.extractId(message);
-            outboxConsumer.consume(
+            UUID eventId = OnceboxHeadersUtils.extractId(message);
+            idempotentConsumer.consume(
                     eventId,
                     () -> {
                         repository.save(message.getPayload());
@@ -125,14 +125,14 @@ public class KafkaConsumerFaultyBusinessService {
     public void listenBatchIdsFailing(List<Message<BusinessEvent>> messages, Acknowledgment ack) {
         try {
             Set<UUID> allIds = messages.stream()
-                    .map(OutboxHeadersUtils::extractId)
+                    .map(OnceboxHeadersUtils::extractId)
                     .collect(Collectors.toSet());
 
-            outboxConsumer.consume(
+            idempotentConsumer.consume(
                     allIds,
                     newIds -> {
                         List<BusinessEvent> eventsToSave = messages.stream()
-                                .filter(msg -> newIds.contains(OutboxHeadersUtils.extractId(msg)))
+                                .filter(msg -> newIds.contains(OnceboxHeadersUtils.extractId(msg)))
                                 .map(Message::getPayload)
                                 .toList();
 

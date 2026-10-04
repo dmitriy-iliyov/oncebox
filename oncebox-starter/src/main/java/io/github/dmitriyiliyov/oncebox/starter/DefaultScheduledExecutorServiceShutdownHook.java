@@ -6,8 +6,8 @@ import org.slf4j.LoggerFactory;
 import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
 
-import static io.github.dmitriyiliyov.oncebox.starter.OutboxScheduledExecutorServiceConstants.TIMEOUT;
-import static io.github.dmitriyiliyov.oncebox.starter.OutboxScheduledExecutorServiceConstants.TIME_UNIT;
+import static io.github.dmitriyiliyov.oncebox.starter.OnceboxScheduledExecutorServiceConstants.TIMEOUT;
+import static io.github.dmitriyiliyov.oncebox.starter.OnceboxScheduledExecutorServiceConstants.TIME_UNIT;
 
 public class DefaultScheduledExecutorServiceShutdownHook implements ScheduledExecutorServiceShutdownHook {
 
@@ -23,17 +23,17 @@ public class DefaultScheduledExecutorServiceShutdownHook implements ScheduledExe
         shutdownTarget.shutdown();
         try {
             if (shutdownTarget.awaitTermination(TIMEOUT, TIME_UNIT)) {
-                log.debug("Outbox's ScheduledExecutorService shutdown gracefully");
+                log.debug("Oncebox's ScheduledExecutorService shutdown gracefully");
             } else {
                 log.warn(
-                        "Outbox's ScheduledExecutorService didn't terminate within {} {}, forcing shutdown",
+                        "Oncebox's ScheduledExecutorService didn't terminate within {} {}, forcing shutdown",
                         TIMEOUT, TIME_UNIT
                 );
                 shutdownTarget.shutdownNow();
             }
         } catch (InterruptedException e) {
             shutdownTarget.shutdownNow();
-            log.error("Outbox's ScheduledExecutorService shutdown was interrupted, forcing shutdown", e);
+            log.error("Oncebox's ScheduledExecutorService shutdown was interrupted, forcing shutdown", e);
             Thread.currentThread().interrupt();
         }
     }

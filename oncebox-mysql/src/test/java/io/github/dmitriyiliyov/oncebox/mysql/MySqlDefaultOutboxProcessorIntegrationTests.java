@@ -1,9 +1,9 @@
 package io.github.dmitriyiliyov.oncebox.mysql;
 
-import io.github.dmitriyiliyov.oncebox.core.publisher.DefaultOutboxProcessor;
-import io.github.dmitriyiliyov.oncebox.core.publisher.DefaultOutboxProcessorVerifier;
-import io.github.dmitriyiliyov.oncebox.core.publisher.OutboxManager;
-import io.github.dmitriyiliyov.oncebox.core.publisher.OutboxSender;
+import io.github.dmitriyiliyov.oncebox.core.outbox.DefaultOutboxProcessor;
+import io.github.dmitriyiliyov.oncebox.core.outbox.DefaultOutboxProcessorVerifier;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxManager;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxSender;
 import io.github.dmitriyiliyov.oncebox.core.utils.DefaultBytesResultSetMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

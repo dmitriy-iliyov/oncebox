@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.postgresql;
 
-import io.github.dmitriyiliyov.oncebox.core.publisher.OutboxCaptureVerifier;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxCaptureVerifier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,5 +33,11 @@ class PostgreSqlOutboxCaptureIntegrationTests extends BasePostgresSqlIntegration
     @DisplayName("IT finalizeBatch() when a stale capture finalizes after the event was recaptured should keep the newer outcome")
     void finalizeBatch_whenStaleCaptureFinalizesAfterRecapture_shouldKeepNewerOutcome() {
         verifier.finalizeBatch_whenStaleCaptureFinalizesAfterRecapture_shouldKeepNewerOutcome();
+    }
+
+    @Test
+    @DisplayName("IT recoverStuckBatch() when the recovering instance runs in another time zone should not recover a fresh capture")
+    void recoverStuckBatch_whenRecoveringInstanceRunsInAnotherZone_shouldNotRecoverFreshCapture() {
+        verifier.recoverStuckBatch_whenRecoveringInstanceRunsInAnotherZone_shouldNotRecoverFreshCapture();
     }
 }

@@ -38,7 +38,7 @@ class MySqlDistributedLockRepositoryConcurrentTests extends BaseMySqlIntegration
                 },
                 (jdbcTemplate, idPreparer, jobName, lockAtLeastFor, lockAtMostFor) -> {
                     String sql = """
-                        INSERT INTO outbox_jobs (job_name, lock_until, locked_by, locked_at, lock_at_least_for, lock_at_most_for) 
+                        INSERT INTO oncebox_jobs (job_name, lock_until, locked_by, locked_at, lock_at_least_for, lock_at_most_for) 
                         VALUES (?, TIMESTAMPADD(HOUR, -1, UTC_TIMESTAMP(3)), NULL, TIMESTAMPADD(HOUR, -1, UTC_TIMESTAMP(3)), ?, ?)
                     """;
                     jdbcTemplate.update(sql, jobName, lockAtLeastFor, lockAtMostFor);

@@ -1,9 +1,9 @@
 package io.github.dmitriyiliyov.oncebox.kafka;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.OutboxEvent;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.SenderResult;
+import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
+import io.github.dmitriyiliyov.oncebox.core.outbox.domain.SenderResult;
 import org.apache.kafka.common.KafkaException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -321,7 +321,7 @@ public class KafkaOutboxSenderUnitTests {
 
         when(kafkaTemplate.send(any(Message.class))).thenAnswer(invocation -> {
             Message<?> msg = invocation.getArgument(0);
-            String idStr = (String) msg.getHeaders().get(io.github.dmitriyiliyov.oncebox.core.publisher.domain.OutboxHeaders.EVENT_ID.getValue());
+            String idStr = (String) msg.getHeaders().get(io.github.dmitriyiliyov.oncebox.core.OnceboxHeaders.EVENT_ID.getValue());
             UUID id = UUID.fromString(idStr);
             if (id.equals(event1.getId())) {
                 return CompletableFuture.completedFuture(null);

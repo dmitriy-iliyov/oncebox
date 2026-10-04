@@ -1,9 +1,9 @@
 package io.github.dmitriyiliyov.oncebox.tests.e2e.config;
 
-import io.github.dmitriyiliyov.oncebox.core.publisher.OutboxPublisher;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxPublisher;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.publish.PublisherBusinessService;
+import io.github.dmitriyiliyov.oncebox.tests.e2e.repository.TestOnceboxRepositoryFactory;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.repository.TestOutboxRepository;
-import io.github.dmitriyiliyov.oncebox.tests.e2e.repository.TestOutboxRepositoryFactory;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.ClassPathResource;
@@ -56,7 +56,7 @@ public class E2eTestConfig {
 
     @Bean
     public TestOutboxRepository testOutboxRepository(JdbcTemplate jdbcTemplate) {
-        return TestOutboxRepositoryFactory.generate(DATABASE_TYPE, jdbcTemplate);
+        return TestOnceboxRepositoryFactory.generate(DATABASE_TYPE, jdbcTemplate);
     }
 
     @Bean

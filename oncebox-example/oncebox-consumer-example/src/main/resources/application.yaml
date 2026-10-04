@@ -12,9 +12,9 @@ logging:
     io.github.dmitriyiliyov.oncebox: debug
 oncebox:
   thread-pool-size: 2
-  publisher:
+  outbox:
     enabled: false
-  consumer:
+  inbox:
     enabled: true
     mappings:
       create-order: io.github.dmitriyiliyov.oncebox.example.shared.OrderDto
@@ -25,7 +25,7 @@ oncebox:
       ttl: 10m
     cache:
       enabled: true
-      cache-name: "oncebox:consumed"
+      cache-name: "oncebox:inbox"
     metrics:
       enabled: true
 management:

@@ -27,7 +27,7 @@ public class ManualJpaPublishIntegrationTests extends BaseOutboxIntegrationTests
 
     public ManualJpaPublishIntegrationTests(
             @Qualifier("manualJpaBusinessService") ManualBusinessService service,
-            @Qualifier("outboxJdbcTemplate") JdbcTemplate jdbcTemplate,
+            @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate,
             IdExtractor idExtractor
     ) {
         this.verifier = new ManualPublishIntegrationVerifier(service, jdbcTemplate, idExtractor);

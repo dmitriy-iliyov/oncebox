@@ -1,9 +1,8 @@
 package io.github.dmitriyiliyov.oncebox.postgresql;
 
-import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.AbstractOutboxDlqRepository;
-import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.DlqStatus;
-import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.OutboxDlqEvent;
-import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.OutboxDlqRepository;
+import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.AbstractOutboxDlqRepository;
+import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DlqStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.OutboxDlqEvent;
 import io.github.dmitriyiliyov.oncebox.core.utils.ResultSetMapper;
 import io.github.dmitriyiliyov.oncebox.core.utils.SqlUuidHelper;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -14,9 +13,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * PostgreSQL-specific implementation of {@link OutboxDlqRepository}.
- */
 public class PostgreSqlOutboxDlqRepository extends AbstractOutboxDlqRepository {
 
     private final Clock clock;

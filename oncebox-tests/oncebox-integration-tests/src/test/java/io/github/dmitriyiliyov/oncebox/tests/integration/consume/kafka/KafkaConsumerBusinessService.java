@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.tests.integration.consume.kafka;
 
-import io.github.dmitriyiliyov.oncebox.core.consumer.OutboxIdempotentConsumer;
-import io.github.dmitriyiliyov.oncebox.messaging.OutboxHeadersUtils;
+import io.github.dmitriyiliyov.oncebox.core.OnceboxHeadersUtils;
+import io.github.dmitriyiliyov.oncebox.core.inbox.IdempotentConsumer;
 import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.ConsumerBusinessRepository;
 import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.ConsumerVariant;
 import io.github.dmitriyiliyov.oncebox.tests.integration.domain.BusinessEvent;
@@ -26,14 +26,14 @@ public class KafkaConsumerBusinessService {
 
     private static final Logger log = LoggerFactory.getLogger(KafkaConsumerBusinessService.class);
 
-    private final OutboxIdempotentConsumer outboxConsumer;
+    private final IdempotentConsumer idempotentConsumer;
     private final ConsumerBusinessRepository repository;
     private final ConsumerVariant variant;
 
-    public KafkaConsumerBusinessService(OutboxIdempotentConsumer outboxConsumer,
+    public KafkaConsumerBusinessService(IdempotentConsumer idempotentConsumer,
                                         ConsumerBusinessRepository repository,
                                         ConsumerVariant variant) {
-        this.outboxConsumer = outboxConsumer;
+        this.idempotentConsumer = idempotentConsumer;
         this.repository = repository;
         this.variant = variant;
     }
@@ -52,9 +52,9 @@ public class KafkaConsumerBusinessService {
     @KafkaListener(topics = "#{__listener.name('" + SINGLE_TOPIC + "')}", groupId = CONSUMER_GROUP, containerFactory = "testSingleKafkaListenerContainerFactory")
     public void listenSingleMessage(Message<BusinessEvent> message, Acknowledgment ack) {
         try {
-            outboxConsumer.consume(
+            idempotentConsumer.consume(
                     message,
-                    OutboxHeadersUtils::extractId,
+                    OnceboxHeadersUtils::extractId,
                     msg -> repository.save(msg.getPayload())
             );
             ack.acknowledge();
@@ -67,9 +67,9 @@ public class KafkaConsumerBusinessService {
     @KafkaListener(topics = "#{__listener.name('" + BATCH_TOPIC + "')}", groupId = CONSUMER_GROUP, containerFactory = "testBatchKafkaListenerContainerFactory")
     public void listenBatchMessages(List<Message<BusinessEvent>> messages, Acknowledgment ack) {
         try {
-            outboxConsumer.consume(
+            idempotentConsumer.consume(
                     messages,
-                    OutboxHeadersUtils::extractId,
+                    OnceboxHeadersUtils::extractId,
                     dedupedMessages -> repository.saveAll(
                             dedupedMessages.stream().map(Message::getPayload).toList()
                     )
@@ -84,8 +84,8 @@ public class KafkaConsumerBusinessService {
     @KafkaListener(topics = "#{__listener.name('" + SINGLE_ID_TOPIC + "')}", groupId = CONSUMER_GROUP, containerFactory = "testSingleKafkaListenerContainerFactory")
     public void listenSingleId(Message<BusinessEvent> message, Acknowledgment ack) {
         try {
-            UUID eventId = OutboxHeadersUtils.extractId(message);
-            outboxConsumer.consume(
+            UUID eventId = OnceboxHeadersUtils.extractId(message);
+            idempotentConsumer.consume(
                     eventId,
                     () -> repository.save(message.getPayload())
             );
@@ -100,14 +100,14 @@ public class KafkaConsumerBusinessService {
     public void listenBatchIds(List<Message<BusinessEvent>> messages, Acknowledgment ack) {
         try {
             Set<UUID> allIds = messages.stream()
-                    .map(OutboxHeadersUtils::extractId)
+                    .map(OnceboxHeadersUtils::extractId)
                     .collect(Collectors.toSet());
 
-            outboxConsumer.consume(
+            idempotentConsumer.consume(
                     allIds,
                     newIds -> {
                         List<BusinessEvent> eventsToSave = messages.stream()
-                                .filter(msg -> newIds.contains(OutboxHeadersUtils.extractId(msg)))
+                                .filter(msg -> newIds.contains(OnceboxHeadersUtils.extractId(msg)))
                                 .map(Message::getPayload)
                                 .toList();
 

@@ -15,7 +15,7 @@ import org.springframework.kafka.core.ProducerFactory;
 import java.util.HashMap;
 import java.util.Map;
 
-@ConditionalOnProperty(prefix = "oncebox.publisher.sender", name = "type", havingValue = "kafka")
+@ConditionalOnProperty(prefix = "oncebox.outbox.sender", name = "type", havingValue = "kafka")
 @Configuration
 public class KafkaConfig {
 

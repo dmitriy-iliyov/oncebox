@@ -1,8 +1,8 @@
 package io.github.dmitriyiliyov.oncebox.example.consumer;
 
-import io.github.dmitriyiliyov.oncebox.core.consumer.OutboxIdempotentConsumer;
+import io.github.dmitriyiliyov.oncebox.core.OnceboxHeadersUtils;
+import io.github.dmitriyiliyov.oncebox.core.inbox.IdempotentConsumer;
 import io.github.dmitriyiliyov.oncebox.example.shared.OrderDto;
-import io.github.dmitriyiliyov.oncebox.messaging.OutboxHeadersUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
@@ -20,20 +20,20 @@ import java.util.List;
 @RequiredArgsConstructor
 public class OrderAnalyticKafkaListener {
 
-    private final OutboxIdempotentConsumer outboxConsumer;
+    private final IdempotentConsumer idempotentConsumer;
 
     /**
      * Example of routing messages to different handlers based on the event type.
-     * The event type is extracted from the Kafka record headers using OutboxHeaders.EVENT_TYPE.
+     * The event type is extracted from the Kafka record headers using OnceboxHeaders.EVENT_TYPE.
      * This demonstrates how Outbox pattern headers can be used to dynamically dispatch messages.
      */
-    @KafkaListener(topics = "orders", groupId = "analytics", containerFactory = "outboxKafkaListenerContainerFactory")
+    @KafkaListener(topics = "orders", groupId = "analytics", containerFactory = "inboxKafkaListenerContainerFactory")
     public void listen(Message<?> message, Acknowledgment ack) {
         try {
-            outboxConsumer.consume(
+            idempotentConsumer.consume(
                     message,
-                    OutboxHeadersUtils::extractId,
-                    m -> log.info("Analytics receive '{}' event {}", OutboxHeadersUtils.extractEventType(m), m.getPayload())
+                    OnceboxHeadersUtils::extractId,
+                    m -> log.info("Analytics receive '{}' event {}", OnceboxHeadersUtils.extractEventType(m), m.getPayload())
             );
             ack.acknowledge();
         } catch (Exception e) {
@@ -49,9 +49,9 @@ public class OrderAnalyticKafkaListener {
     @KafkaListener(topics = "orders.created", groupId = "analytics", containerFactory = "kafkaBatchListenerContainerFactory")
     public void listenBatch(List<Message<OrderDto>> messages, Acknowledgment ack) {
         try {
-            outboxConsumer.consume(
+            idempotentConsumer.consume(
                     messages,
-                    OutboxHeadersUtils::extractId,
+                    OnceboxHeadersUtils::extractId,
                     messageList -> messageList.forEach(
                             message -> log.info("Analytics receive 'created-order' {}", message.getPayload())
                     )

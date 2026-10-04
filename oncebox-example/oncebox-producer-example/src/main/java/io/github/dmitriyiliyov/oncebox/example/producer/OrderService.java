@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.example.producer;
 
 import io.github.dmitriyiliyov.oncebox.aop.OutboxPublish;
-import io.github.dmitriyiliyov.oncebox.core.publisher.OutboxPublisher;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxPublisher;
 import io.github.dmitriyiliyov.oncebox.example.shared.OrderCreateDto;
 import io.github.dmitriyiliyov.oncebox.example.shared.OrderDto;
 import io.github.dmitriyiliyov.oncebox.example.shared.OrderUpdateDto;

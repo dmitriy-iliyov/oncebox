@@ -10,6 +10,6 @@ public class UnknownDlqStatusException extends BadRequestException {
 
     @Override
     public String getDetail() {
-        return "Unknown value '%s' of enum io.github.dmitriyiliyov.oncebox.core.publisher.dlq.DlqStatus".formatted(source);
+        return "Unknown value '%s' of enum io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DlqStatus".formatted(source);
     }
 }

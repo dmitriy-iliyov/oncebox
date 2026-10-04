@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.tests.e2e.publish;
 
 import io.github.dmitriyiliyov.oncebox.aop.OutboxPublish;
-import io.github.dmitriyiliyov.oncebox.core.publisher.OutboxPublisher;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxPublisher;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.domain.BusinessEvent;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.domain.E2eEvents;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.repository.TestOutboxRepository;

@@ -9,12 +9,12 @@ public class OnAnyCleanUpEnabledCondition extends SpringBootCondition {
 
     @Override
     public ConditionOutcome getMatchOutcome(ConditionContext context, AnnotatedTypeMetadata metadata) {
-        Boolean isPublisherCleanUpEnabled = context.getEnvironment().getProperty("oncebox.publisher.clean-up.enabled", Boolean.class);
-        Boolean isConsumerCleanUpEnabled = context.getEnvironment().getProperty("oncebox.consumer.clean-up.enabled", Boolean.class);
-        if (isPublisherCleanUpEnabled == null || isPublisherCleanUpEnabled) {
+        Boolean isOutboxCleanUpEnabled = context.getEnvironment().getProperty("oncebox.outbox.clean-up.enabled", Boolean.class);
+        Boolean isInboxCleanUpEnabled = context.getEnvironment().getProperty("oncebox.inbox.clean-up.enabled", Boolean.class);
+        if (isOutboxCleanUpEnabled == null || isOutboxCleanUpEnabled) {
             return ConditionOutcome.match();
         }
-        if (isConsumerCleanUpEnabled != null && isConsumerCleanUpEnabled) {
+        if (isInboxCleanUpEnabled != null && isInboxCleanUpEnabled) {
             return ConditionOutcome.match();
         }
         return ConditionOutcome.noMatch("Nobody has the clean-up function enabled");

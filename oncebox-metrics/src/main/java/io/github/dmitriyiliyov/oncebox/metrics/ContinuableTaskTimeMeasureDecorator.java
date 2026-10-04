@@ -14,7 +14,7 @@ public class ContinuableTaskTimeMeasureDecorator implements ContinuableTaskDecor
 
     public ContinuableTaskTimeMeasureDecorator(MeterRegistry registry, String taskType) {
         Objects.requireNonNull(registry, "registry cannot be null");
-        this.timer = Timer.builder("outbox_task_processing_duration")
+        this.timer = Timer.builder("oncebox_task_processing_duration")
                 .description("Task execution time in milliseconds")
                 .tag("task_type", Objects.requireNonNull(taskType, "taskType cannot be null"))
                 .register(registry);

@@ -15,7 +15,7 @@ logging:
     io.github.dmitriyiliyov.oncebox: DEBUG
 oncebox:
   thread-pool-size: 2
-  publisher:
+  outbox:
     sender:
       type: kafka
     events:

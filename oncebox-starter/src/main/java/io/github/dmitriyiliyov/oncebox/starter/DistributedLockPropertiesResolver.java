@@ -2,8 +2,8 @@ package io.github.dmitriyiliyov.oncebox.starter;
 
 public final class DistributedLockPropertiesResolver {
 
-    public static LockDurations resolve(OutboxProperties.DistributedLockProperties distributedLockProperties,
-                               OutboxProperties.PollingProperties pollingProperties) {
+    public static LockDurations resolve(OnceboxProperties.DistributedLockProperties distributedLockProperties,
+                                        OnceboxProperties.PollingProperties pollingProperties) {
         Long lockAtLeastForDst = null;
         Long lockAtMostForDst = null;
         if (distributedLockProperties.isResolveByPollingProperties()) {

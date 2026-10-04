@@ -46,7 +46,7 @@ class ContinuableTaskTimeMeasureDecoratorSupplierUnitTests {
 
         decorated.run();
 
-        Timer timer = registry.find("outbox_task_processing_duration")
+        Timer timer = registry.find("oncebox_task_processing_duration")
                 .tag("task_type", "recovery_task")
                 .timer();
         assertNotNull(timer);
@@ -63,9 +63,9 @@ class ContinuableTaskTimeMeasureDecoratorSupplierUnitTests {
         first.run();
         second.run();
 
-        assertEquals(2, registry.find("outbox_task_processing_duration")
+        assertEquals(2, registry.find("oncebox_task_processing_duration")
                 .tag("task_type", "task_a").timer().count());
-        assertEquals(1, registry.find("outbox_task_processing_duration")
+        assertEquals(1, registry.find("oncebox_task_processing_duration")
                 .tag("task_type", "task_b").timer().count());
     }
 }

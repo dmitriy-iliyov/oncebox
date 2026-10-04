@@ -38,7 +38,7 @@ public class MySqlTestOutboxRepository extends AbstractTestOutboxRepository {
         return List.of(
                 "TRUNCATE TABLE outbox_events",
                 "TRUNCATE TABLE outbox_dlq_events",
-                "TRUNCATE TABLE outbox_consumed_events",
+                "TRUNCATE TABLE inbox_events",
                 "TRUNCATE TABLE e2e_produced_events",
                 "TRUNCATE TABLE e2e_consumed_events"
         );

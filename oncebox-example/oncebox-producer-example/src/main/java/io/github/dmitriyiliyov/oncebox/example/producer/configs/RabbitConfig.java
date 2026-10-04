@@ -13,7 +13,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-@ConditionalOnProperty(prefix = "oncebox.publisher.sender", name = "type", havingValue = "rabbit")
+@ConditionalOnProperty(prefix = "oncebox.outbox.sender", name = "type", havingValue = "rabbit")
 @Configuration
 @Slf4j
 public class RabbitConfig {

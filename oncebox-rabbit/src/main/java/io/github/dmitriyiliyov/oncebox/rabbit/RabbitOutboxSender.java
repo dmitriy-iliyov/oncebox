@@ -2,10 +2,10 @@ package io.github.dmitriyiliyov.oncebox.rabbit;
 
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.ConfirmListener;
-import io.github.dmitriyiliyov.oncebox.core.publisher.OutboxSender;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.OutboxEvent;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.OutboxHeaders;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.SenderResult;
+import io.github.dmitriyiliyov.oncebox.core.OnceboxHeaders;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxSender;
+import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
+import io.github.dmitriyiliyov.oncebox.core.outbox.domain.SenderResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -47,9 +47,9 @@ public class RabbitOutboxSender implements OutboxSender {
                         AMQP.BasicProperties props = new AMQP.BasicProperties.Builder()
                                 .deliveryMode(2)
                                 .headers(Map.of(
-                                        OutboxHeaders.EVENT_ID.getValue(), event.getId().toString(),
-                                        OutboxHeaders.EVENT_TYPE.getValue(), event.getEventType(),
-                                        OutboxHeaders.EVENT_PAYLOAD_TYPE.getValue(), event.getPayloadType()
+                                        OnceboxHeaders.EVENT_ID.getValue(), event.getId().toString(),
+                                        OnceboxHeaders.EVENT_TYPE.getValue(), event.getEventType(),
+                                        OnceboxHeaders.EVENT_PAYLOAD_TYPE.getValue(), event.getPayloadType()
                                 ))
                                 .build();
                         long deliveryTag = channel.getNextPublishSeqNo();

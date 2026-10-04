@@ -48,10 +48,9 @@
         <module>oncebox-oracle</module>
         <module>oncebox-aop</module>
         <module>oncebox-dlq-api</module>
-        <module>oncebox-consumer-cache</module>
+        <module>oncebox-inbox-cache</module>
         <module>oncebox-kafka</module>
         <module>oncebox-rabbit</module>
-        <module>oncebox-messaging</module>
         <module>oncebox-metrics</module>
         <module>oncebox-starter</module>
     </modules>

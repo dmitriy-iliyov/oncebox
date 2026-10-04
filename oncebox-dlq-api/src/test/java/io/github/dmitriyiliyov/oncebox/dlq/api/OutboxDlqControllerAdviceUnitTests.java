@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.dlq.api;
 
-import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.DlqStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DlqStatus;
 import io.github.dmitriyiliyov.oncebox.dlq.api.exception.InvalidDlqFilterException;
 import io.github.dmitriyiliyov.oncebox.dlq.api.exception.OutboxDlqEventInProcessException;
 import io.github.dmitriyiliyov.oncebox.dlq.api.exception.OutboxDlqEventNotFoundException;

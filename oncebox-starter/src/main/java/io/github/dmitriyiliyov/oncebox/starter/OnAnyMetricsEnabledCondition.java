@@ -11,9 +11,9 @@ public class OnAnyMetricsEnabledCondition extends SpringBootCondition {
     @Override
     public ConditionOutcome getMatchOutcome(ConditionContext context, AnnotatedTypeMetadata metadata) {
         Environment environment = context.getEnvironment();
-        boolean isPublisherMetricsEnabled = environment.getProperty("oncebox.publisher.metrics.enabled", Boolean.class, false);
-        boolean isConsumerMetricsEnabled = environment.getProperty("oncebox.consumer.metrics.enabled", Boolean.class, false);
-        if (isPublisherMetricsEnabled || isConsumerMetricsEnabled) {
+        boolean isOutboxMetricsEnabled = environment.getProperty("oncebox.outbox.metrics.enabled", Boolean.class, false);
+        boolean isInboxMetricsEnabled = environment.getProperty("oncebox.inbox.metrics.enabled", Boolean.class, false);
+        if (isOutboxMetricsEnabled || isInboxMetricsEnabled) {
             return ConditionOutcome.match("At least somebody enabled metrics");
         }
         return ConditionOutcome.noMatch("Nobody has the metrics enabled");

@@ -1,9 +1,9 @@
 package io.github.dmitriyiliyov.oncebox.rabbit;
 
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.OutboxEvent;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.OutboxHeaders;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.SenderResult;
+import io.github.dmitriyiliyov.oncebox.core.OnceboxHeaders;
+import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
+import io.github.dmitriyiliyov.oncebox.core.outbox.domain.SenderResult;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -100,9 +100,9 @@ class RabbitOutboxSenderIntegrationTests {
 
         Message received = rabbitTemplate.receive(QUEUE, 5000);
         assertThat(received).isNotNull();
-        assertThat((String) received.getMessageProperties().getHeader(OutboxHeaders.EVENT_ID.getValue()))
+        assertThat((String) received.getMessageProperties().getHeader(OnceboxHeaders.EVENT_ID.getValue()))
                 .isEqualTo(eventId.toString());
-        assertThat((String) received.getMessageProperties().getHeader(OutboxHeaders.EVENT_TYPE.getValue()))
+        assertThat((String) received.getMessageProperties().getHeader(OnceboxHeaders.EVENT_TYPE.getValue()))
                 .isEqualTo(ROUTING_KEY);
         assertThat(new String(received.getBody(), StandardCharsets.UTF_8))
                 .isEqualTo("{\"field\":\"value\"}");
@@ -161,7 +161,7 @@ class RabbitOutboxSenderIntegrationTests {
         for (int i = 0; i < 2; i++) {
             Message msg = rabbitTemplate.receive(QUEUE, 5000);
             assertThat(msg).isNotNull();
-            receivedIds.add((String) msg.getMessageProperties().getHeader(OutboxHeaders.EVENT_ID.getValue()));
+            receivedIds.add((String) msg.getMessageProperties().getHeader(OnceboxHeaders.EVENT_ID.getValue()));
         }
         assertThat(receivedIds).containsExactlyInAnyOrder(id1.toString(), id2.toString());
     }

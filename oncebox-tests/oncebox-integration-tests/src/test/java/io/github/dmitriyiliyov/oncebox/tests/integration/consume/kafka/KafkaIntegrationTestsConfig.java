@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.tests.integration.consume.kafka;
 
-import io.github.dmitriyiliyov.oncebox.core.consumer.OutboxIdempotentConsumer;
+import io.github.dmitriyiliyov.oncebox.core.inbox.IdempotentConsumer;
 import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.ConsumerVariant;
 import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.JdbcConsumerBusinessRepository;
 import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.JpaConsumerBusinessRepositoryProxy;
@@ -77,13 +77,13 @@ public class KafkaIntegrationTestsConfig {
     public ConcurrentKafkaListenerContainerFactory<Object, Object> testSingleKafkaListenerContainerFactory(
             ConcurrentKafkaListenerContainerFactoryConfigurer configurer,
             ConsumerFactory<Object, Object> testConsumerFactory,
-            @Qualifier("outboxKafkaRecordMessageConverter") RecordMessageConverter outboxKafkaRecordMessageConverter
+            @Qualifier("inboxKafkaRecordMessageConverter") RecordMessageConverter inboxKafkaRecordMessageConverter
     ) {
         ConcurrentKafkaListenerContainerFactory<Object, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
 
         configurer.configure(factory, testConsumerFactory);
 
-        factory.setRecordMessageConverter(outboxKafkaRecordMessageConverter);
+        factory.setRecordMessageConverter(inboxKafkaRecordMessageConverter);
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL);
         factory.setBatchListener(false);
         return factory;
@@ -93,13 +93,13 @@ public class KafkaIntegrationTestsConfig {
     public ConcurrentKafkaListenerContainerFactory<Object, Object> testBatchKafkaListenerContainerFactory(
             ConcurrentKafkaListenerContainerFactoryConfigurer configurer,
             ConsumerFactory<Object, Object> testConsumerFactory,
-            RecordMessageConverter outboxKafkaRecordMessageConverter
+            RecordMessageConverter inboxKafkaRecordMessageConverter
     ) {
         ConcurrentKafkaListenerContainerFactory<Object, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
 
         configurer.configure(factory, testConsumerFactory);
 
-        factory.setBatchMessageConverter(new BatchMessagingMessageConverter(outboxKafkaRecordMessageConverter));
+        factory.setBatchMessageConverter(new BatchMessagingMessageConverter(inboxKafkaRecordMessageConverter));
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL);
         factory.setBatchListener(true);
         return factory;
@@ -124,33 +124,33 @@ public class KafkaIntegrationTestsConfig {
 
     @Bean
     public KafkaConsumerBusinessService kafkaJdbcConsumerBusinessService(
-            OutboxIdempotentConsumer outboxIdempotentConsumer,
+            IdempotentConsumer idempotentConsumer,
             JdbcConsumerBusinessRepository repository
     ) {
-        return new KafkaConsumerBusinessService(outboxIdempotentConsumer, repository, ConsumerVariant.JDBC);
+        return new KafkaConsumerBusinessService(idempotentConsumer, repository, ConsumerVariant.JDBC);
     }
 
     @Bean
     public KafkaConsumerBusinessService kafkaJpaConsumerBusinessService(
-            OutboxIdempotentConsumer outboxIdempotentConsumer,
+            IdempotentConsumer idempotentConsumer,
             JpaConsumerBusinessRepositoryProxy repository
     ) {
-        return new KafkaConsumerBusinessService(outboxIdempotentConsumer, repository, ConsumerVariant.JPA);
+        return new KafkaConsumerBusinessService(idempotentConsumer, repository, ConsumerVariant.JPA);
     }
 
     @Bean
     public KafkaConsumerFaultyBusinessService kafkaJdbcConsumerFaultyBusinessService(
-            OutboxIdempotentConsumer outboxIdempotentConsumer,
+            IdempotentConsumer idempotentConsumer,
             JdbcConsumerBusinessRepository repository
     ) {
-        return new KafkaConsumerFaultyBusinessService(outboxIdempotentConsumer, repository, ConsumerVariant.JDBC);
+        return new KafkaConsumerFaultyBusinessService(idempotentConsumer, repository, ConsumerVariant.JDBC);
     }
 
     @Bean
     public KafkaConsumerFaultyBusinessService kafkaJpaConsumerFaultyBusinessService(
-            OutboxIdempotentConsumer outboxIdempotentConsumer,
+            IdempotentConsumer idempotentConsumer,
             JpaConsumerBusinessRepositoryProxy repository
     ) {
-        return new KafkaConsumerFaultyBusinessService(outboxIdempotentConsumer, repository, ConsumerVariant.JPA);
+        return new KafkaConsumerFaultyBusinessService(idempotentConsumer, repository, ConsumerVariant.JPA);
     }
 }

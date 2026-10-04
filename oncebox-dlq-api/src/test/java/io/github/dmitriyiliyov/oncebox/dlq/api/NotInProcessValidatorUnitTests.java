@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.dlq.api;
 
-import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.DlqStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DlqStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

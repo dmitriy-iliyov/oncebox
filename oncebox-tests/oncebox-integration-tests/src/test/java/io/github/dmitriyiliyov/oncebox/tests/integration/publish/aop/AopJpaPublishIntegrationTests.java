@@ -27,7 +27,7 @@ public class AopJpaPublishIntegrationTests extends BaseOutboxIntegrationTests {
 
     public AopJpaPublishIntegrationTests(
             @Qualifier("aopJpaBusinessService") AopBusinessService service,
-            @Qualifier("outboxJdbcTemplate") JdbcTemplate jdbcTemplate,
+            @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate,
             IdExtractor idExtractor
     ) {
         this.verifier = new AopPublishIntegrationVerifier(

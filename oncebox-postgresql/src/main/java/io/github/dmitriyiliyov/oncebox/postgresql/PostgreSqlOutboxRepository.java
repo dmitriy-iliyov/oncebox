@@ -1,9 +1,8 @@
 package io.github.dmitriyiliyov.oncebox.postgresql;
 
-import io.github.dmitriyiliyov.oncebox.core.publisher.AbstractOutboxRepository;
-import io.github.dmitriyiliyov.oncebox.core.publisher.OutboxRepository;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.OutboxEvent;
+import io.github.dmitriyiliyov.oncebox.core.outbox.AbstractOutboxRepository;
+import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.utils.ResultSetMapper;
 import io.github.dmitriyiliyov.oncebox.core.utils.SqlUuidHelper;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -15,19 +14,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-/**
- * PostgreSQL-specific implementation of {@link OutboxRepository}.
- * <ul>
- *
- *     <li>uses the PostgreSQL-specific clause
- *     <code>FOR UPDATE SKIP LOCKED</code> (available since PostgreSQL 9.5) to allow multiple service instances
- *     to process outbox batches in parallel without conflicting on the same rows.</li>
- *
- *     <li>performs batched deletion of processed events using a CTE
- *     (<code>WITH ... AS</code>), ensuring predictable load on the database.</li>
- *
- * </ul>
- */
 public class PostgreSqlOutboxRepository extends AbstractOutboxRepository {
 
     protected final ResultSetMapper mapper;

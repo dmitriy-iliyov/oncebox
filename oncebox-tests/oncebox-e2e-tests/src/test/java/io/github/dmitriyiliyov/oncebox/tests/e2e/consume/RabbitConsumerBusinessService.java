@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.tests.e2e.consume;
 
-import io.github.dmitriyiliyov.oncebox.core.consumer.OutboxIdempotentConsumer;
-import io.github.dmitriyiliyov.oncebox.messaging.OutboxHeadersUtils;
+import io.github.dmitriyiliyov.oncebox.core.OnceboxHeadersUtils;
+import io.github.dmitriyiliyov.oncebox.core.inbox.IdempotentConsumer;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.domain.BusinessEvent;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.domain.E2eEvents;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.repository.TestOutboxRepository;
@@ -14,20 +14,20 @@ public class RabbitConsumerBusinessService {
 
     private static final Logger log = LoggerFactory.getLogger(RabbitConsumerBusinessService.class);
 
-    private final OutboxIdempotentConsumer outboxConsumer;
+    private final IdempotentConsumer idempotentConsumer;
     private final TestOutboxRepository repository;
 
-    public RabbitConsumerBusinessService(OutboxIdempotentConsumer outboxConsumer, TestOutboxRepository repository) {
-        this.outboxConsumer = outboxConsumer;
+    public RabbitConsumerBusinessService(IdempotentConsumer idempotentConsumer, TestOutboxRepository repository) {
+        this.idempotentConsumer = idempotentConsumer;
         this.repository = repository;
     }
 
-    @RabbitListener(queues = E2eEvents.QUEUE, containerFactory = "outboxRabbitListenerContainerFactory")
+    @RabbitListener(queues = E2eEvents.QUEUE, containerFactory = "inboxRabbitListenerContainerFactory")
     public void listen(Message<BusinessEvent> message) {
         try {
-            outboxConsumer.consume(
+            idempotentConsumer.consume(
                     message,
-                    OutboxHeadersUtils::extractId,
+                    OnceboxHeadersUtils::extractId,
                     msg -> repository.saveConsumedBusiness(msg.getPayload().verifyId())
             );
         } catch (Exception e) {

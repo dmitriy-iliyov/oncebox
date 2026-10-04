@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.tests.e2e.config;
 
-import io.github.dmitriyiliyov.oncebox.core.consumer.OutboxIdempotentConsumer;
+import io.github.dmitriyiliyov.oncebox.core.inbox.IdempotentConsumer;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.consume.KafkaConsumerBusinessService;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.domain.E2eEvents;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.publish.KafkaRawEventResender;
@@ -47,9 +47,9 @@ public class KafkaBrokerConfig {
     }
 
     @Bean
-    public KafkaConsumerBusinessService kafkaConsumerBusinessService(OutboxIdempotentConsumer outboxIdempotentConsumer,
+    public KafkaConsumerBusinessService kafkaConsumerBusinessService(IdempotentConsumer idempotentConsumer,
                                                                      TestOutboxRepository repository) {
-        return new KafkaConsumerBusinessService(outboxIdempotentConsumer, repository);
+        return new KafkaConsumerBusinessService(idempotentConsumer, repository);
     }
 
     @Bean

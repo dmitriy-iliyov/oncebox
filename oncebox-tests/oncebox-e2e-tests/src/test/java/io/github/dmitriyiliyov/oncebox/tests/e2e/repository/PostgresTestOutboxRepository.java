@@ -36,7 +36,7 @@ public class PostgresTestOutboxRepository extends AbstractTestOutboxRepository {
     @Override
     protected List<String> truncateStatements() {
         return List.of(
-                "TRUNCATE outbox_events, outbox_dlq_events, outbox_consumed_events, e2e_produced_events, e2e_consumed_events"
+                "TRUNCATE outbox_events, outbox_dlq_events, inbox_events, e2e_produced_events, e2e_consumed_events"
         );
     }
 }

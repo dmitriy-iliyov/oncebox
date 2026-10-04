@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.starter;
 
-import io.github.dmitriyiliyov.oncebox.starter.publisher.OutboxPublisherAutoConfiguration;
-import io.github.dmitriyiliyov.oncebox.starter.publisher.dlq.OutboxDlqAutoConfiguration;
+import io.github.dmitriyiliyov.oncebox.starter.outbox.OutboxAutoConfiguration;
+import io.github.dmitriyiliyov.oncebox.starter.outbox.dlq.OutboxDlqAutoConfiguration;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.DisplayName;
@@ -44,8 +44,8 @@ class OnAnyMetricsEnabledConditionIntegrationTests {
                 .withConfiguration(AutoConfigurations.of(
                         TransactionAutoConfiguration.class,
                         JacksonAutoConfiguration.class,
+                        OnceboxAutoConfiguration.class,
                         OutboxAutoConfiguration.class,
-                        OutboxPublisherAutoConfiguration.class,
                         OutboxDlqAutoConfiguration.class
                 ))
                 .withUserConfiguration(TestConfiguration.class)
@@ -78,16 +78,16 @@ class OnAnyMetricsEnabledConditionIntegrationTests {
                         "spring.datasource.username=admin",
                         "spring.datasource.password=root",
                         "oncebox.tables.auto-create=false",
-                        "oncebox.publisher.sender.type=kafka",
-                        "oncebox.publisher.events.my-event.topic=my.topic"
+                        "oncebox.outbox.sender.type=kafka",
+                        "oncebox.outbox.events.my-event.topic=my.topic"
                 );
     }
 
     @Test
-    @DisplayName("IT should match when only publisher metrics enabled")
-    void shouldMatch_whenOnlyPublisherMetricsEnabled() {
+    @DisplayName("IT should match when only outbox metrics enabled")
+    void shouldMatch_whenOnlyOutboxMetricsEnabled() {
         baseRunner()
-                .withPropertyValues("oncebox.publisher.metrics.enabled=true")
+                .withPropertyValues("oncebox.outbox.metrics.enabled=true")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context).hasBean("conditionalBean");
@@ -95,10 +95,10 @@ class OnAnyMetricsEnabledConditionIntegrationTests {
     }
 
     @Test
-    @DisplayName("IT should match when only consumer metrics enabled")
-    void shouldMatch_whenOnlyConsumerMetricsEnabled() {
+    @DisplayName("IT should match when only inbox metrics enabled")
+    void shouldMatch_whenOnlyInboxMetricsEnabled() {
         baseRunner()
-                .withPropertyValues("oncebox.consumer.metrics.enabled=true")
+                .withPropertyValues("oncebox.inbox.metrics.enabled=true")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context).hasBean("conditionalBean");
@@ -106,12 +106,12 @@ class OnAnyMetricsEnabledConditionIntegrationTests {
     }
 
     @Test
-    @DisplayName("IT should match when both publisher and consumer metrics enabled")
+    @DisplayName("IT should match when both outbox and inbox metrics enabled")
     void shouldMatch_whenBothMetricsEnabled() {
         baseRunner()
                 .withPropertyValues(
-                        "oncebox.publisher.metrics.enabled=true",
-                        "oncebox.consumer.metrics.enabled=true"
+                        "oncebox.outbox.metrics.enabled=true",
+                        "oncebox.inbox.metrics.enabled=true"
                 )
                 .run(context -> {
                     assertThat(context).hasNotFailed();
@@ -120,12 +120,12 @@ class OnAnyMetricsEnabledConditionIntegrationTests {
     }
 
     @Test
-    @DisplayName("IT should match when publisher enabled and consumer explicitly disabled")
-    void shouldMatch_whenPublisherEnabledAndConsumerDisabled() {
+    @DisplayName("IT should match when outbox enabled and inbox explicitly disabled")
+    void shouldMatch_whenOutboxEnabledAndInboxDisabled() {
         baseRunner()
                 .withPropertyValues(
-                        "oncebox.publisher.metrics.enabled=true",
-                        "oncebox.consumer.metrics.enabled=false"
+                        "oncebox.outbox.metrics.enabled=true",
+                        "oncebox.inbox.metrics.enabled=false"
                 )
                 .run(context -> {
                     assertThat(context).hasNotFailed();
@@ -134,12 +134,12 @@ class OnAnyMetricsEnabledConditionIntegrationTests {
     }
 
     @Test
-    @DisplayName("IT should match when consumer enabled and publisher explicitly disabled")
-    void shouldMatch_whenConsumerEnabledAndPublisherDisabled() {
+    @DisplayName("IT should match when inbox enabled and outbox explicitly disabled")
+    void shouldMatch_whenInboxEnabledAndOutboxDisabled() {
         baseRunner()
                 .withPropertyValues(
-                        "oncebox.publisher.metrics.enabled=false",
-                        "oncebox.consumer.metrics.enabled=true"
+                        "oncebox.outbox.metrics.enabled=false",
+                        "oncebox.inbox.metrics.enabled=true"
                 )
                 .run(context -> {
                     assertThat(context).hasNotFailed();
@@ -152,8 +152,8 @@ class OnAnyMetricsEnabledConditionIntegrationTests {
     void shouldNotMatch_whenBothMetricsDisabled() {
         baseRunner()
                 .withPropertyValues(
-                        "oncebox.publisher.metrics.enabled=false",
-                        "oncebox.consumer.metrics.enabled=false"
+                        "oncebox.outbox.metrics.enabled=false",
+                        "oncebox.inbox.metrics.enabled=false"
                 )
                 .run(context -> {
                     assertThat(context).hasNotFailed();
@@ -172,10 +172,10 @@ class OnAnyMetricsEnabledConditionIntegrationTests {
     }
 
     @Test
-    @DisplayName("IT should not match when publisher absent and consumer explicitly disabled")
-    void shouldNotMatch_whenPublisherAbsentAndConsumerDisabled() {
+    @DisplayName("IT should not match when outbox absent and inbox explicitly disabled")
+    void shouldNotMatch_whenOutboxAbsentAndInboxDisabled() {
         baseRunner()
-                .withPropertyValues("oncebox.consumer.metrics.enabled=false")
+                .withPropertyValues("oncebox.inbox.metrics.enabled=false")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context).doesNotHaveBean("conditionalBean");
@@ -183,10 +183,10 @@ class OnAnyMetricsEnabledConditionIntegrationTests {
     }
 
     @Test
-    @DisplayName("IT should not match when consumer absent and publisher explicitly disabled")
-    void shouldNotMatch_whenConsumerAbsentAndPublisherDisabled() {
+    @DisplayName("IT should not match when inbox absent and outbox explicitly disabled")
+    void shouldNotMatch_whenInboxAbsentAndOutboxDisabled() {
         baseRunner()
-                .withPropertyValues("oncebox.publisher.metrics.enabled=false")
+                .withPropertyValues("oncebox.outbox.metrics.enabled=false")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context).doesNotHaveBean("conditionalBean");

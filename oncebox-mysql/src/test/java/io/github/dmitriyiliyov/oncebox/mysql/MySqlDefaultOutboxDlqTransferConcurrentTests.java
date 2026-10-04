@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.mysql;
 
-import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.DefaultOutboxDlqTransfer;
-import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.DefaultOutboxDlqTransferVerifier;
+import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DefaultOutboxDlqTransfer;
+import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DefaultOutboxDlqTransferVerifier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;

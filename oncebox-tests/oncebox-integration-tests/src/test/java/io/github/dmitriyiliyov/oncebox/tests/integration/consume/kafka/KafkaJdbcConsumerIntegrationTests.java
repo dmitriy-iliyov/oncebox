@@ -25,7 +25,7 @@ public class KafkaJdbcConsumerIntegrationTests extends BaseKafkaIntegrationTests
 
     public KafkaJdbcConsumerIntegrationTests(
             @Qualifier("testKafkaTemplate") KafkaTemplate<String, String> testKafkaTemplate,
-            @Qualifier("outboxJdbcTemplate") JdbcTemplate jdbcTemplate,
+            @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate,
             @Qualifier("kafkaJdbcConsumerFaultyBusinessService") KafkaConsumerFaultyBusinessService faultyBusinessService,
             KafkaTestUtils kafkaTestUtils,
             IdExtractor idExtractor
@@ -45,9 +45,9 @@ public class KafkaJdbcConsumerIntegrationTests extends BaseKafkaIntegrationTests
     }
 
     @Test
-    @DisplayName("IT consume() should save event id to consumed table and run business operation")
-    void consume_shouldSaveToBusinessAndConsumedTables() {
-        verifier.consume_shouldSaveToBusinessAndConsumedTables();
+    @DisplayName("IT consume() should save event id to inbox table and run business operation")
+    void consume_shouldSaveToBusinessAndInboxTables() {
+        verifier.consume_shouldSaveToBusinessAndInboxTables();
     }
 
     @Test
@@ -66,8 +66,8 @@ public class KafkaJdbcConsumerIntegrationTests extends BaseKafkaIntegrationTests
     @MethodSource("batchSizeArguments")
     @ParameterizedTest
     @DisplayName("IT consume() batch: all new records saved to both tables")
-    void consume_shouldSaveBatchToBusinessAndConsumedTables(int batchSize) {
-        verifier.consume_shouldSaveBatchToBusinessAndConsumedTables(batchSize);
+    void consume_shouldSaveBatchToBusinessAndInboxTables(int batchSize) {
+        verifier.consume_shouldSaveBatchToBusinessAndInboxTables(batchSize);
     }
 
     @MethodSource("batchSizeArguments")
@@ -110,9 +110,9 @@ public class KafkaJdbcConsumerIntegrationTests extends BaseKafkaIntegrationTests
     }
 
     @Test
-    @DisplayName("IT consume() ID should save event id to consumed table and run business operation")
-    void consumeId_shouldSaveToBusinessAndConsumedTables() {
-        verifier.consumeId_shouldSaveToBusinessAndConsumedTables();
+    @DisplayName("IT consume() ID should save event id to inbox table and run business operation")
+    void consumeId_shouldSaveToBusinessAndInboxTables() {
+        verifier.consumeId_shouldSaveToBusinessAndInboxTables();
     }
 
     @Test
@@ -131,8 +131,8 @@ public class KafkaJdbcConsumerIntegrationTests extends BaseKafkaIntegrationTests
     @MethodSource("batchSizeArguments")
     @ParameterizedTest
     @DisplayName("IT consume() ID batch: all new records saved to both tables")
-    void consumeId_shouldSaveBatchToBusinessAndConsumedTables(int batchSize) {
-        verifier.consumeId_shouldSaveBatchToBusinessAndConsumedTables(batchSize);
+    void consumeId_shouldSaveBatchToBusinessAndInboxTables(int batchSize) {
+        verifier.consumeId_shouldSaveBatchToBusinessAndInboxTables(batchSize);
     }
 
     @MethodSource("batchSizeArguments")

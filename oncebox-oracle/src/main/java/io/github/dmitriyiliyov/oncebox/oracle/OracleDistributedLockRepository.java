@@ -20,7 +20,7 @@ public class OracleDistributedLockRepository implements DistributedLockRepositor
     @Override
     public boolean tryLock(String jobName, UUID workerId) {
         String sql = """
-            UPDATE outbox_jobs
+            UPDATE oncebox_jobs
             SET lock_until = SYS_EXTRACT_UTC(SYSTIMESTAMP) + NUMTODSINTERVAL(lock_at_most_for / 1000, 'SECOND'), 
                 locked_by = ?,
                 locked_at = SYS_EXTRACT_UTC(SYSTIMESTAMP)
@@ -38,7 +38,7 @@ public class OracleDistributedLockRepository implements DistributedLockRepositor
     @Override
     public void unlock(String jobName, UUID workerId) {
         String sql = """
-            UPDATE outbox_jobs 
+            UPDATE oncebox_jobs 
             SET lock_until = GREATEST(
                 SYS_EXTRACT_UTC(SYSTIMESTAMP),
                 locked_at + NUMTODSINTERVAL(lock_at_least_for / 1000, 'SECOND')

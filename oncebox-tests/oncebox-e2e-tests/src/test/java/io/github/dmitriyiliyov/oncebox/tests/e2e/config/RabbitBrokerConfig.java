@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.tests.e2e.config;
 
-import io.github.dmitriyiliyov.oncebox.core.consumer.OutboxIdempotentConsumer;
+import io.github.dmitriyiliyov.oncebox.core.inbox.IdempotentConsumer;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.consume.RabbitConsumerBusinessService;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.domain.E2eEvents;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.publish.RabbitRawEventResender;
@@ -34,7 +34,7 @@ public class RabbitBrokerConfig {
     }
 
     /**
-     * Dedicated sender template resolved by the library via {@code oncebox.publisher.sender.bean-name}.
+     * Dedicated sender template resolved by the library via {@code oncebox.outbox.sender.bean-name}.
      * {@code mandatory=true} is required for at-least-once so unroutable messages are reported back.
      */
     @Bean
@@ -45,9 +45,9 @@ public class RabbitBrokerConfig {
     }
 
     @Bean
-    public RabbitConsumerBusinessService rabbitConsumerBusinessService(OutboxIdempotentConsumer outboxIdempotentConsumer,
+    public RabbitConsumerBusinessService rabbitConsumerBusinessService(IdempotentConsumer idempotentConsumer,
                                                                        TestOutboxRepository repository) {
-        return new RabbitConsumerBusinessService(outboxIdempotentConsumer, repository);
+        return new RabbitConsumerBusinessService(idempotentConsumer, repository);
     }
 
     @Bean

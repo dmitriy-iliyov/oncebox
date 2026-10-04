@@ -38,7 +38,7 @@ public class OracleTestOutboxRepository extends AbstractTestOutboxRepository {
         return List.of(
                 "DELETE FROM outbox_events",
                 "DELETE FROM outbox_dlq_events",
-                "DELETE FROM outbox_consumed_events",
+                "DELETE FROM inbox_events",
                 "DELETE FROM e2e_produced_events",
                 "DELETE FROM e2e_consumed_events"
         );

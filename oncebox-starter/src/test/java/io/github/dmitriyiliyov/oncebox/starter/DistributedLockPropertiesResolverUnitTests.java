@@ -17,8 +17,8 @@ class DistributedLockPropertiesResolverUnitTests {
     @Test
     @DisplayName("UT should resolve durations using ADAPTIVE polling properties")
     void shouldResolveDurations_whenAdaptivePollingEnabled() {
-        OutboxProperties.DistributedLockProperties lockProps = mock(OutboxProperties.DistributedLockProperties.class);
-        OutboxProperties.PollingProperties pollProps = mock(OutboxProperties.PollingProperties.class);
+        OnceboxProperties.DistributedLockProperties lockProps = mock(OnceboxProperties.DistributedLockProperties.class);
+        OnceboxProperties.PollingProperties pollProps = mock(OnceboxProperties.PollingProperties.class);
 
         when(lockProps.isResolveByPollingProperties()).thenReturn(true);
         when(pollProps.getType()).thenReturn(PollingType.ADAPTIVE);
@@ -35,8 +35,8 @@ class DistributedLockPropertiesResolverUnitTests {
     @Test
     @DisplayName("UT should resolve durations using FIXED polling properties")
     void shouldResolveDurations_whenFixedPollingEnabled() {
-        OutboxProperties.DistributedLockProperties lockProps = mock(OutboxProperties.DistributedLockProperties.class);
-        OutboxProperties.PollingProperties pollProps = mock(OutboxProperties.PollingProperties.class);
+        OnceboxProperties.DistributedLockProperties lockProps = mock(OnceboxProperties.DistributedLockProperties.class);
+        OnceboxProperties.PollingProperties pollProps = mock(OnceboxProperties.PollingProperties.class);
 
         when(lockProps.isResolveByPollingProperties()).thenReturn(true);
         when(pollProps.getType()).thenReturn(PollingType.FIXED);
@@ -52,8 +52,8 @@ class DistributedLockPropertiesResolverUnitTests {
     @Test
     @DisplayName("UT should resolve durations using explicit distributed lock properties")
     void shouldResolveDurations_whenExplicitLockPropertiesProvided() {
-        OutboxProperties.DistributedLockProperties lockProps = mock(OutboxProperties.DistributedLockProperties.class);
-        OutboxProperties.PollingProperties pollProps = mock(OutboxProperties.PollingProperties.class);
+        OnceboxProperties.DistributedLockProperties lockProps = mock(OnceboxProperties.DistributedLockProperties.class);
+        OnceboxProperties.PollingProperties pollProps = mock(OnceboxProperties.PollingProperties.class);
 
         when(lockProps.isResolveByPollingProperties()).thenReturn(false);
         when(lockProps.getLockAtLeastFor()).thenReturn(Duration.ofMillis(100));

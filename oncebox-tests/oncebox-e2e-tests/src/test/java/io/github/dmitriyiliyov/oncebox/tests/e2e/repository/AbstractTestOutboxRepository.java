@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.tests.e2e.repository;
 
-import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.DlqStatus;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DlqStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.sql.Timestamp;
@@ -152,13 +152,13 @@ public abstract class AbstractTestOutboxRepository implements TestOutboxReposito
     @Override
     public boolean isConsumed(UUID eventId) {
         return jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM outbox_consumed_events WHERE id = ?", Integer.class, idParam(eventId)
+                "SELECT COUNT(*) FROM inbox_events WHERE id = ?", Integer.class, idParam(eventId)
         ) > 0;
     }
 
     @Override
     public void shiftConsumedEventTimestamp(UUID eventId, Duration shift) {
-        String sql = "UPDATE outbox_consumed_events SET consumed_at = " + minusSeconds("consumed_at") + " WHERE id = ?";
+        String sql = "UPDATE inbox_events SET consumed_at = " + minusSeconds("consumed_at") + " WHERE id = ?";
         jdbcTemplate.update(sql, shift.toSeconds(), idParam(eventId));
     }
 

@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.tests.e2e.publish;
 
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.OutboxHeaders;
+import io.github.dmitriyiliyov.oncebox.core.OnceboxHeaders;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.domain.E2eEvents;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -22,9 +22,9 @@ public class KafkaRawEventResender implements RawEventResender {
         Message<String> message = MessageBuilder
                 .withPayload(payloadJson)
                 .setHeader(KafkaHeaders.TOPIC, E2eEvents.TOPIC)
-                .setHeader(OutboxHeaders.EVENT_ID.getValue(), eventId.toString())
-                .setHeader(OutboxHeaders.EVENT_TYPE.getValue(), eventType)
-                .setHeader(OutboxHeaders.EVENT_PAYLOAD_TYPE.getValue(), payloadType)
+                .setHeader(OnceboxHeaders.EVENT_ID.getValue(), eventId.toString())
+                .setHeader(OnceboxHeaders.EVENT_TYPE.getValue(), eventType)
+                .setHeader(OnceboxHeaders.EVENT_PAYLOAD_TYPE.getValue(), payloadType)
                 .build();
         kafkaTemplate.send(message).join();
     }

@@ -18,7 +18,7 @@ public class KafkaConfig {
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, OrderDto> kafkaBatchListenerContainerFactory(
             ConsumerFactory<String, OrderDto> consumerFactory,
-            @Qualifier("outboxKafkaRecordMessageConverter")RecordMessageConverter recordMessageConverter
+            @Qualifier("inboxKafkaRecordMessageConverter")RecordMessageConverter recordMessageConverter
     ) {
         ConcurrentKafkaListenerContainerFactory<String, OrderDto> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory);

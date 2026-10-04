@@ -10,7 +10,7 @@ import java.time.Clock;
 public class WebTestsConfig {
 
     @Bean
-    public DlqStatusQueryConverter dlqStatusQueryConverter() {
+    public DlqStatusQueryConverter outboxDlqStatusQueryConverter() {
         return new DlqStatusQueryConverter();
     }
 

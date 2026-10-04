@@ -10,10 +10,10 @@ spring:
       ack-mode: manual
 
 oncebox:
-  publisher:
+  outbox:
     sender:
       type: kafka
       bean-name: outboxKafkaTemplate
-  consumer:
+  inbox:
     source:
       type: kafka

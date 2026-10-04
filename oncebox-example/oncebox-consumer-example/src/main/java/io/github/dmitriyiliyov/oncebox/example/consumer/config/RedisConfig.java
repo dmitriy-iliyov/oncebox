@@ -40,7 +40,7 @@ public class RedisConfig {
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory, RedisCacheConfiguration config) {
         return RedisCacheManager.builder(connectionFactory)
-                .withCacheConfiguration("oncebox:consumed", config)
+                .withCacheConfiguration("oncebox:inbox", config)
                 .build();
     }
 }

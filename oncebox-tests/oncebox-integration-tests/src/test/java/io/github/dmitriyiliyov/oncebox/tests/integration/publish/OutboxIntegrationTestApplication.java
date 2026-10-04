@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.tests.integration.publish;
 
-import io.github.dmitriyiliyov.oncebox.starter.EnableOutbox;
+import io.github.dmitriyiliyov.oncebox.starter.EnableOncebox;
 import io.github.dmitriyiliyov.oncebox.tests.integration.ClockConfig;
 import io.github.dmitriyiliyov.oncebox.tests.integration.publish.config.OutboxIntegrationTestsConfig;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @EntityScan(basePackages = "io.github.dmitriyiliyov.oncebox.tests.integration.domain")
 @EnableJpaRepositories(basePackages = "io.github.dmitriyiliyov.oncebox.tests.integration.publish")
 @EnableTransactionManagement
-@EnableOutbox
+@EnableOncebox
 @Import({
         OutboxIntegrationTestsConfig.class,
         ClockConfig.class

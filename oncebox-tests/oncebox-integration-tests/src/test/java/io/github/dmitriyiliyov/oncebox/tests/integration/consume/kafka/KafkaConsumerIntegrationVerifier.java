@@ -2,7 +2,7 @@ package io.github.dmitriyiliyov.oncebox.tests.integration.consume.kafka;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.OutboxHeaders;
+import io.github.dmitriyiliyov.oncebox.core.OnceboxHeaders;
 import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.ConsumerVariant;
 import io.github.dmitriyiliyov.oncebox.tests.integration.domain.BusinessEvent;
 import io.github.dmitriyiliyov.oncebox.tests.integration.utils.IdExtractor;
@@ -50,7 +50,7 @@ public class KafkaConsumerIntegrationVerifier {
         this.kafkaTestUtils = kafkaTestUtils;
     }
 
-    public void consume_shouldSaveToBusinessAndConsumedTables() {
+    public void consume_shouldSaveToBusinessAndInboxTables() {
         UUID eventId  = UUID.randomUUID();
         UUID verifyId = UUID.randomUUID();
 
@@ -62,7 +62,7 @@ public class KafkaConsumerIntegrationVerifier {
         assertThat(selectConsumedEventIds()).containsOnly(eventId);
     }
 
-    public void consumeId_shouldSaveToBusinessAndConsumedTables() {
+    public void consumeId_shouldSaveToBusinessAndInboxTables() {
         UUID eventId  = UUID.randomUUID();
         UUID verifyId = UUID.randomUUID();
 
@@ -134,7 +134,7 @@ public class KafkaConsumerIntegrationVerifier {
                 .containsExactlyInAnyOrder(eventIds.toArray(new UUID[0]));
     }
 
-    public void consume_shouldSaveBatchToBusinessAndConsumedTables(int batchSize) {
+    public void consume_shouldSaveBatchToBusinessAndInboxTables(int batchSize) {
         List<UUID> eventIds  = generateIds(batchSize);
         List<UUID> verifyIds = generateIds(batchSize);
 
@@ -148,7 +148,7 @@ public class KafkaConsumerIntegrationVerifier {
                 .containsExactlyInAnyOrder(eventIds.toArray(new UUID[0]));
     }
 
-    public void consumeId_shouldSaveBatchToBusinessAndConsumedTables(int batchSize) {
+    public void consumeId_shouldSaveBatchToBusinessAndInboxTables(int batchSize) {
         List<UUID> eventIds  = generateIds(batchSize);
         List<UUID> verifyIds = generateIds(batchSize);
 
@@ -439,9 +439,9 @@ public class KafkaConsumerIntegrationVerifier {
             return MessageBuilder
                     .withPayload(mapper.writeValueAsString(BusinessEvent.of(verifyId)))
                     .setHeader(KafkaHeaders.TOPIC, topic)
-                    .setHeader(OutboxHeaders.EVENT_ID.getValue(), eventId.toString())
-                    .setHeader(OutboxHeaders.EVENT_TYPE.getValue(), EVENT_TYPE)
-                    .setHeader(OutboxHeaders.EVENT_PAYLOAD_TYPE.getValue(), BusinessEvent.class.getName())
+                    .setHeader(OnceboxHeaders.EVENT_ID.getValue(), eventId.toString())
+                    .setHeader(OnceboxHeaders.EVENT_TYPE.getValue(), EVENT_TYPE)
+                    .setHeader(OnceboxHeaders.EVENT_PAYLOAD_TYPE.getValue(), BusinessEvent.class.getName())
                     .build();
         } catch (JsonProcessingException e) {
             log.info("Error when build record", e);
@@ -489,7 +489,7 @@ public class KafkaConsumerIntegrationVerifier {
 
     private List<UUID> selectConsumedEventIds() {
         return jdbcTemplate.query(
-                "SELECT id FROM outbox_consumed_events",
+                "SELECT id FROM inbox_events",
                 (rs, n) -> idExtractor.extract("id", rs)
         );
     }
@@ -525,7 +525,7 @@ public class KafkaConsumerIntegrationVerifier {
         // succeed now and leave its row in the next case's tables.
         faultyService.setShouldFail(true);
         jdbcTemplate.execute("DELETE FROM business_events");
-        jdbcTemplate.execute("DELETE FROM outbox_consumed_events");
+        jdbcTemplate.execute("DELETE FROM inbox_events");
         kafkaTestUtils.resetKafkaTopics(List.of(
                 variant.of(KafkaConsumerBusinessService.SINGLE_TOPIC),
                 variant.of(KafkaConsumerBusinessService.BATCH_TOPIC),

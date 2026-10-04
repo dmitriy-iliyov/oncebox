@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.tests.e2e.consume;
 
-import io.github.dmitriyiliyov.oncebox.core.consumer.OutboxIdempotentConsumer;
-import io.github.dmitriyiliyov.oncebox.messaging.OutboxHeadersUtils;
+import io.github.dmitriyiliyov.oncebox.core.OnceboxHeadersUtils;
+import io.github.dmitriyiliyov.oncebox.core.inbox.IdempotentConsumer;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.domain.BusinessEvent;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.domain.E2eEvents;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.repository.TestOutboxRepository;
@@ -17,20 +17,20 @@ public class KafkaConsumerBusinessService {
 
     private static final Logger log = LoggerFactory.getLogger(KafkaConsumerBusinessService.class);
 
-    private final OutboxIdempotentConsumer outboxConsumer;
+    private final IdempotentConsumer idempotentConsumer;
     private final TestOutboxRepository repository;
 
-    public KafkaConsumerBusinessService(OutboxIdempotentConsumer outboxConsumer, TestOutboxRepository repository) {
-        this.outboxConsumer = outboxConsumer;
+    public KafkaConsumerBusinessService(IdempotentConsumer idempotentConsumer, TestOutboxRepository repository) {
+        this.idempotentConsumer = idempotentConsumer;
         this.repository = repository;
     }
 
-    @KafkaListener(topics = E2eEvents.TOPIC, groupId = CONSUMER_GROUP, containerFactory = "outboxKafkaListenerContainerFactory")
+    @KafkaListener(topics = E2eEvents.TOPIC, groupId = CONSUMER_GROUP, containerFactory = "inboxKafkaListenerContainerFactory")
     public void listen(Message<BusinessEvent> message, Acknowledgment ack) {
         try {
-            outboxConsumer.consume(
+            idempotentConsumer.consume(
                     message,
-                    OutboxHeadersUtils::extractId,
+                    OnceboxHeadersUtils::extractId,
                     msg -> repository.saveConsumedBusiness(msg.getPayload().verifyId())
             );
             ack.acknowledge();

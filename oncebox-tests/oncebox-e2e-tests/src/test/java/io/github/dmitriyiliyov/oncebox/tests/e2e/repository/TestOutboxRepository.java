@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.tests.e2e.repository;
 
-import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.DlqStatus;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DlqStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
 
 import java.time.Duration;
 import java.util.List;

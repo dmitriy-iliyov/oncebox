@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.tests.e2e.publish;
 
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.OutboxHeaders;
+import io.github.dmitriyiliyov.oncebox.core.OnceboxHeaders;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.domain.E2eEvents;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageDeliveryMode;
@@ -24,9 +24,9 @@ public class RabbitRawEventResender implements RawEventResender {
         // routed through the TOPIC exchange with the event type as routing key
         MessageProperties props = new MessageProperties();
         props.setDeliveryMode(MessageDeliveryMode.PERSISTENT);
-        props.setHeader(OutboxHeaders.EVENT_ID.getValue(), eventId.toString());
-        props.setHeader(OutboxHeaders.EVENT_TYPE.getValue(), eventType);
-        props.setHeader(OutboxHeaders.EVENT_PAYLOAD_TYPE.getValue(), payloadType);
+        props.setHeader(OnceboxHeaders.EVENT_ID.getValue(), eventId.toString());
+        props.setHeader(OnceboxHeaders.EVENT_TYPE.getValue(), eventType);
+        props.setHeader(OnceboxHeaders.EVENT_PAYLOAD_TYPE.getValue(), payloadType);
         Message message = new Message(payloadJson.getBytes(StandardCharsets.UTF_8), props);
         rabbitTemplate.send(E2eEvents.TOPIC, eventType, message);
     }

@@ -3,8 +3,8 @@ package io.github.dmitriyiliyov.oncebox.rabbit;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.ConfirmListener;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.OutboxEvent;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.SenderResult;
+import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
+import io.github.dmitriyiliyov.oncebox.core.outbox.domain.SenderResult;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -84,8 +84,8 @@ class RabbitOutboxSenderUnitTests {
     }
 
     @Test
-    @DisplayName("UT sendEvents() should publish each event persistently, routed by its type, with the outbox headers")
-    void sendEvents_shouldPublishPersistentlyWithOutboxHeaders() throws Exception {
+    @DisplayName("UT sendEvents() should publish each event persistently, routed by its type, with the oncebox headers")
+    void sendEvents_shouldPublishPersistentlyWithOnceboxHeaders() throws Exception {
         // given
         RabbitOutboxSender sender = senderConfirming(1, listener -> listener.handleAck(1L, false));
 
@@ -98,9 +98,9 @@ class RabbitOutboxSenderUnitTests {
                 eq("payload1".getBytes(StandardCharsets.UTF_8)));
         assertThat(properties.getValue().getDeliveryMode()).isEqualTo(2);
         assertThat(properties.getValue().getHeaders())
-                .containsEntry("outbox_event_id", FIRST.getId().toString())
-                .containsEntry("outbox_event_type", "type1")
-                .containsEntry("outbox_event_payload_type", "application/json");
+                .containsEntry("oncebox_event_id", FIRST.getId().toString())
+                .containsEntry("oncebox_event_type", "type1")
+                .containsEntry("oncebox_event_payload_type", "application/json");
     }
 
     @Test

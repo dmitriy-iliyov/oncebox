@@ -10,7 +10,7 @@ oncebox:
   tables:
     auto-create: true
 
-  publisher:
+  outbox:
     sender:
       emergency-timeout: 10s
 
@@ -83,7 +83,7 @@ oncebox:
           initial-delay: 1s
           fixed-delay: 500ms
 
-  consumer:
+  inbox:
     enabled: true
     mappings:
       e2e-event: io.github.dmitriyiliyov.oncebox.tests.e2e.domain.BusinessEvent

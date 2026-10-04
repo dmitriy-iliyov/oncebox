@@ -16,7 +16,7 @@ import java.lang.annotation.*;
  * If the application customizes {@code @EnableTransactionManagement(order = ...)} to a value with
  * higher precedence than the default, the aspect may end up running after commit and publishing
  * will fail with {@code IllegalTransactionStateException}. In that case, call
- * {@link io.github.dmitriyiliyov.oncebox.core.publisher.OutboxPublisher#publish} manually from
+ * {@link io.github.dmitriyiliyov.oncebox.core.outbox.OutboxPublisher#publish} manually from
  * within the transactional method instead of relying on this annotation.
  */
 @Retention(RetentionPolicy.RUNTIME)

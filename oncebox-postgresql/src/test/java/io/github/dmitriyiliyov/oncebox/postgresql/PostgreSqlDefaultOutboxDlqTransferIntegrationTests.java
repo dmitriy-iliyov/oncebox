@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.postgresql;
 
-import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.DefaultOutboxDlqTransfer;
-import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.DefaultOutboxDlqTransferVerifier;
+import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DefaultOutboxDlqTransfer;
+import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DefaultOutboxDlqTransferVerifier;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

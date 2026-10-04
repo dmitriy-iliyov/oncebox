@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.tests.integration.consume.rabbit;
 
-import io.github.dmitriyiliyov.oncebox.core.consumer.OutboxIdempotentConsumer;
-import io.github.dmitriyiliyov.oncebox.messaging.OutboxHeadersUtils;
+import io.github.dmitriyiliyov.oncebox.core.OnceboxHeadersUtils;
+import io.github.dmitriyiliyov.oncebox.core.inbox.IdempotentConsumer;
 import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.ConsumerBusinessRepository;
 import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.ConsumerVariant;
 import io.github.dmitriyiliyov.oncebox.tests.integration.domain.BusinessEvent;
@@ -20,14 +20,14 @@ public class RabbitConsumerBusinessService {
     public static final String SINGLE_ID_QUEUE = "test.outbox.single.id";
     public static final String BATCH_ID_QUEUE = "test.outbox.batch.id";
 
-    private final OutboxIdempotentConsumer outboxConsumer;
+    private final IdempotentConsumer idempotentConsumer;
     private final ConsumerBusinessRepository repository;
     private final ConsumerVariant variant;
 
-    public RabbitConsumerBusinessService(OutboxIdempotentConsumer outboxConsumer,
+    public RabbitConsumerBusinessService(IdempotentConsumer idempotentConsumer,
                                          ConsumerBusinessRepository repository,
                                          ConsumerVariant variant) {
-        this.outboxConsumer = outboxConsumer;
+        this.idempotentConsumer = idempotentConsumer;
         this.repository = repository;
         this.variant = variant;
     }
@@ -46,18 +46,18 @@ public class RabbitConsumerBusinessService {
 
     @Transactional
     public void listenSingleMessage(Message<BusinessEvent> message) {
-        outboxConsumer.consume(
+        idempotentConsumer.consume(
                 message,
-                OutboxHeadersUtils::extractId,
+                OnceboxHeadersUtils::extractId,
                 msg -> repository.save(msg.getPayload())
         );
     }
 
     @Transactional
     public void listenBatchMessages(List<Message<BusinessEvent>> messages) {
-        outboxConsumer.consume(
+        idempotentConsumer.consume(
                 messages,
-                OutboxHeadersUtils::extractId,
+                OnceboxHeadersUtils::extractId,
                 deduped -> repository.saveAll(
                         deduped.stream().map(Message::getPayload).toList()
                 )
@@ -66,8 +66,8 @@ public class RabbitConsumerBusinessService {
 
     @Transactional
     public void listenSingleId(Message<BusinessEvent> message) {
-        UUID eventId = OutboxHeadersUtils.extractId(message);
-        outboxConsumer.consume(
+        UUID eventId = OnceboxHeadersUtils.extractId(message);
+        idempotentConsumer.consume(
                 eventId,
                 () -> repository.save(message.getPayload())
         );
@@ -76,14 +76,14 @@ public class RabbitConsumerBusinessService {
     @Transactional
     public void listenBatchIds(List<Message<BusinessEvent>> messages) {
         Set<UUID> allIds = messages.stream()
-                .map(OutboxHeadersUtils::extractId)
+                .map(OnceboxHeadersUtils::extractId)
                 .collect(Collectors.toSet());
 
-        outboxConsumer.consume(
+        idempotentConsumer.consume(
                 allIds,
                 newIds -> {
                     List<BusinessEvent> eventsToSave = messages.stream()
-                            .filter(msg -> newIds.contains(OutboxHeadersUtils.extractId(msg)))
+                            .filter(msg -> newIds.contains(OnceboxHeadersUtils.extractId(msg)))
                             .map(Message::getPayload)
                             .toList();
                     repository.saveAll(eventsToSave);

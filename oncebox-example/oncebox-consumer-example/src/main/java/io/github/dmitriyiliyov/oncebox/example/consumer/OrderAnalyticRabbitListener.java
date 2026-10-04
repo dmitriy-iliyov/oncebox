@@ -1,8 +1,8 @@
 package io.github.dmitriyiliyov.oncebox.example.consumer;
 
-import io.github.dmitriyiliyov.oncebox.core.consumer.OutboxIdempotentConsumer;
+import io.github.dmitriyiliyov.oncebox.core.OnceboxHeadersUtils;
+import io.github.dmitriyiliyov.oncebox.core.inbox.IdempotentConsumer;
 import io.github.dmitriyiliyov.oncebox.example.shared.OrderDto;
-import io.github.dmitriyiliyov.oncebox.messaging.OutboxHeadersUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -18,24 +18,24 @@ import java.util.List;
 @RequiredArgsConstructor
 public class OrderAnalyticRabbitListener {
 
-    private final OutboxIdempotentConsumer outboxConsumer;
+    private final IdempotentConsumer idempotentConsumer;
 
-    @RabbitListener(queues = "orders", containerFactory = "outboxRabbitListenerContainerFactory")
+    @RabbitListener(queues = "orders", containerFactory = "inboxRabbitListenerContainerFactory")
     public void listen(Message<?> message) {
-        outboxConsumer.consume(
+        idempotentConsumer.consume(
                 message,
-                OutboxHeadersUtils::extractId,
-                m -> log.info("Analytics receive '{}' event {}", OutboxHeadersUtils.extractEventType(m), m.getPayload())
+                OnceboxHeadersUtils::extractId,
+                m -> log.info("Analytics receive '{}' event {}", OnceboxHeadersUtils.extractEventType(m), m.getPayload())
         );
     }
 
     @RabbitListener(queues = "orders.created", containerFactory = "rabbitBatchListenerContainerFactory")
     public void listenBatch(List<Message<OrderDto>> messages) {
-        outboxConsumer.consume(
+        idempotentConsumer.consume(
                 messages,
-                OutboxHeadersUtils::extractId,
+                OnceboxHeadersUtils::extractId,
                 m -> m.forEach(
-                        message -> log.info("Analytics receive '{}' event {}", OutboxHeadersUtils.extractEventType(message), message.getPayload())
+                        message -> log.info("Analytics receive '{}' event {}", OnceboxHeadersUtils.extractEventType(message), message.getPayload())
                 )
         );
     }

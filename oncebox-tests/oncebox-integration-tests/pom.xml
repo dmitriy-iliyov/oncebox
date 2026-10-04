@@ -65,7 +65,7 @@
 
         <dependency>
             <groupId>io.github.dmitriy-iliyov</groupId>
-            <artifactId>oncebox-consumer-cache</artifactId>
+            <artifactId>oncebox-inbox-cache</artifactId>
             <version>1.1.2</version>
             <scope>test</scope>
         </dependency>

@@ -40,7 +40,7 @@ public class InboxIntegrationTestsConfig {
 
     @Bean
     public ConsumerBusinessRepository jdbcConsumerBusinessRepository(
-            @Qualifier("outboxJdbcTemplate") JdbcTemplate jdbcTemplate,
+            @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate,
             IdPreparer idPreparer
     ) {
         return new JdbcConsumerBusinessRepository(jdbcTemplate, idPreparer);

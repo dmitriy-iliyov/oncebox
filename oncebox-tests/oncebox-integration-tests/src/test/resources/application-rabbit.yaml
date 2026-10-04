@@ -1,4 +1,4 @@
 oncebox:
-  consumer:
+  inbox:
     source:
       type: rabbit

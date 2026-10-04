@@ -1,9 +1,9 @@
 package io.github.dmitriyiliyov.oncebox.metrics.it_config;
 
-import io.github.dmitriyiliyov.oncebox.metrics.publisher.MultiDialectOutboxMetricsRepository;
-import io.github.dmitriyiliyov.oncebox.metrics.publisher.OutboxMetricsRepository;
-import io.github.dmitriyiliyov.oncebox.metrics.publisher.dlq.MultiDialectOutboxDlqMetricsRepository;
-import io.github.dmitriyiliyov.oncebox.metrics.publisher.dlq.OutboxDlqMetricsRepository;
+import io.github.dmitriyiliyov.oncebox.metrics.outbox.MultiDialectOutboxMetricsRepository;
+import io.github.dmitriyiliyov.oncebox.metrics.outbox.OutboxMetricsRepository;
+import io.github.dmitriyiliyov.oncebox.metrics.outbox.dlq.MultiDialectOutboxDlqMetricsRepository;
+import io.github.dmitriyiliyov.oncebox.metrics.outbox.dlq.OutboxDlqMetricsRepository;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -26,7 +26,7 @@ public class OracleIntegrationTestsConfig {
         populator.setScripts(
                 new ClassPathResource("oracle/oracle_outbox_table.sql"),
                 new ClassPathResource("oracle/oracle_outbox_dlq_table.sql"),
-                new ClassPathResource("oracle/oracle_outbox_consumed_table.sql")
+                new ClassPathResource("oracle/oracle_inbox_table.sql")
         );
         populator.setContinueOnError(false);
         DataSourceInitializer initializer = new DataSourceInitializer();

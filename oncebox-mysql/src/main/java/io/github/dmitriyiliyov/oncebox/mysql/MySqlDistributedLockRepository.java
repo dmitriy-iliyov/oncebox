@@ -20,7 +20,7 @@ public class MySqlDistributedLockRepository implements DistributedLockRepository
     @Override
     public boolean tryLock(String jobName, UUID workerId) {
         String sql = """
-            UPDATE outbox_jobs
+            UPDATE oncebox_jobs
             SET lock_until = TIMESTAMPADD(MICROSECOND, lock_at_most_for * 1000, UTC_TIMESTAMP(3)), 
                 locked_by = ?,
                 locked_at = UTC_TIMESTAMP(3)
@@ -38,7 +38,7 @@ public class MySqlDistributedLockRepository implements DistributedLockRepository
     @Override
     public void unlock(String jobName, UUID workerId) {
         String sql = """
-            UPDATE outbox_jobs
+            UPDATE oncebox_jobs
             SET lock_until = GREATEST(
                 UTC_TIMESTAMP(3), TIMESTAMPADD(MICROSECOND, lock_at_least_for * 1000, locked_at)
             )

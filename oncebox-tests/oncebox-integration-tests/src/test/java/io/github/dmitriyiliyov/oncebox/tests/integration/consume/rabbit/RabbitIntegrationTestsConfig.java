@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.tests.integration.consume.rabbit;
 
-import io.github.dmitriyiliyov.oncebox.core.consumer.OutboxIdempotentConsumer;
+import io.github.dmitriyiliyov.oncebox.core.inbox.IdempotentConsumer;
 import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.ConsumerBusinessRepository;
 import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.ConsumerVariant;
 import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.JdbcConsumerBusinessRepository;
@@ -77,7 +77,7 @@ public class RabbitIntegrationTestsConfig {
     @Bean
     public SimpleRabbitListenerContainerFactory testSingleRabbitListenerContainerFactory(
             ConnectionFactory testRabbitConnectionFactory,
-            @Qualifier("outboxRabbitMessageConverter") MessageConverter messageConverter
+            @Qualifier("inboxRabbitMessageConverter") MessageConverter messageConverter
     ) {
         SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
         factory.setConnectionFactory(testRabbitConnectionFactory);
@@ -91,7 +91,7 @@ public class RabbitIntegrationTestsConfig {
     @Bean
     public SimpleRabbitListenerContainerFactory testBatchRabbitListenerContainerFactory(
             ConnectionFactory testRabbitConnectionFactory,
-            @Qualifier("outboxRabbitMessageConverter") MessageConverter messageConverter
+            @Qualifier("inboxRabbitMessageConverter") MessageConverter messageConverter
     ) {
         SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
         factory.setConnectionFactory(testRabbitConnectionFactory);
@@ -106,12 +106,12 @@ public class RabbitIntegrationTestsConfig {
 
     @Bean
     public RabbitConsumerBusinessService rabbitMqJdbcConsumerBusinessService(
-            OutboxIdempotentConsumer outboxIdempotentConsumer,
-            @Qualifier("outboxJdbcTemplate") JdbcTemplate jdbcTemplate,
+            IdempotentConsumer idempotentConsumer,
+            @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate,
             IdPreparer idPreparer
     ) {
         return new RabbitConsumerBusinessService(
-                outboxIdempotentConsumer,
+                idempotentConsumer,
                 new JdbcConsumerBusinessRepository(jdbcTemplate, idPreparer),
                 ConsumerVariant.JDBC
         );
@@ -119,11 +119,11 @@ public class RabbitIntegrationTestsConfig {
 
     @Bean
     public RabbitConsumerBusinessService rabbitMqJpaConsumerBusinessService(
-            OutboxIdempotentConsumer outboxIdempotentConsumer,
+            IdempotentConsumer idempotentConsumer,
             @Qualifier("jpaConsumerBusinessRepositoryProxy") ConsumerBusinessRepository repository
     ) {
         return new RabbitConsumerBusinessService(
-                outboxIdempotentConsumer,
+                idempotentConsumer,
                 repository,
                 ConsumerVariant.JPA
         );
@@ -131,12 +131,12 @@ public class RabbitIntegrationTestsConfig {
 
     @Bean
     public RabbitConsumerFaultyBusinessService rabbitMqJdbcFaultyConsumerBusinessService(
-            OutboxIdempotentConsumer outboxIdempotentConsumer,
-            @Qualifier("outboxJdbcTemplate") JdbcTemplate jdbcTemplate,
+            IdempotentConsumer idempotentConsumer,
+            @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate,
             IdPreparer idPreparer
     ) {
         return new RabbitConsumerFaultyBusinessService(
-                outboxIdempotentConsumer,
+                idempotentConsumer,
                 new JdbcConsumerBusinessRepository(jdbcTemplate, idPreparer),
                 ConsumerVariant.JDBC
         );
@@ -144,11 +144,11 @@ public class RabbitIntegrationTestsConfig {
 
     @Bean
     public RabbitConsumerFaultyBusinessService rabbitMqJpaFaultyConsumerBusinessService(
-            OutboxIdempotentConsumer outboxIdempotentConsumer,
+            IdempotentConsumer idempotentConsumer,
             @Qualifier("jpaConsumerBusinessRepositoryProxy") ConsumerBusinessRepository repository
     ) {
         return new RabbitConsumerFaultyBusinessService(
-                outboxIdempotentConsumer,
+                idempotentConsumer,
                 repository,
                 ConsumerVariant.JPA
         );

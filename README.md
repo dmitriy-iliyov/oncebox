@@ -37,13 +37,6 @@ This approach ensures reliable event publication without relying on database log
 - **No ordering guarantees** - events are processed in parallel by type, with no guaranteed delivery order within or across event types.
 - **MySQL requires READ COMMITTED** - see the note below.
 
-> [!IMPORTANT]
-> **MySQL: run the outbox datasource at `READ COMMITTED`.**
-> Under InnoDB's default `REPEATABLE READ`, the `SELECT ... FOR UPDATE SKIP LOCKED` polling query takes
-> next-key (gap) locks, so several instances polling the same table concurrently deadlock instead of
-> each grabbing a disjoint batch. `READ COMMITTED` disables gap locking and lets the pollers scale out.
-> An outbox poller never needs repeatable reads, so this is safe. PostgreSQL and Oracle are unaffected.
-
 ## Quick Start
 
 1. Add dependencies
@@ -115,7 +108,7 @@ No extra dialect dependency is needed - it reuses the one you already added abov
 @SpringBootApplication 
 @EnableTransactionManagement
 @EnableKafka
-@EnableOutbox
+@EnableOncebox
 public class PublisherRunner {
 
     public static void main(String ... args) {
@@ -131,7 +124,7 @@ public class PublisherRunner {
 
 ```yaml
 oncebox:
-  publisher:
+  outbox:
     sender:
       type: kafka              # or rabbit
     events:
@@ -139,7 +132,7 @@ oncebox:
         topic: "example-events"
 ```
 
-Read more about the configuration [here](#publisher-2).
+Read more about the configuration [here](#outbox-2).
 
 4. Inject `OutboxPublisher`:
 ```java 
@@ -189,16 +182,16 @@ public class ExampleService {
   </dependency>
 ```
 
-You can also add `oncebox-consumer-cache` to enable the cache on consumer side, read more [here](#idempotent-processing).
+You can also add `oncebox-inbox-cache` to enable the inbox cache, read more [here](#idempotent-processing).
 ```xml
   <dependency>
       <groupId>io.github.dmitriy-iliyov</groupId>
-      <artifactId>oncebox-consumer-cache</artifactId>
+      <artifactId>oncebox-inbox-cache</artifactId>
       <version>1.1.2</version>
   </dependency>
 ```
 
-6. Enable the starter on the consumer side by adding `@EnableOutbox` to your main class.
+6. Enable the starter on the consumer side by adding `@EnableOncebox` to your main class.
 7. Minimal YAML config:
 
 > [!NOTE]
@@ -206,21 +199,21 @@ You can also add `oncebox-consumer-cache` to enable the cache on consumer side, 
 
 ```yaml
 oncebox:
-  publisher:
+  outbox:
     enabled: false
-  consumer:
+  inbox:
     source:
       type: kafka                  # or rabbit
     mappings:
       # Your specific mappings    
     enabled: true
     cache:
-      cache-name: "<service-name>:oncebox:consumed"
+      cache-name: "<service-name>:oncebox:inbox"
 ```
 
-Read more about the configuration [here](#consumer-2).
+Read more about the configuration [here](#inbox-2).
 
-8. Create a listener with an injected `OutboxIdempotentConsumer`:
+8. Create a listener with an injected `IdempotentConsumer`:
 
 **Apache Kafka:**
 ```java
@@ -229,14 +222,14 @@ Read more about the configuration [here](#consumer-2).
 @Slf4j
 public class ExampleKafkaListener {
 
-    private final OutboxIdempotentConsumer outboxConsumer;
+    private final IdempotentConsumer idempotentConsumer;
     
-    @KafkaListener(topics = "example-events", groupId = "example-group", containerFactory = "outboxKafkaListenerContainerFactory")
+    @KafkaListener(topics = "example-events", groupId = "example-group", containerFactory = "inboxKafkaListenerContainerFactory")
     public void listen(Message<ExampleDto> message) {
-        outboxConsumer.consume(
+        idempotentConsumer.consume(
                 message,
-                OutboxHeadersUtils::extractId,
-                m -> handlers.get(OutboxHeadersUtils.extractEventType(m)).accept(m.getPayload())
+                OnceboxHeadersUtils::extractId,
+                m -> handlers.get(OnceboxHeadersUtils.extractEventType(m)).accept(m.getPayload())
         );
     }
 }
@@ -249,14 +242,14 @@ public class ExampleKafkaListener {
 @Slf4j
 public class ExampleRabbitListener {
 
-    private final OutboxIdempotentConsumer outboxConsumer;
+    private final IdempotentConsumer idempotentConsumer;
 
-    @RabbitListener(queues = "example-events", containerFactory = "outboxRabbitListenerContainerFactory")
+    @RabbitListener(queues = "example-events", containerFactory = "inboxRabbitListenerContainerFactory")
     public void listen(Message<ExampleDto> message) {
-        outboxConsumer.consume(
+        idempotentConsumer.consume(
                 message,
-                OutboxHeadersUtils::extractId,
-                m -> handlers.get(OutboxHeadersUtils.extractEventType(m)).accept(m.getPayload())
+                OnceboxHeadersUtils::extractId,
+                m -> handlers.get(OnceboxHeadersUtils.extractEventType(m)).accept(m.getPayload())
         );
     }
 }
@@ -276,7 +269,7 @@ Example of full configured project with simple traffic generator is [here](https
 
 The system architecture with full configuration looks as follows:
 
-![outbox-architecture](docs/images/outbox-architecture.png)
+![outbox-architecture](docs/images/architecture.png)
 
 The event lifecycle follows these steps:
 1. Event or batch of events is created
@@ -338,7 +331,7 @@ In reality, the term "Exactly-Once" is not entirely accurate and should be under
 
 ---
 
-### Publisher
+### Outbox
 
 #### Usage
 There are two options for use:
@@ -394,6 +387,12 @@ All methods for saving simultaneously with a business event are annotated with `
 > `IllegalTransactionStateException`. In that case, use manual `OutboxPublisher#publish()` inside the
 > transactional method instead of the annotation.
 
+> [!IMPORTANT]
+> **MySQL: run the outbox datasource at `READ COMMITTED`.**
+> Under InnoDB's default `REPEATABLE READ`, the `SELECT ... FOR UPDATE SKIP LOCKED` polling query takes
+> next-key (gap) locks, so several instances polling the same table concurrently deadlock instead of
+> each grabbing a disjoint batch. `READ COMMITTED` disables gap locking and lets the pollers scale out.
+> An outbox poller never needs repeatable reads, so this is safe. PostgreSQL and Oracle are unaffected.
 ---
 
 #### Serialization
@@ -534,21 +533,23 @@ Detailed configuration options are available [here](#cleanup-3).
 
 ---
 
-### Consumer
+### Inbox
+
+Inbox in oncebox is a table of the ids of processed events. An id is written in the same transaction as the user's handler, so an event that is delivered again is skipped. It is a transactional inbox in its deduplication form: the message itself is not stored and is not processed asynchronously. Ids are kept until clean-up (`oncebox.inbox.clean-up.ttl`), so a redelivery that arrives later than that is no longer recognised.
 
 #### Usage
-The consumer side of the library provides only manual invocation through the following interface:
+The inbox is used only through manual invocation of the following interface:
 
 ```java
-public interface OutboxIdempotentConsumer {
+public interface IdempotentConsumer {
 
     void consume(UUID eventId, Runnable operation);
 
-    <T> void consume(T message, OutboxEventIdExtractor<T> idExtractor, Consumer<T> operation);
+    <T> void consume(T message, EventIdExtractor<T> idExtractor, Consumer<T> operation);
 
     void consume(Set<UUID> ids, Consumer<Set<UUID>> operation);
     
-    <T> void consume(List<T> messages, OutboxEventIdExtractor<T> idExtractor, Consumer<List<T>> operation);
+    <T> void consume(List<T> messages, EventIdExtractor<T> idExtractor, Consumer<List<T>> operation);
 }
 ```
 
@@ -569,7 +570,7 @@ The library uses `CacheManager` from the application context. Cache configuratio
 > database, and the cache key is the event id alone. Services that consume the same event and share a cache
 > store (for example, one Redis) under the same `cache-name` see each other's entries: the first service to
 > consume an event marks it for all of them, and every other service silently skips it. Prefix the name with
-> the service name (`<service-name>:oncebox:consumed`), or give each service its own key prefix
+> the service name (`<service-name>:oncebox:inbox`), or give each service its own key prefix
 > (`spring.cache.redis.key-prefix`) or its own cache store.
 
 ---
@@ -583,11 +584,11 @@ The event types themselves act as routing keys in both cases. For **Apache Kafka
 
 All events published through the outbox pattern include the following headers.
 
-| Header Name                 | Constant                           |  Type  | Description                                                                              |
-|-----------------------------|------------------------------------|:------:|------------------------------------------------------------------------------------------|
-| `outbox_event_type`         | `OutboxHeaders.EVENT_TYPE`         | String | Enables event dispatching when multiple event types share a topic/exchange               |
-| `outbox_event_id`           | `OutboxHeaders.EVENT_ID`           |  UUID  | Unique event identifier for idempotency, used by OutboxIdempotentConsumer implementation |                                                                                               |
-| `outbox_event_payload_type` | `OutboxHeaders.EVENT_PAYLOAD_TYPE` | String | Event class for additional dispatching on consumer side                                  |                                                                                               |
+| Header Name                  | Constant                            |  Type  | Description                                                                        |
+|------------------------------|-------------------------------------|:------:|------------------------------------------------------------------------------------|
+| `oncebox_event_type`         | `OnceboxHeaders.EVENT_TYPE`         | String | Enables event dispatching when multiple event types share a topic/exchange         |
+| `oncebox_event_id`           | `OnceboxHeaders.EVENT_ID`           |  UUID  | Unique event identifier for idempotency, used by IdempotentConsumer implementation |
+| `oncebox_event_payload_type` | `OnceboxHeaders.EVENT_PAYLOAD_TYPE` | String | Event class for additional dispatching on consumer side                            |
 
 ---
 
@@ -602,7 +603,7 @@ Read more about configuration [here](#mappings)
 ---
 
 #### Cleanup
-Consumed outbox events are periodically cleaned up by a background worker according to the configured retention policy.
+Inbox records are periodically cleaned up by a background worker according to the configured retention policy.
 
 When cleaning, distributed locking is used to ensure that only one instance will perform the work, this should be taken into account when setting up.
 
@@ -611,22 +612,22 @@ Detailed configuration options are available [here](#cleanup-4).
 ---
 
 ## Observability
-### Publisher
+### Outbox
 
 > [!NOTE]
 > The term 'tasks' encompasses both internal outbox background processes and actual event processing.
 
 **Gauges**
 
-| Metric Name                                  | Description                             | Tags                                                                                                                                                 |
-|:---------------------------------------------|:----------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------|
-| `outbox_events`                              | Total number of outbox events           | —                                                                                                                                                    |
-| `outbox_events_by_status`                    | Number of outbox events by status       | `status={pending, in_process}`                                                                                                                       |
-| `outbox_events_by_event_type_and_status`     | Number of outbox events by type         | `event_type`, <br/>`status={pending, in_process}`                                                                                                    |
-| `outbox_dlq_events`                          | Total number of events in DLQ           | —                                                                                                                                                    |
-| `outbox_dlq_events_by_status`                | Number of DLQ events by status          | `status={moved, in_process, to_retry}`                                                                                                               |
-| `outbox_dlq_events_by_event_type_and_status` | Number of DLQ events by type and status | `event_type`, <br/>`status={moved, in_process, to_retry}`                                                                                            |
-| `outbox_polling_delay_milliseconds`          | Current delay between tasks execution   | `task_type={cleanup-processed-events, stuck-event-recovery, transfer-to-dlq, transfer-from-dlq, cleanup-resolved-dlq-events}` or declared event type |
+| Metric Name                                  | Description                             | Tags                                                                                                                                                       |
+|:---------------------------------------------|:----------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `outbox_events`                              | Total number of outbox events           | —                                                                                                                                                          |
+| `outbox_events_by_status`                    | Number of outbox events by status       | `status={pending, in_process}`                                                                                                                             |
+| `outbox_events_by_event_type_and_status`     | Number of outbox events by type         | `event_type`, <br/>`status={pending, in_process}`                                                                                                          |
+| `outbox_dlq_events`                          | Total number of events in DLQ           | —                                                                                                                                                          |
+| `outbox_dlq_events_by_status`                | Number of DLQ events by status          | `status={moved, in_process, to_retry}`                                                                                                                     |
+| `outbox_dlq_events_by_event_type_and_status` | Number of DLQ events by type and status | `event_type`, <br/>`status={moved, in_process, to_retry}`                                                                                                  |
+| `oncebox_polling_delay_milliseconds`         | Current delay between tasks execution   | `task_type={outbox-processed-cleanup, outbox-stuck-recovery, outbox-dlq-transfer-to, outbox-dlq-transfer-from, outbox-dlq-cleanup}` or declared event type |
 
 All event related gauges execute `COUNT` queries against the database and therefore reflect the **exact number of events at the current moment**.
 
@@ -635,45 +636,45 @@ Caching can be disabled via metrics configuration.
 
 **Counters**
 
-| Metric Name                                                                                                                      | Description                    | Tags                                                                                                                                                 |
-|:---------------------------------------------------------------------------------------------------------------------------------|:-------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------|
-| `outbox_events_rate_total`                                                                                                       | Processed events rate          | `event_type`, <br/>`status={processed}`                                                                                                              |
-| `outbox_events_by_action_type_rate_total`                                                                                        | Internal lifecycle events rate | `action_type={attempt_move_to_dlq, recovered, cleaned, success_moved_to_dlq}`                                                                        |
-| `outbox_dlq_events_by_action_type_rate_total`                                                                                    | DLQ operational events rate    | `action_type={attempt_move_to_outbox, success_moved_to_outbox, manual_deleted, cleaned}`                                                             |
-| `outbox_started_tasks_total`<br/>`outbox_skipped_tasks_total`<br/>`outbox_succeeded_tasks_total`<br/>`outbox_failed_tasks_total` | Rate of task execution states  | `task_type={cleanup-processed-events, stuck-event-recovery, transfer-to-dlq, transfer-from-dlq, cleanup-resolved-dlq-events}` or declared event type |
+| Metric Name                                                                                                                          | Description                    | Tags                                                                                                                                                       |
+|:-------------------------------------------------------------------------------------------------------------------------------------|:-------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `outbox_events_rate_total`                                                                                                           | Processed events rate          | `event_type`, <br/>`status={processed}`                                                                                                                    |
+| `outbox_events_by_action_type_rate_total`                                                                                            | Internal lifecycle events rate | `action_type={attempt_move_to_dlq, recovered, cleaned, success_moved_to_dlq}`                                                                              |
+| `outbox_dlq_events_by_action_type_rate_total`                                                                                        | DLQ operational events rate    | `action_type={attempt_move_to_outbox, success_moved_to_outbox, manual_deleted, cleaned}`                                                                   |
+| `oncebox_started_tasks_total`<br/>`oncebox_skipped_tasks_total`<br/>`oncebox_succeeded_tasks_total`<br/>`oncebox_failed_tasks_total` | Rate of task execution states  | `task_type={outbox-processed-cleanup, outbox-stuck-recovery, outbox-dlq-transfer-to, outbox-dlq-transfer-from, outbox-dlq-cleanup}` or declared event type |
 
 **Timers**
 
-| Metric Name                       | Description                 | Tags                                                                                                                                                 |
-|:----------------------------------|:----------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------|
-| `outbox_task_processing_duration` | Duration of task processing | `task_type={cleanup-processed-events, stuck-event-recovery, transfer-to-dlq, transfer-from-dlq, cleanup-resolved-dlq-events}` or declared event type |
+| Metric Name                        | Description                 | Tags                                                                                                                                                       |
+|:-----------------------------------|:----------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `oncebox_task_processing_duration` | Duration of task processing | `task_type={outbox-processed-cleanup, outbox-stuck-recovery, outbox-dlq-transfer-to, outbox-dlq-transfer-from, outbox-dlq-cleanup}` or declared event type |
 
 These timers help identify performance bottlenecks during bulk recovery or DLQ reprocessing operations.
 
 ---
 
-### Consumer
+### Inbox
 
 **Gauges**
 
-| Metric Name                         | Description                           | Tags                                  |
-|:------------------------------------|:--------------------------------------|:--------------------------------------|
-| `outbox_polling_delay_milliseconds` | Current delay between tasks execution | `task_type={cleanup-consumed-events}` |
+| Metric Name                          | Description                           | Tags                        |
+|:-------------------------------------|:--------------------------------------|:----------------------------|
+| `oncebox_polling_delay_milliseconds` | Current delay between tasks execution | `task_type={inbox-cleanup}` |
 
 
 **Counters**
 
-| Metric Name                                                                                                                      | Description                                        | Tags                                                    |
-|:---------------------------------------------------------------------------------------------------------------------------------|:---------------------------------------------------|:--------------------------------------------------------|
-| `consumed_outbox_events_total`                                                                                                   | Number of consumed outbox events by specific type  | `type={rejected_duplicates, consumed, cleaned, failed}` |
-| `consumed_outbox_cache_action_total`                                                                                             | Number of hit/miss in consumed outbox events cache | `action_type={hit, miss}`                               |
-| `outbox_started_tasks_total`<br/>`outbox_skipped_tasks_total`<br/>`outbox_succeeded_tasks_total`<br/>`outbox_failed_tasks_total` | Rate of task execution states                      | `task_type={cleanup-consumed-events}`                   |
+| Metric Name                                                                                                                          | Description                             | Tags                                                    |
+|:-------------------------------------------------------------------------------------------------------------------------------------|:----------------------------------------|:--------------------------------------------------------|
+| `inbox_events_total`                                                                                                                 | Number of inbox events by specific type | `type={rejected_duplicates, consumed, cleaned, failed}` |
+| `inbox_cache_action_total`                                                                                                           | Number of hit/miss in inbox cache       | `action_type={hit, miss}`                               |
+| `oncebox_started_tasks_total`<br/>`oncebox_skipped_tasks_total`<br/>`oncebox_succeeded_tasks_total`<br/>`oncebox_failed_tasks_total` | Rate of task execution states           | `task_type={inbox-cleanup}`                             |
 
 **Timers**
 
-| Metric Name                       | Description                 | Tags                                  |
-|:----------------------------------|:----------------------------|:--------------------------------------|
-| `outbox_task_processing_duration` | Duration of task processing | `task_type={cleanup-consumed-events}` |
+| Metric Name                        | Description                 | Tags                        |
+|:-----------------------------------|:----------------------------|:----------------------------|
+| `oncebox_task_processing_duration` | Duration of task processing | `task_type={inbox-cleanup}` |
 
 ## Configuration
 
@@ -682,10 +683,10 @@ These timers help identify performance bottlenecks during bulk recovery or DLQ r
 #### Thread Pool Size
 When calculating the thread pool size, it's important to account for all background system processes. 
 
-Publisher requires two threads for its background operations (stuck event recovery and cleanup), three more when DLQ is enabled (transfer to DLQ, transfer from DLQ and DLQ cleanup), 
+The outbox requires two threads for its background operations (stuck event recovery and cleanup), three more when DLQ is enabled (transfer to DLQ, transfer from DLQ and DLQ cleanup), 
 plus one additional thread for each configured event type. Therefore, the recommended number of threads is `2 + n` without DLQ and `5 + n` with DLQ, where `n` is the number of event types.
 
-Consumer side requires only one thread for cleanup as background operation, the number of threads is `1`.
+The inbox requires only one thread for cleanup as background operation, the number of threads is `1`.
 
 #### Distributed Lock
 
@@ -705,17 +706,17 @@ oncebox:
 | Property                                         | Description                                                                                                                                                                                                                                                               | Default                        |
 |--------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-------------------------------|
 | `thread-pool-size`                               | Size of the thread pool for parallel event processing                                                                                                                                                                                                                     | `min(available_processors, 5)` |
-| `tables.auto-create`                             | Automatically create outbox tables on startup. Create 4 tables: <br/>- `outbox_events` and `outbox_jobs`; <br/>- `outbox_dlq_events` (when `oncebox.publisher.dlq.enabled` is `true`); <br/>- `outbox_consumed_events` (when `oncebox.consumer.enabled` is `true`).       | `true`                         |
-| `distributed-lock.lock-at-least-for`             | Minimum time duration between locks. Used when `resolve-by-polling-properties` is false.                                                                                                                                                                                 | `1s`                           |
-| `distributed-lock.lock-at-most-for`              | Maximum time duration between locks, the lock can be taken by another instance even if the holder has not released it. Used when `resolve-by-polling-properties` is false.                                                                                        | `1m`                           |
+| `tables.auto-create`                             | Automatically create outbox tables on startup. Create 4 tables: <br/>- `outbox_events` and `oncebox_jobs`; <br/>- `outbox_dlq_events` (when `oncebox.outbox.dlq.enabled` is `true`); <br/>- `inbox_events` (when `oncebox.inbox.enabled` is `true`).                      | `true`                         |
+| `distributed-lock.lock-at-least-for`             | Minimum time duration between locks. Used when `resolve-by-polling-properties` is false.                                                                                                                                                                                  | `1s`                           |
+| `distributed-lock.lock-at-most-for`              | Maximum time duration between locks, the lock can be taken by another instance even if the holder has not released it. Used when `resolve-by-polling-properties` is false.                                                                                                | `1m`                           |
 | `distributed-lock.resolve-by-polling-properties` | When this property is enabled, `lock-at-least-for` and `lock-at-most-for` are calculated as follows: <br/> - if `polling.type` of clean-up is `fixed`, they are based on `fixed-delay`; <br/> - if `adaptive`, they are based on `min-fixed-delay` and `max-fixed-delay`. | `true`                         |
 
-### Publisher
+### Outbox
 
 #### Sender
 ```yaml
 oncebox:
-  publisher:
+  outbox:
     sender:
       type: kafka
       bean-name: "customKafkaTemplate"
@@ -770,7 +771,7 @@ polling:
 The `defaults` section defines default values that apply to all events unless overridden in individual event configuration.
 ```yaml
 oncebox:
-  publisher:
+  outbox:
     defaults:
       batch-size: 200
       polling:
@@ -804,7 +805,7 @@ Individual event configurations override defaults for specific event types.
 Apache Kafka example:
 ```yaml
 oncebox:
-  publisher:
+  outbox:
     events:
       create-order:
         topic: orders
@@ -842,7 +843,7 @@ All other parameters same as `defaults` section, but override defaults for this 
 RabbitMQ example:
 ```yaml
 oncebox:
-  publisher:
+  outbox:
     events:
       create-order:
         topic: orders-exchange
@@ -875,7 +876,7 @@ oncebox:
 **Example with inheritance from `defaults`:**
 ```yaml
 oncebox:
-  publisher:
+  outbox:
     defaults:
       batch-size: 200
       polling:
@@ -912,7 +913,7 @@ oncebox:
 #### Stuck Event Recovery
 ```yaml
 oncebox:
-  publisher:
+  outbox:
     stuck-recovery:
       batch-size: 500
       max-batch-processing-time: 300s
@@ -938,7 +939,7 @@ oncebox:
 #### Cleanup
 ```yaml
 oncebox:
-  publisher:
+  outbox:
     clean-up:
       enabled: true
       batch-size: 500
@@ -970,7 +971,7 @@ oncebox:
 #### Dead Letter Queue
 ```yaml
 oncebox:
-  publisher:
+  outbox:
     dlq:
       enabled: true  
       batch-size: 500
@@ -1015,7 +1016,7 @@ DLQ has a shared section with `batch-size`, `polling`. Values from this section 
 **Override example**: 
 ```yaml
 oncebox:
-  publisher:
+  outbox:
     dlq:
       enabled: true  
       batch-size: 500
@@ -1042,7 +1043,7 @@ oncebox:
 #### Metrics
 ```yaml
 oncebox:
-  publisher:
+  outbox:
     metrics:
       enabled: true
       gauge:
@@ -1060,18 +1061,18 @@ oncebox:
 This enables metrics collection only, gauges stay disabled until `gauge.enabled` is set to `true`:
 ```yaml
 oncebox:
-  publisher:
+  outbox:
     metrics:
       enabled: true
 ```
 ---
 
-### Consumer
+### Inbox
 
 #### Source
 ```yaml
 oncebox:
-  consumer:
+  inbox:
     source:
       type: kafka
 ```
@@ -1086,7 +1087,7 @@ oncebox:
 
 ```yaml
 oncebox:
-  consumer:
+  inbox:
     mappings:
       create-order: "com.example.OrderCreatedDto"
       update-order: "com.example.OrderUpdatedDto"
@@ -1095,14 +1096,14 @@ oncebox:
 
 | Property   | Description                                                                                                                                                                                                                                                                                          |
 |------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `mappings` | A map where keys are event types and values are the target event object classes. The keys in this map must exactly match the event types configured on the publisher side under `oncebox.publisher.events`. For example: `create-order`, `update-order`, `delete-order`. |
+| `mappings` | A map where keys are event types and values are the target event object classes. The keys in this map must exactly match the event types configured on the publisher side under `oncebox.outbox.events`. For example: `create-order`, `update-order`, `delete-order`. |
 
 ---
 
 #### Cleanup
 ```yaml
 oncebox:
-  consumer:
+  inbox:
     clean-up:
       enabled: true
       batch-size: 500
@@ -1122,10 +1123,10 @@ All parameters and defaults same as [here](#cleanup-3).
 The library uses Spring's `CacheManager` from application context.
 ```yaml
 oncebox:
-  consumer:
+  inbox:
     cache:
       enabled: true
-      cache-name: "<service-name>:oncebox:consumed"
+      cache-name: "<service-name>:oncebox:inbox"
 ```
 
 > [!WARNING]
@@ -1134,14 +1135,14 @@ oncebox:
 | Property     | Description                                                                                                                                           |  Default  |
 |--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|:---------:|
 | `enabled`    | Enable distributed caching of consumed event ids. Disabled when the `cache` section is absent, enabled when it is present and `enabled` is not set      |  `false`  |
-| `cache-name` | Name of the cache in CacheManager (**required** when `consumer.cache.enabled` is true). Must match cache name configured in your `CacheManager` bean. Must be unique for each service sharing a cache store, see [Idempotent Processing](#idempotent-processing). |     —     |
+| `cache-name` | Name of the cache in CacheManager (**required** when `oncebox.inbox.cache.enabled` is true). Must match cache name configured in your `CacheManager` bean. Must be unique for each service sharing a cache store, see [Idempotent Processing](#idempotent-processing). |     —     |
 
 ---
 
 #### Metrics
 ```yaml
 oncebox:
-  consumer:
+  inbox:
     metrics:
       enabled: true
 ```
@@ -1153,14 +1154,14 @@ oncebox:
 ---
 
 ### Examples
-#### Publisher-Only
+#### Outbox-Only
 Minimal:
 > [!WARNING]
 > Dead Letter Queue and metrics collection are disabled by default. All other values will use defaults.
 
 ```yaml
 oncebox:
-  publisher:
+  outbox:
     sender:
       type: kafka
     events:
@@ -1170,7 +1171,7 @@ Minimal with all features:
 
 ```yaml
 oncebox:
-  publisher:
+  outbox:
     sender:
       type: kafka
     events:
@@ -1190,7 +1191,7 @@ oncebox:
   tables:
     auto-create: true
     
-  publisher:
+  outbox:
     sender:
       type: kafka
       emergency-timeout: 120s
@@ -1256,7 +1257,7 @@ oncebox:
 
 ---
 
-#### Consumer-Only
+#### Inbox-Only
 Minimal:
 
 > [!WARNING]
@@ -1264,31 +1265,31 @@ Minimal:
 
 ```yaml
 oncebox:
-  publisher:
+  outbox:
     enabled: false
-  consumer:
+  inbox:
     enabled: true
     source:
       type: kafka
     mappings:
       # Your specific mappings
     cache:
-      cache-name: "<service-name>:oncebox:consumed"
+      cache-name: "<service-name>:oncebox:inbox"
 ```
 
 Minimal with all features:
 ```yaml
 oncebox:
-  publisher:
+  outbox:
     enabled: false
-  consumer:
+  inbox:
     enabled: true
     source:
       type: kafka
     mappings:
       # Your specific mappings
     cache:
-      cache-name: "<service-name>:oncebox:consumed"
+      cache-name: "<service-name>:oncebox:inbox"
     metrics:
       enabled: true
 ```
@@ -1300,10 +1301,10 @@ oncebox:
   tables:
     auto-create: true
 
-  publisher:
+  outbox:
     enabled: false
 
-  consumer:
+  inbox:
     enabled: true
     source:
       type: kafka
@@ -1321,7 +1322,7 @@ oncebox:
         multiplier: 2.0
     cache:
       enabled: true
-      cache-name: "<service-name>:oncebox:consumed"
+      cache-name: "<service-name>:oncebox:inbox"
     metrics:
       enabled: true
 ```

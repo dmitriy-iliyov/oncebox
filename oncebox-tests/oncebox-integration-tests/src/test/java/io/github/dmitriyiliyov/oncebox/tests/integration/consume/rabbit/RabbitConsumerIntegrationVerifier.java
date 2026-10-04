@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.tests.integration.consume.rabbit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.dmitriyiliyov.oncebox.core.publisher.domain.OutboxHeaders;
+import io.github.dmitriyiliyov.oncebox.core.OnceboxHeaders;
 import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.ConsumerVariant;
 import io.github.dmitriyiliyov.oncebox.tests.integration.domain.BusinessEvent;
 import io.github.dmitriyiliyov.oncebox.tests.integration.utils.IdExtractor;
@@ -46,7 +46,7 @@ public class RabbitConsumerIntegrationVerifier {
         this.rabbitAdmin = new RabbitAdmin(rabbitTemplate.getConnectionFactory());
     }
 
-    public void consume_shouldSaveToBusinessAndConsumedTables() {
+    public void consume_shouldSaveToBusinessAndInboxTables() {
         UUID eventId  = UUID.randomUUID();
         UUID verifyId = UUID.randomUUID();
 
@@ -58,7 +58,7 @@ public class RabbitConsumerIntegrationVerifier {
         assertThat(selectConsumedEventIds()).containsOnly(eventId);
     }
 
-    public void consumeId_shouldSaveToBusinessAndConsumedTables() {
+    public void consumeId_shouldSaveToBusinessAndInboxTables() {
         UUID eventId  = UUID.randomUUID();
         UUID verifyId = UUID.randomUUID();
 
@@ -130,7 +130,7 @@ public class RabbitConsumerIntegrationVerifier {
                 .containsExactlyInAnyOrder(eventIds.toArray(new UUID[0]));
     }
 
-    public void consume_shouldSaveBatchToBusinessAndConsumedTables(int batchSize) {
+    public void consume_shouldSaveBatchToBusinessAndInboxTables(int batchSize) {
         List<UUID> eventIds  = generateIds(batchSize);
         List<UUID> verifyIds = generateIds(batchSize);
 
@@ -144,7 +144,7 @@ public class RabbitConsumerIntegrationVerifier {
                 .containsExactlyInAnyOrder(eventIds.toArray(new UUID[0]));
     }
 
-    public void consumeId_shouldSaveBatchToBusinessAndConsumedTables(int batchSize) {
+    public void consumeId_shouldSaveBatchToBusinessAndInboxTables(int batchSize) {
         List<UUID> eventIds  = generateIds(batchSize);
         List<UUID> verifyIds = generateIds(batchSize);
 
@@ -487,8 +487,8 @@ public class RabbitConsumerIntegrationVerifier {
             byte[] body = objectMapper.writeValueAsBytes(BusinessEvent.of(verifyId));
             MessageProperties props = new MessageProperties();
             props.setContentType(MessageProperties.CONTENT_TYPE_JSON);
-            props.setHeader(OutboxHeaders.EVENT_ID.getValue(), eventId.toString());
-            props.setHeader(OutboxHeaders.EVENT_TYPE.getValue(), EVENT_TYPE);
+            props.setHeader(OnceboxHeaders.EVENT_ID.getValue(), eventId.toString());
+            props.setHeader(OnceboxHeaders.EVENT_TYPE.getValue(), EVENT_TYPE);
             return new Message(body, props);
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize BusinessEvent", e);
@@ -535,7 +535,7 @@ public class RabbitConsumerIntegrationVerifier {
 
     private List<UUID> selectConsumedEventIds() {
         return jdbcTemplate.query(
-                "SELECT id FROM outbox_consumed_events",
+                "SELECT id FROM inbox_events",
                 (rs, n) -> idExtractor.extract("id", rs)
         );
     }
@@ -572,7 +572,7 @@ public class RabbitConsumerIntegrationVerifier {
         }
 
         jdbcTemplate.execute("DELETE FROM business_events");
-        jdbcTemplate.execute("DELETE FROM outbox_consumed_events");
+        jdbcTemplate.execute("DELETE FROM inbox_events");
 
         try {
             Thread.sleep(500);

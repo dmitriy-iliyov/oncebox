@@ -25,7 +25,7 @@ public class RabbitJpaConsumerIntegrationTests extends BaseRabbitIntegrationTest
 
     public RabbitJpaConsumerIntegrationTests(
             RabbitTemplate testRabbitTemplate,
-            @Qualifier("outboxJdbcTemplate") JdbcTemplate jdbcTemplate,
+            @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate,
             @Qualifier("rabbitMqJpaFaultyConsumerBusinessService") RabbitConsumerFaultyBusinessService rabbitMqFaultyJpaConsumerBusinessService,
             IdExtractor idExtractor
     ) {
@@ -41,9 +41,9 @@ public class RabbitJpaConsumerIntegrationTests extends BaseRabbitIntegrationTest
     void cleanUpBefore() { verifier.cleanUpQueries(); }
 
     @Test
-    @DisplayName("IT consume() should save event id to consumed table and run business operation")
-    void consume_shouldSaveToBusinessAndConsumedTables() {
-        verifier.consume_shouldSaveToBusinessAndConsumedTables();
+    @DisplayName("IT consume() should save event id to inbox table and run business operation")
+    void consume_shouldSaveToBusinessAndInboxTables() {
+        verifier.consume_shouldSaveToBusinessAndInboxTables();
     }
 
     @Test
@@ -62,8 +62,8 @@ public class RabbitJpaConsumerIntegrationTests extends BaseRabbitIntegrationTest
     @MethodSource("batchSizeArguments")
     @ParameterizedTest
     @DisplayName("IT consume() batch: all new records saved to both tables")
-    void consume_shouldSaveBatchToBusinessAndConsumedTables(int batchSize) {
-        verifier.consume_shouldSaveBatchToBusinessAndConsumedTables(batchSize);
+    void consume_shouldSaveBatchToBusinessAndInboxTables(int batchSize) {
+        verifier.consume_shouldSaveBatchToBusinessAndInboxTables(batchSize);
     }
 
     @MethodSource("batchSizeArguments")
@@ -106,9 +106,9 @@ public class RabbitJpaConsumerIntegrationTests extends BaseRabbitIntegrationTest
     }
 
     @Test
-    @DisplayName("IT consume() ID should save event id to consumed table and run business operation")
-    void consumeId_shouldSaveToBusinessAndConsumedTables() {
-        verifier.consumeId_shouldSaveToBusinessAndConsumedTables();
+    @DisplayName("IT consume() ID should save event id to inbox table and run business operation")
+    void consumeId_shouldSaveToBusinessAndInboxTables() {
+        verifier.consumeId_shouldSaveToBusinessAndInboxTables();
     }
 
     @Test
@@ -127,8 +127,8 @@ public class RabbitJpaConsumerIntegrationTests extends BaseRabbitIntegrationTest
     @MethodSource("batchSizeArguments")
     @ParameterizedTest
     @DisplayName("IT consume() ID batch: all new records saved to both tables")
-    void consumeId_shouldSaveBatchToBusinessAndConsumedTables(int batchSize) {
-        verifier.consumeId_shouldSaveBatchToBusinessAndConsumedTables(batchSize);
+    void consumeId_shouldSaveBatchToBusinessAndInboxTables(int batchSize) {
+        verifier.consumeId_shouldSaveBatchToBusinessAndInboxTables(batchSize);
     }
 
     @MethodSource("batchSizeArguments")

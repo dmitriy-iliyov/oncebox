@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.tests.integration.publish.manual;
 
-import io.github.dmitriyiliyov.oncebox.core.publisher.OutboxPublisher;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxPublisher;
 import io.github.dmitriyiliyov.oncebox.tests.integration.domain.BusinessEntity;
 import io.github.dmitriyiliyov.oncebox.tests.integration.domain.BusinessEvent;
 import io.github.dmitriyiliyov.oncebox.tests.integration.domain.BusinessFailureException;

@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.oracle;
 
-import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.OutboxDlqEvent;
+import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.OutboxDlqEvent;
 import io.github.dmitriyiliyov.oncebox.core.utils.BytesResultSetMapper;
 import io.github.dmitriyiliyov.oncebox.core.utils.BytesSqlUuidHelper;
 import io.github.dmitriyiliyov.oncebox.dlq.api.AbstractOutboxDlqApiRepository;

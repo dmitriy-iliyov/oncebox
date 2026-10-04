@@ -1,10 +1,10 @@
 package io.github.dmitriyiliyov.oncebox.postgresql;
 
-import io.github.dmitriyiliyov.oncebox.core.consumer.ConsumedOutboxRepository;
-import io.github.dmitriyiliyov.oncebox.core.publisher.DefaultOutboxManager;
-import io.github.dmitriyiliyov.oncebox.core.publisher.OutboxManager;
-import io.github.dmitriyiliyov.oncebox.core.publisher.OutboxRepository;
-import io.github.dmitriyiliyov.oncebox.core.publisher.dlq.*;
+import io.github.dmitriyiliyov.oncebox.core.inbox.InboxRepository;
+import io.github.dmitriyiliyov.oncebox.core.outbox.DefaultOutboxManager;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxManager;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxRepository;
+import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.*;
 import io.github.dmitriyiliyov.oncebox.core.utils.DefaultResultSetMapper;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -37,8 +37,8 @@ public class PostgresSqlIntegrationTestsConfig {
                         StandardCharsets.UTF_8.name(),
                         new ClassPathResource("psql/psql_outbox_table.sql"),
                         new ClassPathResource("psql/psql_outbox_dlq_table.sql"),
-                        new ClassPathResource("psql/psql_outbox_consumed_table.sql"),
-                        new ClassPathResource("psql/psql_outbox_jobs_table.sql"),
+                        new ClassPathResource("psql/psql_inbox_table.sql"),
+                        new ClassPathResource("psql/psql_oncebox_jobs_table.sql"),
                         new ClassPathResource("psql/psql_business_table.sql"))
         );
         return dataSourceInitializer;
@@ -60,8 +60,8 @@ public class PostgresSqlIntegrationTestsConfig {
     }
 
     @Bean
-    public ConsumedOutboxRepository postgresConsumedOutboxRepository(DataSource dataSource, Clock clock) {
-        return new PostgreSqlConsumedOutboxRepository(new JdbcTemplate(dataSource), clock);
+    public InboxRepository postgresInboxRepository(DataSource dataSource, Clock clock) {
+        return new PostgreSqlInboxRepository(new JdbcTemplate(dataSource), clock);
     }
 
     @Bean
