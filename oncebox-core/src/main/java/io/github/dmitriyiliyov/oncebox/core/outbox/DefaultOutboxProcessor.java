@@ -2,6 +2,7 @@ package io.github.dmitriyiliyov.oncebox.core.outbox;
 
 import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.outbox.domain.SenderResult;
+import io.github.dmitriyiliyov.oncebox.core.utils.SetUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,27 +32,17 @@ public class DefaultOutboxProcessor implements OutboxProcessor {
 
         UUID lockToken = UUID.randomUUID();
         List<OutboxEvent> events = manager.loadBatch(properties.getEventType(), properties.getBatchSize(), lockToken);
+
         if (events == null) {
-            log.warn("Outbox events batch is unexpectedly null, for eventType={}", properties.getEventType());
+            log.debug("Outbox events batch is unexpectedly null, eventType={}", properties.getEventType());
             return 0;
         }
         if (events.isEmpty()) {
-            log.info("Outbox events batch is empty, for eventType={}", properties.getEventType());
+            log.debug("Outbox events batch is empty, eventType={}", properties.getEventType());
             return 0;
         }
 
-        SenderResult result;
-        try {
-            result = sender.sendEvents(properties.getTopic(), events);
-        } catch (Exception e) {
-            log.error("Error when processing batch {} events with size={}", properties.getEventType(), properties.getBatchSize(), e);
-            result = new SenderResult(
-                    null,
-                    events.stream()
-                            .map(OutboxEvent::getId)
-                            .collect(Collectors.toSet())
-            );
-        }
+        SenderResult result = sendEvents(properties, events, lockToken);
 
         manager.finalizeBatch(
                 events,
@@ -65,6 +56,32 @@ public class DefaultOutboxProcessor implements OutboxProcessor {
                 },
                 lockToken
         );
+
+        log.debug(
+                "Outbox events batch finalized, eventType={}, size={}, processed={}, failed={}, lockToken={}",
+                properties.getEventType(), events.size(),
+                SetUtils.size(result.processedIds()), SetUtils.size(result.failedIds()), lockToken
+        );
+
         return events.size();
+    }
+
+    private SenderResult sendEvents(OutboxPropertiesHolder.EventPropertiesHolder properties,
+                                    List<OutboxEvent> events,
+                                    UUID lockToken) {
+        try {
+            return sender.sendEvents(properties.getTopic(), events);
+        } catch (Exception e) {
+            log.error(
+                    "Error when sending outbox events batch, eventType={}, topic={}, size={}, lockToken={}",
+                    properties.getEventType(), properties.getTopic(), events.size(), lockToken, e
+            );
+            return new SenderResult(
+                    null,
+                    events.stream()
+                            .map(OutboxEvent::getId)
+                            .collect(Collectors.toSet())
+            );
+        }
     }
 }

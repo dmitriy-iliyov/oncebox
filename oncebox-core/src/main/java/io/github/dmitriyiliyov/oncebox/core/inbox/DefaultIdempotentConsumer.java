@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 public class DefaultIdempotentConsumer implements IdempotentConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultIdempotentConsumer.class);
+    private static final int LOGGED_IDS_LIMIT = 10;
 
     private final TransactionTemplate transactionTemplate;
     private final InboxManager inboxManager;
@@ -30,6 +31,8 @@ public class DefaultIdempotentConsumer implements IdempotentConsumer {
             transactionTemplate.executeWithoutResult(status -> {
                 if (inboxManager.tryConsume(eventId)) {
                     operation.run();
+                } else {
+                    log.debug("Event {} already consumed, skipped", eventId);
                 }
             });
         } catch (Exception e) {
@@ -50,6 +53,8 @@ public class DefaultIdempotentConsumer implements IdempotentConsumer {
             transactionTemplate.executeWithoutResult(status -> {
                 if (inboxManager.tryConsume(eventId)) {
                     operation.accept(message);
+                } else {
+                    log.debug("Event {} already consumed, skipped", eventId);
                 }
             });
         } catch (Exception e) {
@@ -71,14 +76,17 @@ public class DefaultIdempotentConsumer implements IdempotentConsumer {
                 Set<UUID> alreadyConsumedIds = inboxManager.tryConsumeAndGetDuplicates(ids);
                 Set<UUID> validIds = new HashSet<>(ids);
                 alreadyConsumedIds.forEach(validIds::remove);
-                    log.info("Ids set is empty after filtering out duplicates");
+                logSkipped(alreadyConsumedIds.size(), ids.size());
                 if (validIds.isEmpty()) {
                     return;
                 }
                 operation.accept(validIds);
             });
         } catch(Exception e) {
-            log.error("Failed to check batch idempotency and execute operation for ids: {}", ids, e);
+            log.error(
+                    "Failed to check batch idempotency and execute operation for {} ids: {}",
+                    ids.size(), preview(ids), e
+            );
             throw e;
         }
     }
@@ -102,15 +110,34 @@ public class DefaultIdempotentConsumer implements IdempotentConsumer {
             transactionTemplate.executeWithoutResult(status -> {
                 Set<UUID> alreadyConsumedIds = inboxManager.tryConsumeAndGetDuplicates(messageMap.keySet());
                 alreadyConsumedIds.forEach(messageMap::remove);
-                    log.info("Messages set is empty after filtering out duplicates");
+                logSkipped(alreadyConsumedIds.size(), messages.size());
                 if (messageMap.isEmpty()) {
                     return;
                 }
                 operation.accept(new ArrayList<>(messageMap.values()));
             });
         } catch(Exception e) {
-            log.error("Failed to check batch idempotency and execute operation for message ids: {}", messageMap.keySet(), e);
+            log.error(
+                    "Failed to check batch idempotency and execute operation for {} messages: {}",
+                    messageMap.size(), preview(messageMap.keySet()), e
+            );
             throw e;
         }
+    }
+
+    private static void logSkipped(int skippedCount, int totalCount) {
+        if (skippedCount > 0) {
+            log.debug("Skipped {} already consumed events of {}", skippedCount, totalCount);
+        }
+    }
+
+    private static String preview(Collection<UUID> ids) {
+        if (ids.size() <= LOGGED_IDS_LIMIT) {
+            return ids.toString();
+        }
+        return ids.stream()
+                .limit(LOGGED_IDS_LIMIT)
+                .map(UUID::toString)
+                .collect(Collectors.joining(", ", "[", ", ... and %d more]".formatted(ids.size() - LOGGED_IDS_LIMIT)));
     }
 }

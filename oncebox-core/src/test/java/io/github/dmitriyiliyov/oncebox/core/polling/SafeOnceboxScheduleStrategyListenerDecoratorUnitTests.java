@@ -16,6 +16,7 @@ import static org.mockito.Mockito.verify;
 @ExtendWith(MockitoExtension.class)
 class SafeOnceboxScheduleStrategyListenerDecoratorUnitTests {
 
+    private static final String TASK_TYPE = "test-task";
     private static final RuntimeException LISTENER_FAILURE = new IllegalStateException("meter registry closed");
 
     @Mock
@@ -25,13 +26,21 @@ class SafeOnceboxScheduleStrategyListenerDecoratorUnitTests {
 
     @BeforeEach
     void setUp() {
-        tested = new SafeOnceboxScheduleStrategyListenerDecorator(delegate);
+        tested = new SafeOnceboxScheduleStrategyListenerDecorator(TASK_TYPE, delegate);
+    }
+
+    @Test
+    @DisplayName("UT constructor when taskType is null should throw NullPointerException")
+    void constructor_whenTaskTypeIsNull_shouldThrowNullPointerException() {
+        assertThatThrownBy(() -> new SafeOnceboxScheduleStrategyListenerDecorator(null, delegate))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("taskType cannot be null");
     }
 
     @Test
     @DisplayName("UT constructor when delegate is null should throw NullPointerException")
     void constructor_whenDelegateIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new SafeOnceboxScheduleStrategyListenerDecorator(null))
+        assertThatThrownBy(() -> new SafeOnceboxScheduleStrategyListenerDecorator(TASK_TYPE, null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessage("delegate cannot be null");
     }

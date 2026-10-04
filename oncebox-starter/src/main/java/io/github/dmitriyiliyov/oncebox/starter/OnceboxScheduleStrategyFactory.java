@@ -39,9 +39,9 @@ public final class OnceboxScheduleStrategyFactory {
         Objects.requireNonNull(listenerSupplier, "listenerSupplier cannot be null");
 
         if (PollingType.FIXED.equals(properties.getType())) {
-            return new FixedOnceboxScheduleStrategy(properties, executor, listenerSupplier.supply(taskType));
+            return new FixedOnceboxScheduleStrategy(taskType, properties, executor, listenerSupplier.supply(taskType));
         } else if (PollingType.ADAPTIVE.equals(properties.getType())) {
-            return new AdaptiveOnceboxScheduleStrategy(properties, executor, listenerSupplier.supply(taskType));
+            return new AdaptiveOnceboxScheduleStrategy(taskType, properties, executor, listenerSupplier.supply(taskType));
         } else {
             throw new IllegalStateException("Reached unreachable branch during creating OnceboxScheduleStrategy");
         }

@@ -13,9 +13,12 @@ import java.util.Objects;
 public class SafeOnceboxScheduleStrategyListenerDecorator implements OnceboxScheduleStrategyListener {
 
     private static final Logger log = LoggerFactory.getLogger(SafeOnceboxScheduleStrategyListenerDecorator.class);
+
+    private final String taskType;
     private final OnceboxScheduleStrategyListener delegate;
 
-    public SafeOnceboxScheduleStrategyListenerDecorator(OnceboxScheduleStrategyListener delegate) {
+    public SafeOnceboxScheduleStrategyListenerDecorator(String taskType, OnceboxScheduleStrategyListener delegate) {
+        this.taskType = Objects.requireNonNull(taskType, "taskType cannot be null");
         this.delegate = Objects.requireNonNull(delegate, "delegate cannot be null");
     }
 
@@ -48,7 +51,7 @@ public class SafeOnceboxScheduleStrategyListenerDecorator implements OnceboxSche
         try {
             call.run();
         } catch (Throwable t) {
-            log.error("Schedule strategy listener failed", t);
+            log.error("Schedule strategy listener of task '{}' failed", taskType, t);
         }
     }
 }

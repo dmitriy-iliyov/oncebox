@@ -64,23 +64,27 @@ public class RabbitOutboxSender implements OutboxSender {
                     } catch (Exception e) {
                         failedIds.add(event.getId());
                         latch.countDown();
-                        log.error("Error when sending event with id={} to exchange={} ", event.getId(), exchange, e);
+                        log.error("Error when sending event with id={} to exchange={}", event.getId(), exchange, e);
                     }
                 }
                 return null;
             });
             boolean completed = latch.await(emergencyTimeoutMillis, TimeUnit.MILLISECONDS);
             if (!completed) {
+                int failedBeforeTimeout = failedIds.size();
                 events.stream()
                         .filter(e -> !processedIds.contains(e.getId()) && !failedIds.contains(e.getId()))
                         .forEach(e -> failedIds.add(e.getId()));
-                log.error("Sending batch of events to exchange={} was non completed before timeout ", exchange);
+                log.error(
+                        "Sending outbox events batch to exchange={} was not confirmed within {}ms, {} of {} events marked as failed",
+                        exchange, emergencyTimeoutMillis, failedIds.size() - failedBeforeTimeout, events.size()
+                );
             }
         } catch (Exception e) {
             failedIds.addAll(events.stream().map(OutboxEvent::getId).collect(Collectors.toSet()));
             log.error(
-                    "Error when preparing batch of '{}' events to send in exchange={}, mark whole batch as failed",
-                    events.getFirst().getEventType(), exchange, e
+                    "Error when preparing outbox events batch, marking the whole batch as failed, eventType={}, exchange={}, size={}",
+                    events.getFirst().getEventType(), exchange, events.size(), e
             );
         }
         return new SenderResult(new HashSet<>(processedIds), new HashSet<>(failedIds));

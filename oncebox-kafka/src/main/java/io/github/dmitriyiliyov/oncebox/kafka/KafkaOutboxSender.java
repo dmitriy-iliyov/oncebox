@@ -17,6 +17,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class KafkaOutboxSender implements OutboxSender {
 
@@ -52,25 +53,19 @@ public class KafkaOutboxSender implements OutboxSender {
 
         for (OutboxEvent event : events) {
             try {
-                Message<?> message = buildMessage(topic, event);
                 CompletableFuture<Void> future = kafkaTemplate
-                        .send(message)
+                        .send(buildMessage(topic, event))
                         .thenAccept(success -> processedIds.add(event.getId()))
                         .exceptionally(ex -> {
                             failedIds.add(event.getId());
-                            log.error("Error when sending event with id={} to topic={} ", event.getId(), topic, ex);
+                            log.error("Error when sending event with id={} to topic={}", event.getId(), topic, ex);
                             return null;
                         });
                 futures.add(future);
             } catch (Exception e) {
                 log.error("Error when preparing event with id={} to send in topic={}", event.getId(), topic, e);
-                if (isInfrastructureError(e)) {
-                    failedIds.addAll(events.stream()
-                            .map(OutboxEvent::getId)
-                            .toList()
-                    );
-                    log.info("Mark whole '{}' event batch as failed", event.getEventType());
-                    return new SenderResult(Collections.emptySet(), new HashSet<>(failedIds));
+                if (isInfrastructureException(e)) {
+                    return failWholeBatch(topic, events);
                 }
                 failedIds.add(event.getId());
             }
@@ -81,10 +76,17 @@ public class KafkaOutboxSender implements OutboxSender {
                     .orTimeout(emergencyTimeoutMillis, TimeUnit.MILLISECONDS)
                     .join();
         } catch (CompletionException e) {
+            int failedBeforeTimeout = failedIds.size();
             events.stream()
                     .filter(event -> !processedIds.contains(event.getId()) && !failedIds.contains(event.getId()))
                     .forEach(event -> failedIds.add(event.getId()));
+
+            log.warn(
+                    "Sending outbox events batch to topic={} was not completed within {}ms, {} of {} events marked as failed",
+                    topic, emergencyTimeoutMillis, failedIds.size() - failedBeforeTimeout, events.size(), e
+            );
         }
+
         return new SenderResult(new HashSet<>(processedIds), new HashSet<>(failedIds));
     }
 
@@ -98,7 +100,7 @@ public class KafkaOutboxSender implements OutboxSender {
                 .build();
     }
 
-    private boolean isInfrastructureError(Throwable t) {
+    private boolean isInfrastructureException(Throwable t) {
         while (t != null) {
             if (t instanceof org.apache.kafka.common.KafkaException) {
                 for (Class<? extends KafkaException> e : IGNORABLE_EXCEPTIONS) {
@@ -111,5 +113,18 @@ public class KafkaOutboxSender implements OutboxSender {
             t = t.getCause();
         }
         return false;
+    }
+
+    private SenderResult failWholeBatch(String topic, List<OutboxEvent> events) {
+        log.warn(
+                "Infrastructure error, marking the whole batch as failed, eventType={}, topic={}, size={}",
+                events.getFirst().getEventType(), topic, events.size()
+        );
+        return new SenderResult(
+                Collections.emptySet(),
+                events.stream()
+                        .map(OutboxEvent::getId)
+                        .collect(Collectors.toSet())
+        );
     }
 }

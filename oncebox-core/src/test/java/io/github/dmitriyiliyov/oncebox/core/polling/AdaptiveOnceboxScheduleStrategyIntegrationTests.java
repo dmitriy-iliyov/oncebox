@@ -62,7 +62,7 @@ class AdaptiveOnceboxScheduleStrategyIntegrationTests {
     }
 
     private AdaptiveOnceboxScheduleStrategy createStrategy() {
-        return new AdaptiveOnceboxScheduleStrategy(properties, spyExecutor, listener);
+        return new AdaptiveOnceboxScheduleStrategy("test-task", properties, spyExecutor, listener);
     }
 
     @Test

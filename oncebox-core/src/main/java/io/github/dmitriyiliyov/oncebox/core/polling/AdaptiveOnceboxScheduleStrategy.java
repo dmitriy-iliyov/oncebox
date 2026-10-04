@@ -15,6 +15,7 @@ public class AdaptiveOnceboxScheduleStrategy implements OnceboxScheduleStrategy 
 
     private static final Logger log = LoggerFactory.getLogger(AdaptiveOnceboxScheduleStrategy.class);
 
+    private final String taskType;
     private final AdaptivePollingPropertiesHolder properties;
     private final ScheduledExecutorService executor;
     private final OnceboxScheduleStrategyListener listener;
@@ -24,12 +25,15 @@ public class AdaptiveOnceboxScheduleStrategy implements OnceboxScheduleStrategy 
     private final AtomicLong currentDelay;
     private final AtomicBoolean taskInProcess;
 
-    public AdaptiveOnceboxScheduleStrategy(AdaptivePollingPropertiesHolder properties,
+    public AdaptiveOnceboxScheduleStrategy(String taskType,
+                                           AdaptivePollingPropertiesHolder properties,
                                            ScheduledExecutorService executor,
                                            OnceboxScheduleStrategyListener listener) {
+        this.taskType = Objects.requireNonNull(taskType, "taskType cannot be null");
         this.properties = Objects.requireNonNull(properties, "properties cannot be null");
         this.executor = Objects.requireNonNull(executor, "executor cannot be null");
         this.listener = new SafeOnceboxScheduleStrategyListenerDecorator(
+                taskType,
                 Objects.requireNonNull(listener, "listener cannot be null")
         );
         this.minFixedDelay = properties.getMinFixedDelay().toMillis();
@@ -55,7 +59,7 @@ public class AdaptiveOnceboxScheduleStrategy implements OnceboxScheduleStrategy 
                         try {
                             executeTask(task);
                         } catch (Throwable t) {
-                            log.error("Exception in scheduled execution", t);
+                            log.error("Exception in scheduled execution of task '{}'", taskType, t);
                         }
                     },
                     delay,
@@ -63,7 +67,7 @@ public class AdaptiveOnceboxScheduleStrategy implements OnceboxScheduleStrategy 
             );
         } catch (RejectedExecutionException e) {
             taskInProcess.set(false);
-            log.warn("Executor rejected scheduling, likely shutting down", e);
+            log.warn("Executor rejected scheduling of task '{}', likely shutting down", taskType, e);
         }
     }
 
@@ -74,7 +78,7 @@ public class AdaptiveOnceboxScheduleStrategy implements OnceboxScheduleStrategy 
             shouldContinue = task.run();
             listener.onExecutionSucceeded();
         } catch (Throwable t) {
-            log.error("Exception while executing task", t);
+            log.error("Exception while executing task '{}'", taskType, t);
             listener.onExecutionFailed();
         } finally {
             if (shouldContinue) {
@@ -83,7 +87,7 @@ public class AdaptiveOnceboxScheduleStrategy implements OnceboxScheduleStrategy 
             } else {
                 long delay = currentDelay.updateAndGet(d -> Math.min((long) (multiplier * d), maxFixedDelay));
                 listener.onDelayChanged(delay);
-                log.debug("Schedule strategy adapted, current delay is %dms".formatted(delay));
+                log.debug("Schedule strategy of task '{}' adapted, current delay is {}ms", taskType, delay);
             }
             taskInProcess.set(false);
             if (!executor.isShutdown()) {

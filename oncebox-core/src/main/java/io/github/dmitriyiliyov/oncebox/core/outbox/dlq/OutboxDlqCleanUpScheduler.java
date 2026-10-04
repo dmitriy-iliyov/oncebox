@@ -44,16 +44,16 @@ public final class OutboxDlqCleanUpScheduler implements OnceboxScheduler {
         ContinuableTask task = () -> {
             log.debug("Start clean up resolved DLQ events");
             if (!lock.tryLock(JOB.getJobName(), workerId)) {
-                log.debug("Lock acquired by another instance; skipping task execution");
+                log.debug("Lock '{}' is held by another instance, skipping task execution", JOB.getJobName());
                 return false;
             }
             try {
                 int batchSize = properties.getBatchSize();
                 int deletedCount = manager.deleteResolvedBatch(properties.getTtl(), batchSize);
-                log.debug("Successfully cleaned {} events", deletedCount);
+                log.debug("Successfully cleaned {} resolved DLQ events", deletedCount);
                 return batchSize == deletedCount;
             } catch (Exception e) {
-                log.error("Error process clean up resolved DLQ events", e);
+                log.error("Error when cleaning up resolved DLQ events, workerId={}", workerId, e);
                 return false;
             } finally {
                 lock.unlock(JOB.getJobName(), workerId);

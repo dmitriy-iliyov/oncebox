@@ -40,6 +40,7 @@ class AdaptiveOnceboxScheduleStrategyUnitTests {
 
     private AdaptiveOnceboxScheduleStrategy strategy;
 
+    private static final String TASK_TYPE = "test-task";
     private static final long MIN_DELAY     = 100L;
     private static final long MAX_DELAY     = 3200L;
     private static final long INITIAL_DELAY = 0L;
@@ -51,13 +52,21 @@ class AdaptiveOnceboxScheduleStrategyUnitTests {
         lenient().when(properties.getMaxFixedDelay()).thenReturn(Duration.ofMillis(MAX_DELAY));
         lenient().when(properties.getInitialDelay()).thenReturn(Duration.ofMillis(INITIAL_DELAY));
         lenient().when(properties.getMultiplier()).thenReturn(MULTIPLIER);
-        strategy = new AdaptiveOnceboxScheduleStrategy(properties, executor, listener);
+        strategy = new AdaptiveOnceboxScheduleStrategy(TASK_TYPE, properties, executor, listener);
+    }
+
+    @Test
+    @DisplayName("UT constructor when taskType is null should throw NullPointerException")
+    void constructor_whenTaskTypeIsNull_shouldThrowNullPointerException() {
+        assertThatThrownBy(() -> new AdaptiveOnceboxScheduleStrategy(null, properties, executor, listener))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("taskType cannot be null");
     }
 
     @Test
     @DisplayName("UT constructor when properties is null should throw NullPointerException")
     void constructor_whenPropertiesIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new AdaptiveOnceboxScheduleStrategy(null, executor, listener))
+        assertThatThrownBy(() -> new AdaptiveOnceboxScheduleStrategy(TASK_TYPE, null, executor, listener))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("properties cannot be null");
     }
@@ -65,7 +74,7 @@ class AdaptiveOnceboxScheduleStrategyUnitTests {
     @Test
     @DisplayName("UT constructor when executor is null should throw NullPointerException")
     void constructor_whenExecutorIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new AdaptiveOnceboxScheduleStrategy(properties, null, listener))
+        assertThatThrownBy(() -> new AdaptiveOnceboxScheduleStrategy(TASK_TYPE, properties, null, listener))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("executor cannot be null");
     }
@@ -73,7 +82,7 @@ class AdaptiveOnceboxScheduleStrategyUnitTests {
     @Test
     @DisplayName("UT constructor when listener is null should throw NullPointerException")
     void constructor_whenListenerIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new AdaptiveOnceboxScheduleStrategy(properties, executor, null))
+        assertThatThrownBy(() -> new AdaptiveOnceboxScheduleStrategy(TASK_TYPE, properties, executor, null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("listener cannot be null");
     }

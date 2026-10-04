@@ -46,7 +46,7 @@ public class DefaultInboxCache implements InboxCache {
         if (cache != null) {
             cache.put(id, "");
         } else {
-            log.warn("Cache for inbox with name %s not found".formatted(cacheName));
+            log.warn("Cache for inbox with name '{}' not found", cacheName);
         }
     }
 }

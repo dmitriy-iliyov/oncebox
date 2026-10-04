@@ -32,7 +32,7 @@ public class DefaultOutboxPublisher implements OutboxPublisher {
         validateEventType(eventType);
         Objects.requireNonNull(events, "events cannot be null");
         if (events.isEmpty()) {
-            log.warn("Published outbox event list is empty");
+            log.warn("Published outbox event list is empty, eventType={}", eventType);
             return;
         }
         manager.saveBatch(serializer.serialize(eventType, events));

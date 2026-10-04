@@ -81,11 +81,15 @@ public class DefaultOutboxManager implements OutboxManager {
         Set<UUID> processedIdsCopy = SetUtils.mutableCopy(processedIds);
 
         if (!hasProcessed && !hasFailed) {
-            log.warn("Finalization nullable or empty batch not delegating to repository layer");
+            log.warn("Outbox events batch has neither processed nor failed ids, nothing to finalize, lockToken={}", lockToken);
             return;
         }
-        if (hasProcessed && hasFailed && processedIdsCopy.removeAll(failedIds)) {
-            log.warn("Set of ids was overlapped, all overlapped ids moved from processedIds to failedIds");
+        if (hasProcessed && hasFailed) {
+            int processedCount = processedIdsCopy.size();
+            if (processedIdsCopy.removeAll(failedIds)) {
+                log.warn("{} ids are both processed and failed, treating them as failed, lockToken={}",
+                        processedCount - processedIdsCopy.size(), lockToken);
+            }
         }
 
         int expected = 0;
@@ -156,7 +160,10 @@ public class DefaultOutboxManager implements OutboxManager {
                 batchSize,
                 EventStatus.PENDING
         );
-        log.info("Stuck events batch recovered, recoveredCount={}; batchSize={} ", recoveredCount, batchSize);
+        if (recoveredCount > 0) {
+            log.info("Recovered {} stuck outbox events back to PENDING, maxBatchProcessingTime={}, batchSize={}",
+                    recoveredCount, maxBatchProcessingTime, batchSize);
+        }
         return recoveredCount;
     }
 

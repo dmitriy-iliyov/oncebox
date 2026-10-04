@@ -33,17 +33,27 @@ public class FixedOnceboxScheduleStrategyUnitTests {
     @Mock
     OnceboxScheduleStrategyListener listener;
 
+    private static final String TASK_TYPE = "test-task";
+
     FixedOnceboxScheduleStrategy tested;
 
     @BeforeEach
     void setUp() {
-        tested = new FixedOnceboxScheduleStrategy(properties, executor, listener);
+        tested = new FixedOnceboxScheduleStrategy(TASK_TYPE, properties, executor, listener);
+    }
+
+    @Test
+    @DisplayName("UT constructor when taskType is null should throw NullPointerException")
+    void constructor_whenTaskTypeIsNull_shouldThrowNullPointerException() {
+        assertThatThrownBy(() -> new FixedOnceboxScheduleStrategy(null, properties, executor, listener))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("taskType cannot be null");
     }
 
     @Test
     @DisplayName("UT constructor when properties is null should throw NullPointerException")
     void constructor_whenPropertiesIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new FixedOnceboxScheduleStrategy(null, executor, listener))
+        assertThatThrownBy(() -> new FixedOnceboxScheduleStrategy(TASK_TYPE, null, executor, listener))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("properties cannot be null");
     }
@@ -51,7 +61,7 @@ public class FixedOnceboxScheduleStrategyUnitTests {
     @Test
     @DisplayName("UT constructor when executor is null should throw NullPointerException")
     void constructor_whenExecutorIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new FixedOnceboxScheduleStrategy(properties, null, listener))
+        assertThatThrownBy(() -> new FixedOnceboxScheduleStrategy(TASK_TYPE, properties, null, listener))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("executor cannot be null");
     }
@@ -59,7 +69,7 @@ public class FixedOnceboxScheduleStrategyUnitTests {
     @Test
     @DisplayName("UT constructor when listener is null should throw NullPointerException")
     void constructor_whenListenerIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new FixedOnceboxScheduleStrategy(properties, executor, null))
+        assertThatThrownBy(() -> new FixedOnceboxScheduleStrategy(TASK_TYPE, properties, executor, null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("listener cannot be null");
     }

@@ -52,7 +52,7 @@ public class DefaultOutboxDlqApiService implements OutboxDlqApiService {
     public void updateStatus(UUID id, DlqStatus status) {
         OutboxDlqEvent event = repository.findByIdForUpdate(id).orElseThrow(() -> new OutboxDlqEventNotFoundException(id));
         if (DlqStatus.IN_PROCESS.equals(event.getDlqStatus())) {
-            log.debug("Update requested, but event is in 'IN_PROCESS' status; update impossible");
+            log.debug("Update of DLQ event {} rejected, it is in 'IN_PROCESS' status", id);
             throw new OutboxDlqEventInProcessException(event.getId());
         }
         repository.updateStatus(id, status);
@@ -80,7 +80,7 @@ public class DefaultOutboxDlqApiService implements OutboxDlqApiService {
                 () -> new OutboxDlqEventNotFoundException(id)
         );
         if (DlqStatus.IN_PROCESS.equals(event.getDlqStatus())) {
-            log.debug("Delete requested, but event is in 'IN_PROCESS' status; delete impossible");
+            log.debug("Delete of DLQ event {} rejected, it is in 'IN_PROCESS' status", id);
             throw new OutboxDlqEventInProcessException(event.getId());
         }
         return repository.deleteById(id);

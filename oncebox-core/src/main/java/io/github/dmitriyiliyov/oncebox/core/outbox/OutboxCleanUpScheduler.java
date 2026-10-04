@@ -42,18 +42,18 @@ public final class OutboxCleanUpScheduler implements OnceboxScheduler {
     @Override
     public void schedule() {
         ContinuableTask task = () -> {
-            log.debug("Start clean up processed events");
+            log.debug("Start clean up processed outbox events");
             if (!lock.tryLock(JOB.getJobName(), workerId)) {
-                log.debug("Lock acquired by another instance; skipping task execution");
+                log.debug("Lock '{}' is held by another instance, skipping task execution", JOB.getJobName());
                 return false;
             }
             try {
                 int batchSize = properties.getBatchSize();
                 int deletedCount = manager.deleteProcessedBatch(properties.getTtl(), batchSize);
-                log.debug("Successfully cleaned {} events", deletedCount);
+                log.debug("Successfully cleaned {} processed outbox events", deletedCount);
                 return deletedCount == batchSize;
             } catch (Exception e) {
-                log.error("Error process clean up outbox", e);
+                log.error("Error when cleaning up processed outbox events, workerId={}", workerId, e);
                 return false;
             } finally {
                 lock.unlock(JOB.getJobName(), workerId);

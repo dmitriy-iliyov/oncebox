@@ -44,16 +44,16 @@ public final class InboxCleanUpScheduler implements OnceboxScheduler {
         ContinuableTask task = () -> {
             log.debug("Start clean up inbox events");
             if (!lock.tryLock(JOB.getJobName(), workerId)) {
-                log.debug("Lock acquired by another instance; skipping task execution");
+                log.debug("Lock '{}' is held by another instance, skipping task execution", JOB.getJobName());
                 return false;
             }
             try {
                 int batchSize = properties.getBatchSize();
                 int cleanedCount = manager.cleanBatchByTtl(properties.getTtl(), batchSize);
-                log.debug("Successfully cleaned {} events", cleanedCount);
+                log.debug("Successfully cleaned {} inbox events", cleanedCount);
                 return cleanedCount == batchSize;
             } catch (Exception e) {
-                log.error("Error when cleanup consumed outbox events", e);
+                log.error("Error when cleaning up inbox events, workerId={}", workerId, e);
                 return false;
             } finally {
                 lock.unlock(JOB.getJobName(), workerId);
