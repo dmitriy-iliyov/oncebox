@@ -84,7 +84,7 @@ public class OutboxPollingSchedulerRegistrar implements ImportBeanDefinitionRegi
                 return new OutboxPollingScheduler(event, strategy, processor, decorator);
             });
 
-            registry.registerBeanDefinition(beanName,definition);
+            registry.registerBeanDefinition(beanName, definition);
         }
     }
 }
