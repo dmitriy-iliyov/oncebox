@@ -21,7 +21,7 @@ import static org.awaitility.Awaitility.await;
 @Tag("e2e")
 @ActiveProfiles(resolver = BrokerProfileResolver.class)
 @SpringBootTest(classes = E2eTestApplication.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-public abstract class BaseE2eTests {
+public abstract class BaseEndToEndTests {
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {

@@ -17,7 +17,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class DefaultEventLifeCycleTests extends BaseE2eTests {
+class DefaultEventLifeCycleEndToEndTests extends BaseEndToEndTests {
 
     @Autowired
     RawEventResender rawEventResender;
@@ -26,7 +26,7 @@ class DefaultEventLifeCycleTests extends BaseE2eTests {
     ObjectMapper objectMapper;
 
     @Test
-    @DisplayName("CT publish() when a single event should be delivered and consumed once")
+    @DisplayName("E2E publish() when a single event should be delivered and consumed once")
     void publish_whenSingleEvent_shouldBeDeliveredAndConsumedOnce() {
         BusinessEvent event = publisherService.saveAndPublish(E2eEvents.DEFAULT_EVENT);
 
@@ -40,7 +40,7 @@ class DefaultEventLifeCycleTests extends BaseE2eTests {
     }
 
     @Test
-    @DisplayName("CT publish() when a batch of events should deliver each of them once")
+    @DisplayName("E2E publish() when a batch of events should deliver each of them once")
     void publish_whenBatchOfEvents_shouldDeliverEachOnce() {
         List<BusinessEvent> events = publisherService.saveBatchAndPublish(E2eEvents.DEFAULT_EVENT, 50);
 
@@ -55,7 +55,7 @@ class DefaultEventLifeCycleTests extends BaseE2eTests {
     }
 
     @Test
-    @DisplayName("CT @OutboxPublish when the method completes should deliver its event")
+    @DisplayName("E2E @OutboxPublish when the method completes should deliver its event")
     void outboxPublish_whenMethodCompletes_shouldDeliverItsEvent() {
         BusinessEvent event = publisherService.saveAndPublishWithAop();
 
@@ -66,7 +66,7 @@ class DefaultEventLifeCycleTests extends BaseE2eTests {
     }
 
     @Test
-    @DisplayName("CT publish() when the business transaction rolls back should publish nothing")
+    @DisplayName("E2E publish() when the business transaction rolls back should publish nothing")
     void publish_whenBusinessTransactionRollsBack_shouldPublishNothing() {
         assertThatThrownBy(() -> publisherService.saveAndFail(E2eEvents.DEFAULT_EVENT))
                 .isInstanceOf(IllegalStateException.class);
@@ -78,7 +78,7 @@ class DefaultEventLifeCycleTests extends BaseE2eTests {
     }
 
     @Test
-    @DisplayName("CT consume() when the same event is delivered twice should process it once")
+    @DisplayName("E2E consume() when the same event is delivered twice should process it once")
     void consume_whenSameEventDeliveredTwice_shouldProcessItOnce() throws Exception {
         BusinessEvent event = publisherService.saveAndPublish(E2eEvents.DEFAULT_EVENT);
 
@@ -97,7 +97,7 @@ class DefaultEventLifeCycleTests extends BaseE2eTests {
     }
 
     @Test
-    @DisplayName("CT event when stuck IN_PROCESS should be recovered without counting a retry")
+    @DisplayName("E2E event when stuck IN_PROCESS should be recovered without counting a retry")
     void event_whenStuckInProcess_shouldBeRecoveredWithoutCountingARetry() throws Exception {
         BusinessEvent event = BusinessEvent.of();
         UUID eventId = outboxRepository.insertEvent(
@@ -116,7 +116,7 @@ class DefaultEventLifeCycleTests extends BaseE2eTests {
     }
 
     @Test
-    @DisplayName("CT event when the broker is down should be retried and delivered after it recovers")
+    @DisplayName("E2E event when the broker is down should be retried and delivered after it recovers")
     void event_whenBrokerIsDown_shouldBeRetriedAndDeliveredAfterRecovery() {
         BrokerFaultControl.stopBroker();
         try {
@@ -140,7 +140,7 @@ class DefaultEventLifeCycleTests extends BaseE2eTests {
     }
 
     @Test
-    @DisplayName("CT processed event when past its ttl should be cleaned up")
+    @DisplayName("E2E processed event when past its ttl should be cleaned up")
     void processedEvent_whenPastTtl_shouldBeCleanedUp() {
         BusinessEvent event = publisherService.saveAndPublish(E2eEvents.DEFAULT_EVENT);
 
@@ -158,7 +158,7 @@ class DefaultEventLifeCycleTests extends BaseE2eTests {
     }
 
     @Test
-    @DisplayName("CT consumed event id when past its ttl should be cleaned up")
+    @DisplayName("E2E consumed event id when past its ttl should be cleaned up")
     void consumedEventId_whenPastTtl_shouldBeCleanedUp() {
         publisherService.saveAndPublish(E2eEvents.DEFAULT_EVENT);
 

@@ -17,7 +17,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class DlqEventLifeCycleTests extends BaseE2eTests {
+class DlqEventLifeCycleEndToEndTests extends BaseEndToEndTests {
 
     private static final String DLQ_API = "/api/outbox-dlq/events";
 
@@ -25,7 +25,7 @@ class DlqEventLifeCycleTests extends BaseE2eTests {
     TestRestTemplate restTemplate;
 
     @Test
-    @DisplayName("CT event when retries are exhausted while the broker is down should move to the DLQ and be delivered after a manual retry")
+    @DisplayName("E2E event when retries are exhausted while the broker is down should move to the DLQ and be delivered after a manual retry")
     void event_whenRetriesExhaustedWhileBrokerDown_shouldMoveToDlqAndDeliverAfterManualRetry() {
         BrokerFaultControl.stopBroker();
 
@@ -52,7 +52,7 @@ class DlqEventLifeCycleTests extends BaseE2eTests {
     }
 
     @Test
-    @DisplayName("CT DLQ event when resolved should be cleaned up")
+    @DisplayName("E2E DLQ event when resolved should be cleaned up")
     void dlqEvent_whenResolved_shouldBeCleanedUp() {
         BrokerFaultControl.stopBroker();
 
@@ -76,7 +76,7 @@ class DlqEventLifeCycleTests extends BaseE2eTests {
     }
 
     @Test
-    @DisplayName("CT DLQ API when events are in the DLQ should get, count, page and delete them")
+    @DisplayName("E2E DLQ API when events are in the DLQ should get, count, page and delete them")
     void dlqApi_whenEventsAreInDlq_shouldGetCountPageAndDeleteThem() {
         UUID firstId = outboxRepository.insertDlqEvent(
                 "e2e-dlq-event", DlqStatus.MOVED, BusinessEvent.class.getName(), "{\"verifyId\":\"" + UUID.randomUUID() + "\"}"
