@@ -1,6 +1,5 @@
 package io.github.dmitriyiliyov.oncebox.core.inbox;
 
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
@@ -21,13 +20,13 @@ public class DefaultInboxManager implements InboxManager {
         this.clock = Objects.requireNonNull(clock, "clock cannot be null");
     }
 
-    @Transactional(propagation = Propagation.MANDATORY)
+    @Transactional
     @Override
     public boolean tryConsume(UUID id) {
         return repository.saveIfAbsent(id) == 1;
     }
 
-    @Transactional(propagation = Propagation.MANDATORY)
+    @Transactional
     @Override
     public Set<UUID> tryConsumeAndGetDuplicates(Set<UUID> ids) {
         Set<UUID> unconsumedIds = repository.saveIfAbsent(ids);

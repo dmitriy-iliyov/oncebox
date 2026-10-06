@@ -9,6 +9,7 @@ import io.github.dmitriyiliyov.oncebox.tests.e2e.repository.TestOutboxRepository
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Profile;
@@ -45,8 +46,10 @@ public class RabbitBrokerConfig {
     }
 
     @Bean
-    public RabbitConsumerBusinessService rabbitConsumerBusinessService(IdempotentConsumer idempotentConsumer,
-                                                                       TestOutboxRepository repository) {
+    public RabbitConsumerBusinessService rabbitConsumerBusinessService(
+            @Qualifier("inboxTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer,
+            TestOutboxRepository repository
+    ) {
         return new RabbitConsumerBusinessService(idempotentConsumer, repository);
     }
 

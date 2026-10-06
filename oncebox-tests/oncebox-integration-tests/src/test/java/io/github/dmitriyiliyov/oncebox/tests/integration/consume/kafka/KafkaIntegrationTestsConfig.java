@@ -41,7 +41,11 @@ public class KafkaIntegrationTestsConfig {
                 KafkaConsumerFaultyBusinessService.SINGLE_FAILING_TOPIC,
                 KafkaConsumerFaultyBusinessService.BATCH_FAILING_TOPIC,
                 KafkaConsumerFaultyBusinessService.SINGLE_ID_FAILING_TOPIC,
-                KafkaConsumerFaultyBusinessService.BATCH_ID_FAILING_TOPIC
+                KafkaConsumerFaultyBusinessService.BATCH_ID_FAILING_TOPIC,
+                KafkaAtMostOnceBusinessService.SINGLE_TOPIC,
+                KafkaAtMostOnceBusinessService.BATCH_TOPIC,
+                KafkaAtMostOnceBusinessService.SINGLE_ID_TOPIC,
+                KafkaAtMostOnceBusinessService.BATCH_ID_TOPIC
         );
         return new KafkaAdmin.NewTopics(Arrays.stream(ConsumerVariant.values())
                 .flatMap(variant -> baseNames.stream().map(variant::of))
@@ -121,7 +125,7 @@ public class KafkaIntegrationTestsConfig {
 
     @Bean
     public KafkaConsumerBusinessService kafkaJdbcConsumerBusinessService(
-            IdempotentConsumer idempotentConsumer,
+            @Qualifier("inboxTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer,
             JdbcConsumerBusinessRepository repository
     ) {
         return new KafkaConsumerBusinessService(idempotentConsumer, repository, ConsumerVariant.JDBC);
@@ -129,7 +133,7 @@ public class KafkaIntegrationTestsConfig {
 
     @Bean
     public KafkaConsumerBusinessService kafkaJpaConsumerBusinessService(
-            IdempotentConsumer idempotentConsumer,
+            @Qualifier("inboxTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer,
             JpaConsumerBusinessRepositoryProxy repository
     ) {
         return new KafkaConsumerBusinessService(idempotentConsumer, repository, ConsumerVariant.JPA);
@@ -137,7 +141,7 @@ public class KafkaIntegrationTestsConfig {
 
     @Bean
     public KafkaConsumerFaultyBusinessService kafkaJdbcConsumerFaultyBusinessService(
-            IdempotentConsumer idempotentConsumer,
+            @Qualifier("inboxTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer,
             JdbcConsumerBusinessRepository repository
     ) {
         return new KafkaConsumerFaultyBusinessService(idempotentConsumer, repository, ConsumerVariant.JDBC);
@@ -145,9 +149,25 @@ public class KafkaIntegrationTestsConfig {
 
     @Bean
     public KafkaConsumerFaultyBusinessService kafkaJpaConsumerFaultyBusinessService(
-            IdempotentConsumer idempotentConsumer,
+            @Qualifier("inboxTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer,
             JpaConsumerBusinessRepositoryProxy repository
     ) {
         return new KafkaConsumerFaultyBusinessService(idempotentConsumer, repository, ConsumerVariant.JPA);
+    }
+
+    @Bean
+    public KafkaAtMostOnceBusinessService kafkaJdbcAtMostOnceBusinessService(
+            @Qualifier("inboxNonTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer,
+            JdbcConsumerBusinessRepository repository
+    ) {
+        return new KafkaAtMostOnceBusinessService(idempotentConsumer, repository, ConsumerVariant.JDBC);
+    }
+
+    @Bean
+    public KafkaAtMostOnceBusinessService kafkaJpaAtMostOnceBusinessService(
+            @Qualifier("inboxNonTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer,
+            JpaConsumerBusinessRepositoryProxy repository
+    ) {
+        return new KafkaAtMostOnceBusinessService(idempotentConsumer, repository, ConsumerVariant.JPA);
     }
 }

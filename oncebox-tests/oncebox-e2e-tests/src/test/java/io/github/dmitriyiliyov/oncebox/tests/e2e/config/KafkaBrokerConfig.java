@@ -9,6 +9,7 @@ import io.github.dmitriyiliyov.oncebox.tests.e2e.repository.TestOutboxRepository
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Profile;
@@ -47,8 +48,10 @@ public class KafkaBrokerConfig {
     }
 
     @Bean
-    public KafkaConsumerBusinessService kafkaConsumerBusinessService(IdempotentConsumer idempotentConsumer,
-                                                                     TestOutboxRepository repository) {
+    public KafkaConsumerBusinessService kafkaConsumerBusinessService(
+            @Qualifier("inboxTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer,
+            TestOutboxRepository repository
+    ) {
         return new KafkaConsumerBusinessService(idempotentConsumer, repository);
     }
 

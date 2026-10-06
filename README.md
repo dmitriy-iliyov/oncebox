@@ -17,11 +17,12 @@ Each event type is handled independently, and events are processed in parallel u
 This approach ensures reliable event publication without relying on database log-based CDC solutions, making it suitable for environments where simplicity, portability, and explicit control over event processing are preferred.
 
 ## Key Features
-- **Atomic persistence** - events are stored within the same business transaction, ensuring consistency.
+- **Atomic persistence** - stores events within the same business transaction, ensuring consistency.
 - **Adaptive polling** - dynamically adjusts the polling interval based on workload to optimize database usage.
 - **Flexible polling configuration** - allows customization of polling intervals, retry policies, and backoff strategies per event type.
-- **At-least-once delivery** - guarantees delivery with configurable retries and backoff policies.
-- **Effectively-once delivery** - achieved via an idempotent consumer implementation provided by the library.
+- **At-most-once processing** - optionally records an incoming event in the inbox before handling it, so a side effect such as sending an email is never repeated.
+- **At-least-once delivery** - guarantees outbox delivery with configurable retries and backoff policies.
+- **Effectively-once processing** - optionally records an incoming event in the inbox within the same transaction as its handling, so a redelivered event never changes data twice.
 - **Dead Letter Queue** - stores events that fail after all retry attempts, with REST API support for management.
 - **Background service** - handles recovery of stuck events and cleanup of processed or consumed events automatically.
 - **Observability** - provides out-of-the-box metrics integration via Micrometer.
@@ -213,16 +214,24 @@ oncebox:
 
 Read more about the configuration [here](#inbox-2).
 
-8. Create a listener with an injected `IdempotentConsumer`:
+8. Create a listener with an injected `IdempotentConsumer`, chosen by its bean name:
+
+> [!IMPORTANT]
+> There is no default `IdempotentConsumer`: the inbox registers two of them, and injecting one without
+> `@Qualifier` fails the context with `NoUniqueBeanDefinitionException`. Which one to take is described in
+> [Delivery Guarantees](#delivery-guarantees).
 
 **Apache Kafka:**
 ```java
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class ExampleKafkaListener {
 
     private final IdempotentConsumer idempotentConsumer;
+
+    public ExampleKafkaListener(@Qualifier("inboxTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer) {
+        this.idempotentConsumer = idempotentConsumer;
+    }
     
     @KafkaListener(topics = "example-events", groupId = "example-group", containerFactory = "inboxKafkaListenerContainerFactory")
     public void listen(Message<ExampleDto> message) {
@@ -238,11 +247,14 @@ public class ExampleKafkaListener {
 **RabbitMQ:**
 ```java
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class ExampleRabbitListener {
 
     private final IdempotentConsumer idempotentConsumer;
+
+    public ExampleRabbitListener(@Qualifier("inboxTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer) {
+        this.idempotentConsumer = idempotentConsumer;
+    }
 
     @RabbitListener(queues = "example-events", containerFactory = "inboxRabbitListenerContainerFactory")
     public void listen(Message<ExampleDto> message) {
@@ -282,7 +294,7 @@ The event lifecycle follows these steps:
 
 The following flow applies only when using the idempotent consumer:
 1. Consumer receives an event or batch of events
-2. Consumption check is performed (all subsequent steps are atomic):
+2. Consumption check is performed (with the transactional consumer all subsequent steps are atomic, see [Delivery Guarantees](#delivery-guarantees)):
     - If event was already consumed: business action is not executed and no exceptions are thrown
         - For batch consumption: events are filtered and business operation executes only for unconsumed events
     - If event was not consumed: event is marked as consumed and business operation is executed
@@ -325,9 +337,14 @@ If the publisher crashes after polling but before sending to the queue, events b
 More details about the state machine [here](#event-state-machine).
 
 #### Exactly-Once
-This semantic is achievable only when using the idempotent consumer, which deduplicates messages based on event identifiers generated when the event is initially saved at the beginning of its lifecycle.
+This semantic is achievable only when using the transactional idempotent consumer, which deduplicates messages based on event identifiers generated when the event is initially saved at the beginning of its lifecycle.
 
 In reality, the term "Exactly-Once" is not entirely accurate and should be understood as "Effectively-Once", since the library cannot guarantee deduplication within the broker itself.
+
+#### At-Most-Once
+This semantic is achievable when using the non-transactional idempotent consumer. An event is never processed twice, but an event whose processing failed is not processed again.
+
+Both inbox semantics are described [here](#delivery-guarantees).
 
 ---
 
@@ -535,7 +552,7 @@ Detailed configuration options are available [here](#cleanup-3).
 
 ### Inbox
 
-Inbox in oncebox is a table of the ids of processed events. An id is written in the same transaction as the user's handler, so an event that is delivered again is skipped. It is a transactional inbox in its deduplication form: the message itself is not stored and is not processed asynchronously. Ids are kept until clean-up (`oncebox.inbox.clean-up.ttl`), so a redelivery that arrives later than that is no longer recognised.
+Inbox in oncebox is a table of the ids of processed events. An event whose id is already recorded is skipped when it is delivered again. Whether the id is written in the same transaction as the user's handler depends on the [idempotent consumer implementation](#delivery-guarantees). It is a transactional inbox in its deduplication form: the message itself is not stored and is not processed asynchronously. Ids are kept until clean-up (`oncebox.inbox.clean-up.ttl`), so a redelivery that arrives later than that is no longer recognised.
 
 #### Usage
 The inbox is used only through manual invocation of the following interface:
@@ -555,10 +572,65 @@ public interface IdempotentConsumer {
 
 More usage examples [here](https://github.com/dmitriy-iliyov/oncebox/blob/main/oncebox-example/oncebox-consumer-example/src/main/java/io/github/dmitriyiliyov/oncebox/example/consumer/OrderAnalyticKafkaListener.java)
 
+When the inbox is enabled, both implementations described in [Delivery Guarantees](#delivery-guarantees) are
+registered, each wrapped with the cache and metrics decorators when those are enabled:
+
+| Bean name                                 | Implementation                       | Guarantee        |
+|-------------------------------------------|--------------------------------------|------------------|
+| `inboxTransactionalIdempotentConsumer`    | `TransactionalIdempotentConsumer`    | Effectively-once |
+| `inboxNonTransactionalIdempotentConsumer` | `NonTransactionalIdempotentConsumer` | At-most-once     |
+
+Neither of them is primary, so a listener chooses one with `@Qualifier`:
+
+```java
+public EmailListener(@Qualifier("inboxNonTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer) {
+    this.idempotentConsumer = idempotentConsumer;
+}
+```
+
+Injecting `IdempotentConsumer` without a qualifier fails the context with `NoUniqueBeanDefinitionException`, unless
+the field or parameter is named exactly as one of the beans. Lombok's `@RequiredArgsConstructor` does not copy
+`@Qualifier` from a field to the constructor unless `lombok.config` contains
+`lombok.copyableAnnotations += org.springframework.beans.factory.annotation.Qualifier`.
+
+> [!CAUTION]
+> **Within one service, an event is handled by one consumer.** The inbox records an event by its id alone, whichever
+> consumer recorded it. If two listeners of the same service handle the same event, for example one writing to the
+> database through the transactional consumer and another sending an email through the non-transactional one, the
+> first to record the id handles the event and the other silently skips it.
+
+To replace an implementation, define a bean named `inboxUndecoratedTransactionalIdempotentConsumer` or
+`inboxUndecoratedNonTransactionalIdempotentConsumer`. It is wrapped with the decorators in the same way as the default
+one. Declare it with `@Bean(defaultCandidate = false)`, as the library does: otherwise it is injected wherever an
+`IdempotentConsumer` is injected by type, for example into a `List<IdempotentConsumer>`, next to the decorated beans.
+
+---
+
+#### Delivery Guarantees
+The library provides two implementations of `IdempotentConsumer`, and the guarantee depends on the one in use.
+
+| Implementation                       | Guarantee        | When the operation throws                                                          |
+|--------------------------------------|------------------|------------------------------------------------------------------------------------|
+| `TransactionalIdempotentConsumer`    | Effectively-once | The id is rolled back with the operation, a redelivered event is processed again   |
+| `NonTransactionalIdempotentConsumer` | At-most-once     | The id stays recorded, a redelivered event is skipped and is never processed again |
+
+**`TransactionalIdempotentConsumer`** records the id and runs the operation in one transaction. Use it when the effect of the operation
+is written to the same database: the id and the effect are committed together or not at all. An external call made
+inside the operation (an email, an HTTP request) is not covered by the transaction: if the transaction does not
+commit after the call, the call is repeated on redelivery. The transaction stays open while the operation runs, so a
+slow external call holds a database connection for its whole duration.
+
+**`NonTransactionalIdempotentConsumer`** commits the id first and then runs the operation outside of any transaction opened by the
+library. Use it for an operation that cannot be undone and must not be repeated, such as sending an email: the
+operation runs at most once for an event. The price is that an event whose operation failed is lost: the exception
+still reaches the listener and the broker redelivers the event, but the id is already recorded and the event is
+skipped. Such a failure is logged at `ERROR` with the ids that will not be processed again. If the consumer is called
+inside a transaction of the caller, the id joins that transaction and the behaviour is the same as with the transactional one.
+
 ---
 
 #### Idempotent Processing
-Idempotent processing is implemented through unique event identifiers that are stored in a dedicated table when consumed. Storage occurs atomically together with the business effect.
+Idempotent processing is implemented through unique event identifiers that are stored in a dedicated table when consumed. With the transactional consumer, storage occurs atomically together with the business effect.
 
 As mentioned earlier, when consuming a batch of events, already-consumed events are filtered out and only unconsumed events are passed to the lambda expression.
 

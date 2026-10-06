@@ -21,18 +21,21 @@ import org.springframework.cache.CacheManager;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.transaction.IllegalTransactionStateException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class InboxAutoConfigurationVerifier {
+
+    private static final String TRANSACTIONAL_CONSUMER = "inboxTransactionalIdempotentConsumer";
+    private static final String NON_TRANSACTIONAL_CONSUMER = "inboxNonTransactionalIdempotentConsumer";
 
     private final String dbUrl;
     private final String dbDriver;
@@ -91,7 +94,8 @@ public class InboxAutoConfigurationVerifier {
                     assertThat(ctx).hasSingleBean(InboxRepository.class);
                     assertThat(ctx).hasSingleBean(DefaultInboxManager.class);
                     assertThat(ctx).hasSingleBean(InboxManagerMetricsDecorator.class);
-                    assertThat(ctx).hasSingleBean(DefaultIdempotentConsumer.class);
+                    assertThat(ctx).hasSingleBean(TransactionalIdempotentConsumer.class);
+                    assertThat(ctx).hasSingleBean(NonTransactionalIdempotentConsumer.class);
                     assertThat(ctx).hasSingleBean(MetricsInboxCacheListener.class);
 
                     assertThat(ctx).hasBean("inboxKafkaRecordMessageConverter");
@@ -105,8 +109,8 @@ public class InboxAutoConfigurationVerifier {
                     InboxManager primaryInboxManager = ctx.getBean(InboxManager.class);
                     assertThat(primaryInboxManager).isInstanceOf(InboxManagerMetricsDecorator.class);
 
-                    IdempotentConsumer primaryIdempotentConsumer = ctx.getBean(IdempotentConsumer.class);
-                    assertThat(primaryIdempotentConsumer).isInstanceOf(IdempotentConsumerMetricsDecorator.class);
+                    assertThat(ctx.getBean(TRANSACTIONAL_CONSUMER)).isInstanceOf(IdempotentConsumerMetricsDecorator.class);
+                    assertThat(ctx.getBean(NON_TRANSACTIONAL_CONSUMER)).isInstanceOf(IdempotentConsumerMetricsDecorator.class);
 
                     assertThat(ctx).hasBean("inboxCleanUpScheduler");
                 });
@@ -129,7 +133,8 @@ public class InboxAutoConfigurationVerifier {
                     assertThat(ctx).hasSingleBean(InboxRepository.class);
                     assertThat(ctx).hasSingleBean(DefaultInboxManager.class);
                     assertThat(ctx).hasSingleBean(InboxManagerMetricsDecorator.class);
-                    assertThat(ctx).hasSingleBean(DefaultIdempotentConsumer.class);
+                    assertThat(ctx).hasSingleBean(TransactionalIdempotentConsumer.class);
+                    assertThat(ctx).hasSingleBean(NonTransactionalIdempotentConsumer.class);
                     assertThat(ctx).hasSingleBean(MetricsInboxCacheListener.class);
 
                     assertThat(ctx).hasBean("inboxRabbitMessageConverter");
@@ -143,8 +148,8 @@ public class InboxAutoConfigurationVerifier {
                     InboxManager primaryInboxManager = ctx.getBean(InboxManager.class);
                     assertThat(primaryInboxManager).isInstanceOf(InboxManagerMetricsDecorator.class);
 
-                    IdempotentConsumer primaryIdempotentConsumer = ctx.getBean(IdempotentConsumer.class);
-                    assertThat(primaryIdempotentConsumer).isInstanceOf(IdempotentConsumerMetricsDecorator.class);
+                    assertThat(ctx.getBean(TRANSACTIONAL_CONSUMER)).isInstanceOf(IdempotentConsumerMetricsDecorator.class);
+                    assertThat(ctx.getBean(NON_TRANSACTIONAL_CONSUMER)).isInstanceOf(IdempotentConsumerMetricsDecorator.class);
 
                     assertThat(ctx).hasBean("inboxCleanUpScheduler");
                 });
@@ -157,7 +162,8 @@ public class InboxAutoConfigurationVerifier {
 
                     assertThat(ctx).hasSingleBean(InboxRepository.class);
                     assertThat(ctx).hasBean("inboxManager");
-                    assertThat(ctx).hasBean("primaryInboxIdempotentConsumer");
+                    assertThat(ctx).hasBean(TRANSACTIONAL_CONSUMER);
+                    assertThat(ctx).hasBean(NON_TRANSACTIONAL_CONSUMER);
 
                     InboxManager primaryInboxManager = ctx.getBean(InboxManager.class);
                     assertThat(primaryInboxManager).isInstanceOf(DefaultInboxManager.class);
@@ -189,7 +195,7 @@ public class InboxAutoConfigurationVerifier {
                         "oncebox.inbox.enabled=false"
                 )
                 .run(ctx -> {
-                    assertThat(ctx).doesNotHaveBean(DefaultIdempotentConsumer.class);
+                    assertThat(ctx).doesNotHaveBean(TransactionalIdempotentConsumer.class);
                     assertThat(ctx).doesNotHaveBean(DefaultInboxManager.class);
                     assertThat(ctx).doesNotHaveBean(InboxRepository.class);
                 });
@@ -205,7 +211,8 @@ public class InboxAutoConfigurationVerifier {
         getBaseContextRunner().run(ctx -> {
             assertThat(ctx).doesNotHaveBean(IdempotentConsumerDecoratorSupplier.class);
             assertThat(ctx).hasBean("inboxManager");
-            assertThat(ctx).hasBean("primaryInboxIdempotentConsumer");
+            assertThat(ctx).hasBean(TRANSACTIONAL_CONSUMER);
+            assertThat(ctx).hasBean(NON_TRANSACTIONAL_CONSUMER);
 
             InboxManager primaryInboxManager = ctx.getBean(InboxManager.class);
             assertThat(primaryInboxManager).isInstanceOf(DefaultInboxManager.class);
@@ -240,7 +247,8 @@ public class InboxAutoConfigurationVerifier {
                 .run(ctx -> {
                     assertThat(ctx).doesNotHaveBean(IdempotentConsumerDecoratorSupplier.class);
                     assertThat(ctx).hasBean("inboxManager");
-                    assertThat(ctx).hasBean("primaryInboxIdempotentConsumer");
+                    assertThat(ctx).hasBean(TRANSACTIONAL_CONSUMER);
+                    assertThat(ctx).hasBean(NON_TRANSACTIONAL_CONSUMER);
                 });
     }
 
@@ -283,13 +291,14 @@ public class InboxAutoConfigurationVerifier {
     }
 
     public void shouldNotRegisterDuplicateIdempotentConsumer_whenCustomBeanProvided() {
+        IdempotentConsumer customConsumer = org.mockito.Mockito.mock(IdempotentConsumer.class);
         getBaseContextRunner()
-                .withBean("customIdempotentConsumer", IdempotentConsumer.class,
-                        () -> org.mockito.Mockito.mock(IdempotentConsumer.class))
+                .withBean("inboxUndecoratedTransactionalIdempotentConsumer", IdempotentConsumer.class, () -> customConsumer)
                 .run(ctx -> {
-                    assertThat(ctx).doesNotHaveBean("inboxIdempotentConsumer");
-                    assertThat(ctx).hasBean("customIdempotentConsumer");
-                    assertThat(ctx).hasBean("primaryInboxIdempotentConsumer");
+                    assertThat(ctx).hasNotFailed();
+                    assertThat(ctx).doesNotHaveBean(TransactionalIdempotentConsumer.class);
+                    assertThat(ctx.getBean(TRANSACTIONAL_CONSUMER)).isSameAs(customConsumer);
+                    assertThat(ctx.getBean(NON_TRANSACTIONAL_CONSUMER)).isInstanceOf(NonTransactionalIdempotentConsumer.class);
                 });
     }
 
@@ -298,7 +307,8 @@ public class InboxAutoConfigurationVerifier {
                 .withPropertyValues("oncebox.inbox.metrics.enabled=true")
                 .run(ctx -> {
                     assertThat(ctx).hasBean("inboxManager");
-                    assertThat(ctx).hasBean("primaryInboxIdempotentConsumer");
+                    assertThat(ctx).hasBean(TRANSACTIONAL_CONSUMER);
+                    assertThat(ctx).hasBean(NON_TRANSACTIONAL_CONSUMER);
                     InboxManager primary = ctx.getBean(InboxManager.class);
                     assertThat(primary).isInstanceOf(InboxManagerMetricsDecorator.class);
                 });
@@ -307,9 +317,10 @@ public class InboxAutoConfigurationVerifier {
     public void shouldRegisterIdempotentConsumerMetricsDecorator_whenMetricsEnabled() {
         getBaseContextRunner()
                 .withPropertyValues("oncebox.inbox.metrics.enabled=true")
-                .run(ctx ->
-                        assertThat(ctx).hasSingleBean(IdempotentConsumerMetricsDecorator.class)
-                );
+                .run(ctx -> {
+                    assertThat(ctx.getBean(TRANSACTIONAL_CONSUMER)).isInstanceOf(IdempotentConsumerMetricsDecorator.class);
+                    assertThat(ctx.getBean(NON_TRANSACTIONAL_CONSUMER)).isInstanceOf(IdempotentConsumerMetricsDecorator.class);
+                });
     }
 
     public void shouldNotRegisterIdempotentConsumerMetricsDecorator_whenMetricsDisabled() {
@@ -335,7 +346,8 @@ public class InboxAutoConfigurationVerifier {
 
                     assertThat(ctx).hasSingleBean(InboxRepository.class);
                     assertThat(ctx).hasSingleBean(DefaultInboxManager.class);
-                    assertThat(ctx).hasSingleBean(DefaultIdempotentConsumer.class);
+                    assertThat(ctx).hasSingleBean(TransactionalIdempotentConsumer.class);
+                    assertThat(ctx).hasSingleBean(NonTransactionalIdempotentConsumer.class);
                     assertThat(ctx).doesNotHaveBean(IdempotentConsumerMetricsDecorator.class);
 
                     assertThat(ctx).hasSingleBean(IdempotentConsumerCacheDecoratorSupplier.class);
@@ -344,8 +356,8 @@ public class InboxAutoConfigurationVerifier {
                     InboxManager primaryInboxManager = ctx.getBean(InboxManager.class);
                     assertThat(primaryInboxManager).isInstanceOf(DefaultInboxManager.class);
 
-                    IdempotentConsumer primaryIdempotentConsumer = ctx.getBean(IdempotentConsumer.class);
-                    assertThat(primaryIdempotentConsumer).isInstanceOf(IdempotentConsumerCacheDecorator.class);
+                    assertThat(ctx.getBean(TRANSACTIONAL_CONSUMER)).isInstanceOf(IdempotentConsumerCacheDecorator.class);
+                    assertThat(ctx.getBean(NON_TRANSACTIONAL_CONSUMER)).isInstanceOf(IdempotentConsumerCacheDecorator.class);
 
                     assertThat(ctx).hasBean("inboxCleanUpScheduler");
                     assertThat(ctx).hasBean("inboxCleanUpJobCreateCommand");
@@ -365,7 +377,8 @@ public class InboxAutoConfigurationVerifier {
                     assertThat(ctx).hasSingleBean(InboxRepository.class);
                     assertThat(ctx).hasSingleBean(DefaultInboxManager.class);
                     assertThat(ctx).doesNotHaveBean(InboxManagerMetricsDecorator.class);
-                    assertThat(ctx).hasSingleBean(DefaultIdempotentConsumer.class);
+                    assertThat(ctx).hasSingleBean(TransactionalIdempotentConsumer.class);
+                    assertThat(ctx).hasSingleBean(NonTransactionalIdempotentConsumer.class);
                     assertThat(ctx).doesNotHaveBean(IdempotentConsumerMetricsDecorator.class);
 
                     assertThat(ctx).hasSingleBean(IdempotentConsumerCacheDecoratorSupplier.class);
@@ -374,45 +387,120 @@ public class InboxAutoConfigurationVerifier {
                     InboxManager primaryInboxManager = ctx.getBean(InboxManager.class);
                     assertThat(primaryInboxManager).isInstanceOf(DefaultInboxManager.class);
 
-                    IdempotentConsumer primaryIdempotentConsumer = ctx.getBean(IdempotentConsumer.class);
-                    assertThat(primaryIdempotentConsumer).isInstanceOf(IdempotentConsumerCacheDecorator.class);
+                    assertThat(ctx.getBean(TRANSACTIONAL_CONSUMER)).isInstanceOf(IdempotentConsumerCacheDecorator.class);
+                    assertThat(ctx.getBean(NON_TRANSACTIONAL_CONSUMER)).isInstanceOf(IdempotentConsumerCacheDecorator.class);
 
                     assertThat(ctx).hasBean("inboxCleanUpScheduler");
                     assertThat(ctx).hasBean("inboxCleanUpJobCreateCommand");
                 });
     }
 
-    public void tryConsume_whenNoActiveTransaction_shouldThrowIllegalTransactionStateException() {
-        getBaseContextRunner()
-                .run(ctx -> {
-                    InboxManager manager = ctx.getBean(InboxManager.class);
-
-                    assertThatThrownBy(() -> manager.tryConsume(UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")))
-                            .isInstanceOf(IllegalTransactionStateException.class);
-                });
-    }
-
-    public void tryConsumeAndGetDuplicates_whenNoActiveTransaction_shouldThrowIllegalTransactionStateException() {
-        getBaseContextRunner()
-                .run(ctx -> {
-                    InboxManager manager = ctx.getBean(InboxManager.class);
-
-                    assertThatThrownBy(() -> manager.tryConsumeAndGetDuplicates(Set.of(UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"))))
-                            .isInstanceOf(IllegalTransactionStateException.class);
-                });
-    }
-
-    public void inboxManagerMandatoryMethods_whenInsideTransaction_shouldRun() {
+    public void tryConsume_whenNoActiveTransaction_shouldCommitIdAtOnce() {
         getBaseContextRunner()
                 .withPropertyValues("oncebox.tables.auto-create=true")
                 .run(ctx -> {
                     InboxManager manager = ctx.getBean(InboxManager.class);
+                    UUID id = UUID.randomUUID();
+
+                    assertThat(manager.tryConsume(id)).isTrue();
+                    assertThat(manager.tryConsume(id)).isFalse();
+                });
+    }
+
+    public void tryConsumeAndGetDuplicates_whenNoActiveTransaction_shouldCommitIdsAtOnce() {
+        getBaseContextRunner()
+                .withPropertyValues("oncebox.tables.auto-create=true")
+                .run(ctx -> {
+                    InboxManager manager = ctx.getBean(InboxManager.class);
+                    Set<UUID> ids = Set.of(UUID.randomUUID(), UUID.randomUUID());
+
+                    assertThat(manager.tryConsumeAndGetDuplicates(ids)).isEmpty();
+                    assertThat(manager.tryConsumeAndGetDuplicates(ids)).isEqualTo(ids);
+                });
+    }
+
+    public void tryConsume_whenCallerTransactionRolledBack_shouldRollBackIds() {
+        getBaseContextRunner()
+                .withPropertyValues("oncebox.tables.auto-create=true")
+                .run(ctx -> {
+                    InboxManager manager = ctx.getBean(InboxManager.class);
+                    UUID id = UUID.randomUUID();
+                    Set<UUID> ids = Set.of(UUID.randomUUID());
 
                     transactionTemplate(ctx).executeWithoutResult(status -> {
-                        assertThat(manager.tryConsume(UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"))).isTrue();
-                        assertThat(manager.tryConsumeAndGetDuplicates(Set.of(UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")))).isEmpty();
+                        assertThat(manager.tryConsume(id)).isTrue();
+                        assertThat(manager.tryConsumeAndGetDuplicates(ids)).isEmpty();
                         status.setRollbackOnly();
                     });
+
+                    assertThat(manager.tryConsume(id)).isTrue();
+                    assertThat(manager.tryConsumeAndGetDuplicates(ids)).isEmpty();
+                });
+    }
+
+    public void transactionalConsumer_whenOperationThrows_shouldProcessRedeliveryAgain() {
+        getBaseContextRunner()
+                .withPropertyValues("oncebox.tables.auto-create=true")
+                .run(ctx -> {
+                    IdempotentConsumer consumer = ctx.getBean(TRANSACTIONAL_CONSUMER, IdempotentConsumer.class);
+                    UUID id = UUID.randomUUID();
+                    AtomicInteger runs = new AtomicInteger();
+
+                    assertThatThrownBy(() -> consumer.consume(id, () -> { throw new IllegalStateException("failed"); }))
+                            .isInstanceOf(IllegalStateException.class);
+                    consumer.consume(id, runs::incrementAndGet);
+
+                    assertThat(runs).hasValue(1);
+                });
+    }
+
+    public void nonTransactionalConsumer_whenOperationThrows_shouldSkipRedelivery() {
+        getBaseContextRunner()
+                .withPropertyValues("oncebox.tables.auto-create=true")
+                .run(ctx -> {
+                    IdempotentConsumer consumer = ctx.getBean(NON_TRANSACTIONAL_CONSUMER, IdempotentConsumer.class);
+                    UUID id = UUID.randomUUID();
+                    AtomicInteger runs = new AtomicInteger();
+
+                    assertThatThrownBy(() -> consumer.consume(id, () -> { throw new IllegalStateException("failed"); }))
+                            .isInstanceOf(IllegalStateException.class);
+                    consumer.consume(id, runs::incrementAndGet);
+
+                    assertThat(runs).hasValue(0);
+                });
+    }
+
+    public void nonTransactionalConsumer_whenBatchOperationThrows_shouldSkipRedeliveredBatch() {
+        getBaseContextRunner()
+                .withPropertyValues("oncebox.tables.auto-create=true")
+                .run(ctx -> {
+                    IdempotentConsumer consumer = ctx.getBean(NON_TRANSACTIONAL_CONSUMER, IdempotentConsumer.class);
+                    Set<UUID> ids = Set.of(UUID.randomUUID(), UUID.randomUUID());
+                    AtomicInteger runs = new AtomicInteger();
+
+                    assertThatThrownBy(() -> consumer.consume(ids, batch -> { throw new IllegalStateException("failed"); }))
+                            .isInstanceOf(IllegalStateException.class);
+                    consumer.consume(ids, batch -> runs.incrementAndGet());
+
+                    assertThat(runs).hasValue(0);
+                });
+    }
+
+    public void nonTransactionalConsumer_whenCallerTransactionRolledBack_shouldProcessRedeliveryAgain() {
+        getBaseContextRunner()
+                .withPropertyValues("oncebox.tables.auto-create=true")
+                .run(ctx -> {
+                    IdempotentConsumer consumer = ctx.getBean(NON_TRANSACTIONAL_CONSUMER, IdempotentConsumer.class);
+                    UUID id = UUID.randomUUID();
+                    AtomicInteger runs = new AtomicInteger();
+
+                    transactionTemplate(ctx).executeWithoutResult(status -> {
+                        consumer.consume(id, runs::incrementAndGet);
+                        status.setRollbackOnly();
+                    });
+                    consumer.consume(id, runs::incrementAndGet);
+
+                    assertThat(runs).hasValue(2);
                 });
     }
 

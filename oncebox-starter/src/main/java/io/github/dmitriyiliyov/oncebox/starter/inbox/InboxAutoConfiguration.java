@@ -11,7 +11,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -52,17 +51,39 @@ public class InboxAutoConfiguration {
         return new DefaultInboxManager(repository, clock);
     }
 
-    @Bean
-    @ConditionalOnMissingBean
-    public IdempotentConsumer inboxIdempotentConsumer(TransactionTemplate transactionTemplate,
-                                                      InboxManager manager) {
-        return new DefaultIdempotentConsumer(transactionTemplate, manager);
+    @Bean(defaultCandidate = false)
+    @ConditionalOnMissingBean(name = "inboxUndecoratedTransactionalIdempotentConsumer")
+    public IdempotentConsumer inboxUndecoratedTransactionalIdempotentConsumer(
+            TransactionTemplate transactionTemplate,
+            InboxManager manager
+    ) {
+        return new TransactionalIdempotentConsumer(transactionTemplate, manager);
+    }
+
+    @Bean(defaultCandidate = false)
+    @ConditionalOnMissingBean(name = "inboxUndecoratedNonTransactionalIdempotentConsumer")
+    public IdempotentConsumer inboxUndecoratedNonTransactionalIdempotentConsumer(InboxManager manager) {
+        return new NonTransactionalIdempotentConsumer(manager);
     }
 
     @Bean
-    @Primary
-    public IdempotentConsumer primaryInboxIdempotentConsumer(IdempotentConsumer consumer,
-                                                             List<IdempotentConsumerDecoratorSupplier> decoratorSuppliers) {
+    public IdempotentConsumer inboxTransactionalIdempotentConsumer(
+            @Qualifier("inboxUndecoratedTransactionalIdempotentConsumer") IdempotentConsumer consumer,
+            List<IdempotentConsumerDecoratorSupplier> decoratorSuppliers
+    ) {
+        return decorate(consumer, decoratorSuppliers);
+    }
+
+    @Bean
+    public IdempotentConsumer inboxNonTransactionalIdempotentConsumer(
+            @Qualifier("inboxUndecoratedNonTransactionalIdempotentConsumer") IdempotentConsumer consumer,
+            List<IdempotentConsumerDecoratorSupplier> decoratorSuppliers
+    ) {
+        return decorate(consumer, decoratorSuppliers);
+    }
+
+    private IdempotentConsumer decorate(IdempotentConsumer consumer,
+                                        List<IdempotentConsumerDecoratorSupplier> decoratorSuppliers) {
         IdempotentConsumer primaryConsumer = consumer;
         for (IdempotentConsumerDecoratorSupplier supplier : decoratorSuppliers) {
             primaryConsumer = supplier.supply(primaryConsumer);

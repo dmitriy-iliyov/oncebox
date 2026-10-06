@@ -6,7 +6,7 @@ import java.util.UUID;
  * Strategy interface for extracting the unique ID of an event from a raw message.
  * <p>
  * The ID is the one the publisher assigned when it saved the event to its outbox.
- * {@link DefaultIdempotentConsumer} uses this to read it without knowing the specific message broker implementation.
+ * {@link TransactionalIdempotentConsumer} uses this to read it without knowing the specific message broker implementation.
  *
  * @param <T> The type of the raw message from which to resolve the event ID.
  */

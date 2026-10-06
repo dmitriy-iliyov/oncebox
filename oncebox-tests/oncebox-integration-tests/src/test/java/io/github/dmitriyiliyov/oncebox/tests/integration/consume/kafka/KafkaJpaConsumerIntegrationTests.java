@@ -16,6 +16,7 @@ import java.util.stream.Stream;
 public class KafkaJpaConsumerIntegrationTests extends BaseKafkaIntegrationTests {
 
     private final KafkaConsumerIntegrationVerifier verifier;
+    private final KafkaAtMostOnceConsumerIntegrationVerifier atMostOnceVerifier;
 
     static Stream<Arguments> batchSizeArguments() {
         return Stream.of(
@@ -27,6 +28,7 @@ public class KafkaJpaConsumerIntegrationTests extends BaseKafkaIntegrationTests 
             @Qualifier("testKafkaTemplate") KafkaTemplate<String, String> testKafkaTemplate,
             @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate,
             @Qualifier("kafkaJpaConsumerFaultyBusinessService") KafkaConsumerFaultyBusinessService faultyBusinessService,
+            @Qualifier("kafkaJpaAtMostOnceBusinessService") KafkaAtMostOnceBusinessService atMostOnceBusinessService,
             KafkaTestUtils kafkaTestUtils,
             IdExtractor idExtractor
     ) {
@@ -37,10 +39,18 @@ public class KafkaJpaConsumerIntegrationTests extends BaseKafkaIntegrationTests 
                 faultyBusinessService,
                 kafkaTestUtils
         );
+        this.atMostOnceVerifier = new KafkaAtMostOnceConsumerIntegrationVerifier(
+                testKafkaTemplate,
+                jdbcTemplate,
+                idExtractor,
+                atMostOnceBusinessService,
+                kafkaTestUtils
+        );
     }
 
     @BeforeEach
     void cleanUpBefore() {
+        atMostOnceVerifier.cleanUp();
         verifier.cleanUpQueries();
     }
 
@@ -172,5 +182,31 @@ public class KafkaJpaConsumerIntegrationTests extends BaseKafkaIntegrationTests 
     @DisplayName("IT consume() ID should allow retry after rollback: event id not burned on failure (batch)")
     void consumeId_shouldBeBatchRetryable_afterTransactionRollback(int batchSize) {
         verifier.consumeId_shouldBeBatchRetryable_afterTransactionRollback(batchSize);
+    }
+
+    @Test
+    @DisplayName("IT non-transactional consume() when operation fails and event is redelivered should not run it again")
+    void consume_whenOperationFailsAndEventIsRedelivered_shouldNotRunOperationAgain() {
+        atMostOnceVerifier.consume_whenOperationFailsAndEventIsRedelivered_shouldNotRunOperationAgain();
+    }
+
+    @MethodSource("batchSizeArguments")
+    @ParameterizedTest
+    @DisplayName("IT non-transactional consume() batch when operation fails and batch is redelivered should not run it again")
+    void consume_whenBatchOperationFailsAndBatchIsRedelivered_shouldNotRunOperationAgain(int batchSize) {
+        atMostOnceVerifier.consume_whenBatchOperationFailsAndBatchIsRedelivered_shouldNotRunOperationAgain(batchSize);
+    }
+
+    @Test
+    @DisplayName("IT non-transactional consume() ID when operation fails and event is redelivered should not run it again")
+    void consumeId_whenOperationFailsAndEventIsRedelivered_shouldNotRunOperationAgain() {
+        atMostOnceVerifier.consumeId_whenOperationFailsAndEventIsRedelivered_shouldNotRunOperationAgain();
+    }
+
+    @MethodSource("batchSizeArguments")
+    @ParameterizedTest
+    @DisplayName("IT non-transactional consume() ID batch when operation fails and batch is redelivered should not run it again")
+    void consumeId_whenBatchOperationFailsAndBatchIsRedelivered_shouldNotRunOperationAgain(int batchSize) {
+        atMostOnceVerifier.consumeId_whenBatchOperationFailsAndBatchIsRedelivered_shouldNotRunOperationAgain(batchSize);
     }
 }

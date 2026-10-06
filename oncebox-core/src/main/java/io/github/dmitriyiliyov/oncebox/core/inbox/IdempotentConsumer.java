@@ -8,8 +8,8 @@ import java.util.function.Consumer;
 /**
  * Ensures idempotent message consumption by tracking processed event IDs.
  * <p>
- * The ID is recorded in the same transaction as the operation: if the operation throws, the record is rolled
- * back with it and the exception propagates, so a redelivery runs the operation again.
+ * Whether a failed operation is run again on redelivery depends on the implementation: see
+ * {@link TransactionalIdempotentConsumer} and {@link NonTransactionalIdempotentConsumer}.
  */
 public interface IdempotentConsumer {
 

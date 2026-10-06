@@ -21,7 +21,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class DefaultIdempotentConsumerUnitTests {
+class TransactionalIdempotentConsumerUnitTests {
 
     @Mock
     private TransactionTemplate transactionTemplate;
@@ -29,17 +29,17 @@ class DefaultIdempotentConsumerUnitTests {
     @Mock
     private InboxManager inboxManager;
 
-    private DefaultIdempotentConsumer consumer;
+    private TransactionalIdempotentConsumer consumer;
 
     @BeforeEach
     void setUp() {
-        consumer = new DefaultIdempotentConsumer(transactionTemplate, inboxManager);
+        consumer = new TransactionalIdempotentConsumer(transactionTemplate, inboxManager);
     }
 
     @Test
     @DisplayName("UT constructor when transactionTemplate is null should throw NullPointerException")
     void constructor_whenTransactionTemplateIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new DefaultIdempotentConsumer(null, inboxManager))
+        assertThatThrownBy(() -> new TransactionalIdempotentConsumer(null, inboxManager))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("transactionTemplate cannot be null");
     }
@@ -47,7 +47,7 @@ class DefaultIdempotentConsumerUnitTests {
     @Test
     @DisplayName("UT constructor when inboxManager is null should throw NullPointerException")
     void constructor_whenInboxManagerIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new DefaultIdempotentConsumer(transactionTemplate, null))
+        assertThatThrownBy(() -> new TransactionalIdempotentConsumer(transactionTemplate, null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("inboxManager cannot be null");
     }

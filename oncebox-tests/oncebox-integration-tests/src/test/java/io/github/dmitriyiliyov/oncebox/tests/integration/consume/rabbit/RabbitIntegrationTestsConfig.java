@@ -66,7 +66,11 @@ public class RabbitIntegrationTestsConfig {
                 RabbitConsumerFaultyBusinessService.SINGLE_FAILING_QUEUE,
                 RabbitConsumerFaultyBusinessService.BATCH_FAILING_QUEUE,
                 RabbitConsumerFaultyBusinessService.SINGLE_ID_FAILING_QUEUE,
-                RabbitConsumerFaultyBusinessService.BATCH_ID_FAILING_QUEUE
+                RabbitConsumerFaultyBusinessService.BATCH_ID_FAILING_QUEUE,
+                RabbitAtMostOnceBusinessService.SINGLE_QUEUE,
+                RabbitAtMostOnceBusinessService.BATCH_QUEUE,
+                RabbitAtMostOnceBusinessService.SINGLE_ID_QUEUE,
+                RabbitAtMostOnceBusinessService.BATCH_ID_QUEUE
         );
         return new Declarables(Arrays.stream(ConsumerVariant.values())
                 .flatMap(variant -> baseNames.stream().map(variant::of))
@@ -106,7 +110,7 @@ public class RabbitIntegrationTestsConfig {
 
     @Bean
     public RabbitConsumerBusinessService rabbitMqJdbcConsumerBusinessService(
-            IdempotentConsumer idempotentConsumer,
+            @Qualifier("inboxTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer,
             @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate,
             IdPreparer idPreparer
     ) {
@@ -119,7 +123,7 @@ public class RabbitIntegrationTestsConfig {
 
     @Bean
     public RabbitConsumerBusinessService rabbitMqJpaConsumerBusinessService(
-            IdempotentConsumer idempotentConsumer,
+            @Qualifier("inboxTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer,
             @Qualifier("jpaConsumerBusinessRepositoryProxy") ConsumerBusinessRepository repository
     ) {
         return new RabbitConsumerBusinessService(
@@ -131,7 +135,7 @@ public class RabbitIntegrationTestsConfig {
 
     @Bean
     public RabbitConsumerFaultyBusinessService rabbitMqJdbcFaultyConsumerBusinessService(
-            IdempotentConsumer idempotentConsumer,
+            @Qualifier("inboxTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer,
             @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate,
             IdPreparer idPreparer
     ) {
@@ -144,10 +148,35 @@ public class RabbitIntegrationTestsConfig {
 
     @Bean
     public RabbitConsumerFaultyBusinessService rabbitMqJpaFaultyConsumerBusinessService(
-            IdempotentConsumer idempotentConsumer,
+            @Qualifier("inboxTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer,
             @Qualifier("jpaConsumerBusinessRepositoryProxy") ConsumerBusinessRepository repository
     ) {
         return new RabbitConsumerFaultyBusinessService(
+                idempotentConsumer,
+                repository,
+                ConsumerVariant.JPA
+        );
+    }
+
+    @Bean
+    public RabbitAtMostOnceBusinessService rabbitMqJdbcAtMostOnceBusinessService(
+            @Qualifier("inboxNonTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer,
+            @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate,
+            IdPreparer idPreparer
+    ) {
+        return new RabbitAtMostOnceBusinessService(
+                idempotentConsumer,
+                new JdbcConsumerBusinessRepository(jdbcTemplate, idPreparer),
+                ConsumerVariant.JDBC
+        );
+    }
+
+    @Bean
+    public RabbitAtMostOnceBusinessService rabbitMqJpaAtMostOnceBusinessService(
+            @Qualifier("inboxNonTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer,
+            @Qualifier("jpaConsumerBusinessRepositoryProxy") ConsumerBusinessRepository repository
+    ) {
+        return new RabbitAtMostOnceBusinessService(
                 idempotentConsumer,
                 repository,
                 ConsumerVariant.JPA
@@ -162,6 +191,7 @@ public class RabbitIntegrationTestsConfig {
     @Bean
     public RabbitListenerConfigurer consumerVariantListeners(List<RabbitConsumerBusinessService> businessServices,
                                                              List<RabbitConsumerFaultyBusinessService> faultyServices,
+                                                             List<RabbitAtMostOnceBusinessService> atMostOnceServices,
                                                              BeanFactory beanFactory) {
         DefaultMessageHandlerMethodFactory handlerMethodFactory = new DefaultMessageHandlerMethodFactory();
         handlerMethodFactory.afterPropertiesSet();
@@ -187,6 +217,17 @@ public class RabbitIntegrationTestsConfig {
                         RabbitConsumerFaultyBusinessService.SINGLE_ID_FAILING_QUEUE, "listenSingleIdFailing", false);
                 register(registrar, beanFactory, handlerMethodFactory, service, variant, RabbitConsumerFaultyBusinessService.class,
                         RabbitConsumerFaultyBusinessService.BATCH_ID_FAILING_QUEUE, "listenBatchIdsFailing", true);
+            }
+            for (RabbitAtMostOnceBusinessService service : atMostOnceServices) {
+                ConsumerVariant variant = service.variant();
+                register(registrar, beanFactory, handlerMethodFactory, service, variant, RabbitAtMostOnceBusinessService.class,
+                        RabbitAtMostOnceBusinessService.SINGLE_QUEUE, "listenSingleMessage", false);
+                register(registrar, beanFactory, handlerMethodFactory, service, variant, RabbitAtMostOnceBusinessService.class,
+                        RabbitAtMostOnceBusinessService.BATCH_QUEUE, "listenBatchMessages", true);
+                register(registrar, beanFactory, handlerMethodFactory, service, variant, RabbitAtMostOnceBusinessService.class,
+                        RabbitAtMostOnceBusinessService.SINGLE_ID_QUEUE, "listenSingleId", false);
+                register(registrar, beanFactory, handlerMethodFactory, service, variant, RabbitAtMostOnceBusinessService.class,
+                        RabbitAtMostOnceBusinessService.BATCH_ID_QUEUE, "listenBatchIds", true);
             }
         };
     }

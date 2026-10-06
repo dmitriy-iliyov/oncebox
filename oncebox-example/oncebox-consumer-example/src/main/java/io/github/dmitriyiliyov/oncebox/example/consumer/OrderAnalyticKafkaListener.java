@@ -3,8 +3,8 @@ package io.github.dmitriyiliyov.oncebox.example.consumer;
 import io.github.dmitriyiliyov.oncebox.core.OnceboxHeadersUtils;
 import io.github.dmitriyiliyov.oncebox.core.inbox.IdempotentConsumer;
 import io.github.dmitriyiliyov.oncebox.example.shared.OrderDto;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Profile;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.messaging.Message;
@@ -16,10 +16,15 @@ import java.util.List;
 @Profile("kafka")
 @Component
 @Slf4j
-@RequiredArgsConstructor
 public class OrderAnalyticKafkaListener {
 
     private final IdempotentConsumer idempotentConsumer;
+
+    public OrderAnalyticKafkaListener(
+            @Qualifier("inboxTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer
+    ) {
+        this.idempotentConsumer = idempotentConsumer;
+    }
 
     /**
      * Example of routing messages to different handlers based on the event type.

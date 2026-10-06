@@ -129,20 +129,44 @@ class MySqlInboxAutoConfigurationIntegrationTests {
     }
 
     @Test
-    @DisplayName("IT InboxManager tryConsume(UUID) when no active transaction should throw IllegalTransactionStateException")
-    void tryConsume_whenNoActiveTransaction_shouldThrowIllegalTransactionStateException() {
-        verifier.tryConsume_whenNoActiveTransaction_shouldThrowIllegalTransactionStateException();
+    @DisplayName("IT InboxManager tryConsume(UUID) when no active transaction should commit the id at once")
+    void tryConsume_whenNoActiveTransaction_shouldCommitIdAtOnce() {
+        verifier.tryConsume_whenNoActiveTransaction_shouldCommitIdAtOnce();
     }
 
     @Test
-    @DisplayName("IT InboxManager tryConsumeAndGetDuplicates(Set) when no active transaction should throw IllegalTransactionStateException")
-    void tryConsumeAndGetDuplicates_whenNoActiveTransaction_shouldThrowIllegalTransactionStateException() {
-        verifier.tryConsumeAndGetDuplicates_whenNoActiveTransaction_shouldThrowIllegalTransactionStateException();
+    @DisplayName("IT InboxManager tryConsumeAndGetDuplicates(Set) when no active transaction should commit the ids at once")
+    void tryConsumeAndGetDuplicates_whenNoActiveTransaction_shouldCommitIdsAtOnce() {
+        verifier.tryConsumeAndGetDuplicates_whenNoActiveTransaction_shouldCommitIdsAtOnce();
     }
 
     @Test
-    @DisplayName("IT InboxManager tryConsume and tryConsumeAndGetDuplicates when inside a transaction should run")
-    void inboxManagerMandatoryMethods_whenInsideTransaction_shouldRun() {
-        verifier.inboxManagerMandatoryMethods_whenInsideTransaction_shouldRun();
+    @DisplayName("IT InboxManager tryConsume when the caller's transaction is rolled back should roll back the ids")
+    void tryConsume_whenCallerTransactionRolledBack_shouldRollBackIds() {
+        verifier.tryConsume_whenCallerTransactionRolledBack_shouldRollBackIds();
+    }
+
+    @Test
+    @DisplayName("IT transactional consumer when operation throws should process the redelivered event again")
+    void transactionalConsumer_whenOperationThrows_shouldProcessRedeliveryAgain() {
+        verifier.transactionalConsumer_whenOperationThrows_shouldProcessRedeliveryAgain();
+    }
+
+    @Test
+    @DisplayName("IT non-transactional consumer when operation throws should skip the redelivered event")
+    void nonTransactionalConsumer_whenOperationThrows_shouldSkipRedelivery() {
+        verifier.nonTransactionalConsumer_whenOperationThrows_shouldSkipRedelivery();
+    }
+
+    @Test
+    @DisplayName("IT non-transactional consumer when batch operation throws should skip the redelivered batch")
+    void nonTransactionalConsumer_whenBatchOperationThrows_shouldSkipRedeliveredBatch() {
+        verifier.nonTransactionalConsumer_whenBatchOperationThrows_shouldSkipRedeliveredBatch();
+    }
+
+    @Test
+    @DisplayName("IT non-transactional consumer when the caller's transaction is rolled back should process the redelivered event again")
+    void nonTransactionalConsumer_whenCallerTransactionRolledBack_shouldProcessRedeliveryAgain() {
+        verifier.nonTransactionalConsumer_whenCallerTransactionRolledBack_shouldProcessRedeliveryAgain();
     }
 }
