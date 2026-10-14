@@ -4,34 +4,27 @@ import io.github.dmitriyiliyov.oncebox.core.inbox.InboxRepository;
 import io.github.dmitriyiliyov.oncebox.core.utils.RepositoryUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.sql.Timestamp;
-import java.time.Clock;
-import java.time.Instant;
+import java.time.Duration;
 import java.util.*;
 
 public class PostgreSqlInboxRepository implements InboxRepository {
 
     protected final JdbcTemplate jdbcTemplate;
-    protected final Clock clock;
 
-    public PostgreSqlInboxRepository(JdbcTemplate jdbcTemplate, Clock clock) {
+    public PostgreSqlInboxRepository(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate, "jdbcTemplate cannot be null");
-        this.clock = Objects.requireNonNull(clock, "clock cannot be null");
     }
 
     @Override
     public int saveIfAbsent(UUID id) {
         String sql = """
-            INSERT INTO inbox_events (id, consumed_at)
-            VALUES(?, ?)
+            INSERT INTO inbox_events (id)
+            VALUES(?)
             ON CONFLICT (id) DO NOTHING
         """;
         return jdbcTemplate.update(
                 sql,
-                ps -> {
-                    ps.setObject(1, id);
-                    ps.setTimestamp(2, Timestamp.from(clock.instant()));
-                }
+                ps -> ps.setObject(1, id)
         );
     }
 
@@ -42,12 +35,11 @@ public class PostgreSqlInboxRepository implements InboxRepository {
         }
 
         String sql = """
-                INSERT INTO inbox_events (id, consumed_at) 
+                INSERT INTO inbox_events (id) 
                 VALUES %s 
                 ON CONFLICT (id) DO NOTHING
                 RETURNING id
-        """.formatted(RepositoryUtils.generateValuesPlaceholders(ids.size(), 2));
-        Instant consumedAt = clock.instant();
+        """.formatted(RepositoryUtils.generateValuesPlaceholders(ids.size(), 1));
 
         return new HashSet<>(
                 jdbcTemplate.query(
@@ -56,7 +48,6 @@ public class PostgreSqlInboxRepository implements InboxRepository {
                             int paramId = 1;
                             for (UUID id : ids) {
                                 ps.setObject(paramId++, id);
-                                ps.setTimestamp(paramId++, Timestamp.from(consumedAt));
                             }
                         },
                         (rs, rowNum) -> rs.getObject("id", UUID.class)
@@ -65,12 +56,12 @@ public class PostgreSqlInboxRepository implements InboxRepository {
     }
 
     @Override
-    public int deleteBatchByThreshold(Instant threshold, int batchSize) {
+    public int deleteBatchOlderThan(Duration age, int batchSize) {
         String sql = """
             WITH to_delete AS (
                 SELECT id 
                 FROM inbox_events 
-                WHERE consumed_at <= ?
+                WHERE consumed_at <= clock_timestamp() - (? * INTERVAL '1 millisecond')
                 ORDER BY consumed_at
                 LIMIT ?
             )
@@ -80,7 +71,7 @@ public class PostgreSqlInboxRepository implements InboxRepository {
         return jdbcTemplate.update(
                 sql,
                 ps -> {
-                    ps.setTimestamp(1, Timestamp.from(threshold));
+                    ps.setLong(1, age.toMillis());
                     ps.setInt(2, batchSize);
                 }
         );

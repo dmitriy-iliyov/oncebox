@@ -8,23 +8,19 @@ import io.github.dmitriyiliyov.oncebox.core.utils.DefaultBytesResultSetMapper;
 import io.github.dmitriyiliyov.oncebox.oracle.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.time.Clock;
 
 public class OracleOnceboxRepositoryFactory implements OnceboxRepositoryFactory {
 
     private final JdbcTemplate jdbcTemplate;
-    private final Clock clock;
 
-    public OracleOnceboxRepositoryFactory(JdbcTemplate jdbcTemplate, Clock clock) {
+    public OracleOnceboxRepositoryFactory(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
-        this.clock = clock;
     }
 
     @Override
     public OutboxRepository createOutboxRepository() {
         return new OracleOutboxRepository(
                 jdbcTemplate,
-                clock,
                 new OracleSqlUuidHelper(),
                 new DefaultBytesResultSetMapper()
         );
@@ -35,8 +31,7 @@ public class OracleOnceboxRepositoryFactory implements OnceboxRepositoryFactory 
         return new OracleOutboxDlqRepository(
                 jdbcTemplate,
                 new OracleSqlUuidHelper(),
-                new DefaultBytesResultSetMapper(),
-                clock
+                new DefaultBytesResultSetMapper()
         );
     }
 
@@ -49,7 +44,6 @@ public class OracleOnceboxRepositoryFactory implements OnceboxRepositoryFactory 
     public InboxRepository createInboxRepository() {
         return new OracleInboxRepository(
                 jdbcTemplate,
-                clock,
                 new OracleSqlUuidHelper(),
                 new DefaultBytesResultSetMapper()
         );

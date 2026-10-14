@@ -2,7 +2,7 @@ package io.github.dmitriyiliyov.oncebox.core.utils;
 
 import java.util.UUID;
 
-public final class DefaultBytesResultSetMapper extends BytesResultSetMapper {
+public class DefaultBytesResultSetMapper extends BytesResultSetMapper {
 
     @Override
     public UUID fromBytesToUuid(byte[] bytes) {

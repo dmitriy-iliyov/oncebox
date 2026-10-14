@@ -7,7 +7,6 @@ import io.github.dmitriyiliyov.oncebox.dlq.api.AbstractOutboxDlqApiRepository;
 import io.github.dmitriyiliyov.oncebox.dlq.api.DlqFilter;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.time.Clock;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -17,16 +16,15 @@ public class OracleOutboxDlqApiRepository extends AbstractOutboxDlqApiRepository
 
     private final BytesSqlUuidHelper localUuidHelper;
 
-    public OracleOutboxDlqApiRepository(JdbcTemplate jdbcTemplate, BytesSqlUuidHelper uuidHelper, BytesResultSetMapper mapper,
-                                        Clock clock) {
-        super(jdbcTemplate, uuidHelper, mapper, clock);
+    public OracleOutboxDlqApiRepository(JdbcTemplate jdbcTemplate, BytesSqlUuidHelper uuidHelper, BytesResultSetMapper mapper) {
+        super(jdbcTemplate, uuidHelper, mapper);
         this.localUuidHelper = Objects.requireNonNull(uuidHelper, "uuidHelper cannot be null");
     }
 
     @Override
     public List<OutboxDlqEvent> findBatch(DlqFilter filter, int batchNumber, int batchSize) {
         StringBuilder sql = new StringBuilder("""
-            SELECT id, status, dlq_status, event_type, payload_type, payload, retry_count, next_retry_at, created_at, updated_at, moved_at 
+            SELECT *
             FROM outbox_dlq_events
         """);
         String sqlEnd = """
@@ -51,5 +49,10 @@ public class OracleOutboxDlqApiRepository extends AbstractOutboxDlqApiRepository
     @Override
     protected Object convertIdParameter(UUID id) {
         return localUuidHelper.uuidToBytes(id);
+    }
+
+    @Override
+    protected String currentTimestampSql() {
+        return "SYSTIMESTAMP";
     }
 }

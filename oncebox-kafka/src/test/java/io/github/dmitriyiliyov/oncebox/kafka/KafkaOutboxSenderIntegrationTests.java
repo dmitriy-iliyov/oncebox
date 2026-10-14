@@ -2,9 +2,9 @@ package io.github.dmitriyiliyov.oncebox.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.dmitriyiliyov.oncebox.core.OnceboxHeaders;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.SenderResult;
+import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxEvent;
+import io.github.dmitriyiliyov.oncebox.core.outbox.SenderResult;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

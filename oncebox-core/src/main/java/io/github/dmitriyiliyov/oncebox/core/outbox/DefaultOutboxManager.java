@@ -1,16 +1,13 @@
 package io.github.dmitriyiliyov.oncebox.core.outbox;
 
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
+import io.github.dmitriyiliyov.oncebox.core.utils.ListUtils;
 import io.github.dmitriyiliyov.oncebox.core.utils.SetUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -22,11 +19,9 @@ public class DefaultOutboxManager implements OutboxManager {
     private static final Logger log = LoggerFactory.getLogger(DefaultOutboxManager.class);
 
     protected final OutboxRepository repository;
-    protected final Clock clock;
 
-    public DefaultOutboxManager(OutboxRepository repository, Clock clock) {
+    public DefaultOutboxManager(OutboxRepository repository) {
         this.repository = Objects.requireNonNull(repository, "repository cannot be null");
-        this.clock = Objects.requireNonNull(clock, "clock cannot be null");
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
@@ -38,10 +33,19 @@ public class DefaultOutboxManager implements OutboxManager {
     @Transactional(propagation = Propagation.MANDATORY)
     @Override
     public void saveBatch(List<OutboxEvent> eventBatch) {
-        if (eventBatch == null || eventBatch.isEmpty()) {
+        if (ListUtils.isEmpty(eventBatch)) {
             return;
         }
         repository.saveBatch(eventBatch);
+    }
+
+    @Transactional
+    @Override
+    public void saveBatchWithCreatedAt(List<OutboxEvent> eventBatch) {
+        if (ListUtils.isEmpty(eventBatch)) {
+            return;
+        }
+        repository.saveBatchWithCreatedAt(eventBatch);
     }
 
     @Transactional
@@ -69,7 +73,7 @@ public class DefaultOutboxManager implements OutboxManager {
                               Set<UUID> processedIds,
                               Set<UUID> failedIds,
                               int maxRetryCount,
-                              Function<Integer, Instant> nextRetryAtSupplier,
+                              Function<Integer, Duration> retryDelaySupplier,
                               UUID lockToken) {
         Objects.requireNonNull(lockToken, "lockToken cannot be null");
         if (maxRetryCount < 0) {
@@ -101,7 +105,7 @@ public class DefaultOutboxManager implements OutboxManager {
         }
 
         if (hasFailed) {
-            List<OutboxEvent> failedEvents = prepareFailedEvents(events, failedIds, maxRetryCount, nextRetryAtSupplier);
+            List<OutboxEvent> failedEvents = prepareFailedEvents(events, failedIds, maxRetryCount, retryDelaySupplier);
             expected += failedEvents.size();
             updated += repository.partiallyUpdateBatchByLockToken(failedEvents, lockToken);
         }
@@ -119,7 +123,7 @@ public class DefaultOutboxManager implements OutboxManager {
             List<OutboxEvent> events,
             Set<UUID> failedIds,
             int maxRetryCount,
-            Function<Integer, Instant> nextRetryAtSupplier
+            Function<Integer, Duration> retryDelaySupplier
     ) {
         return events.stream()
                 .filter(event -> failedIds.contains(event.getId()))
@@ -127,26 +131,22 @@ public class DefaultOutboxManager implements OutboxManager {
                             EventStatus newStatus;
                             // because this is after try
                             int newRetryCount = event.getRetryCount() + 1;
-                            Instant nextRetryAt;
+                            Duration retryDelay;
                             if (newRetryCount < maxRetryCount) {
                                 newStatus = EventStatus.PENDING;
                                 // should count time for next try
-                                nextRetryAt = nextRetryAtSupplier.apply(newRetryCount);
+                                retryDelay = retryDelaySupplier.apply(newRetryCount);
                             } else {
                                 newStatus = EventStatus.FAILED;
-                                nextRetryAt = event.getNextRetryAt();
+                                // keeps next_retry_at as it was
+                                retryDelay = null;
                             }
-                            return new OutboxEvent(
-                                    event.getId(),
-                                    newStatus,
-                                    event.getEventType(),
-                                    event.getPayloadType(),
-                                    event.getPayload(),
-                                    Math.min(newRetryCount, maxRetryCount),
-                                    nextRetryAt,
-                                    event.getCreatedAt(),
-                                    clock.instant()
-                            );
+
+                            OutboxEvent newEvent = event.copy();
+                            newEvent.setStatus(newStatus);
+                            newEvent.setRetryCount(Math.min(newRetryCount, maxRetryCount));
+                            newEvent.setRetryDelay(retryDelay);
+                            return newEvent;
                 })
                 .toList();
     }
@@ -154,9 +154,9 @@ public class DefaultOutboxManager implements OutboxManager {
     @Transactional
     @Override
     public int recoverStuckBatch(Duration maxBatchProcessingTime, int batchSize) {
-        int recoveredCount = repository.updateBatchStatusByStatusAndThreshold(
+        int recoveredCount = repository.updateBatchStatusByStatusOlderThan(
                 EventStatus.IN_PROCESS,
-                clock.instant().minusMillis(maxBatchProcessingTime.toMillis()),
+                maxBatchProcessingTime,
                 batchSize,
                 EventStatus.PENDING
         );
@@ -170,14 +170,13 @@ public class DefaultOutboxManager implements OutboxManager {
     @Transactional
     @Override
     public int deleteProcessedBatch(Duration ttl, int batchSize) {
-        Instant threshold = clock.instant().minusMillis(ttl.toMillis());
-        return repository.deleteBatchByStatusAndThreshold(EventStatus.PROCESSED, threshold, batchSize);
+        return repository.deleteBatchByStatusOlderThan(EventStatus.PROCESSED, ttl, batchSize);
     }
 
     @Transactional
     @Override
     public int deleteBatch(Set<UUID> ids) {
-        if (ids == null || ids.isEmpty()) {
+        if (SetUtils.isEmpty(ids)) {
             return 0;
         }
         return repository.deleteBatch(ids);

@@ -7,16 +7,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 
@@ -26,26 +23,15 @@ public class DefaultOutboxDlqManagerUnitTests {
     @Mock
     OutboxDlqRepository repository;
 
-    @Mock
-    Clock clock;
-
     @InjectMocks
     DefaultOutboxDlqManager tested;
 
     @Test
     @DisplayName("UT DefaultOutboxDlqManager() when repository is null should throw NullPointerException")
     void constructor_whenRepositoryIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new DefaultOutboxDlqManager(null, clock))
+        assertThatThrownBy(() -> new DefaultOutboxDlqManager(null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("repository cannot be null");
-    }
-
-    @Test
-    @DisplayName("UT DefaultOutboxDlqManager() when clock is null should throw NullPointerException")
-    void constructor_whenClockIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new DefaultOutboxDlqManager(repository, null))
-                .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("clock cannot be null");
     }
 
     @Test
@@ -94,7 +80,7 @@ public class DefaultOutboxDlqManagerUnitTests {
         int deleteCount = tested.deleteBatch(ids);
 
         // then
-        assertEquals(0, deleteCount);
+        assertThat(deleteCount).isEqualTo(0);
         verifyNoInteractions(repository);
     }
 
@@ -108,7 +94,7 @@ public class DefaultOutboxDlqManagerUnitTests {
         int deleteCount = tested.deleteBatch(ids);
 
         // then
-        assertEquals(0, deleteCount);
+        assertThat(deleteCount).isEqualTo(0);
         verifyNoInteractions(repository);
     }
 
@@ -124,37 +110,24 @@ public class DefaultOutboxDlqManagerUnitTests {
         int deleteCount = tested.deleteBatch(ids);
 
         // then
-        assertEquals(ids.size(), deleteCount);
+        assertThat(deleteCount).isEqualTo(ids.size());
         verify(repository).deleteBatch(ids);
         verifyNoMoreInteractions(repository);
     }
 
     @Test
-    @DisplayName("UT deleteProcessedBatch() when arguments valid should call repo")
-    void deleteResolvedBatch_validArguments_calculatesThresholdAndCallsRepository() {
+    @DisplayName("UT deleteResolvedBatch() should delete RESOLVED events older than ttl")
+    void deleteResolvedBatch_whenEventsAreOlderThanTtl_shouldDeleteThem() {
+        // given
         Duration ttl = Duration.ofDays(7);
-        int batchSize = 100;
-        int expectedDeletedCount = 42;
+        when(repository.deleteBatchByStatusOlderThan(DlqStatus.RESOLVED, ttl, 100)).thenReturn(42);
 
-        Instant now = Instant.now();
-        Instant expectedThreshold = now.minusMillis(ttl.toMillis());
-        when(repository.deleteBatchByStatusAndThreshold(
-                eq(DlqStatus.RESOLVED),
-                any(Instant.class),
-                eq(batchSize)
-        )).thenReturn(expectedDeletedCount);
-        when(clock.instant()).thenReturn(now);
+        // when
+        int deleted = tested.deleteResolvedBatch(ttl, 100);
 
-        int actualDeletedCount = tested.deleteResolvedBatch(ttl, batchSize);
-
-        assertThat(actualDeletedCount).isEqualTo(expectedDeletedCount);
-
-        verify(repository).deleteBatchByStatusAndThreshold(
-                eq(DlqStatus.RESOLVED),
-                eq(expectedThreshold),
-                eq(batchSize)
-        );
-
+        // then
+        assertThat(deleted).isEqualTo(42);
+        verify(repository).deleteBatchByStatusOlderThan(DlqStatus.RESOLVED, ttl, 100);
         verifyNoMoreInteractions(repository);
     }
 

@@ -12,7 +12,6 @@ import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 
 import javax.sql.DataSource;
 import java.nio.charset.StandardCharsets;
-import java.time.Clock;
 
 @TestConfiguration
 @Profile("postgres-it")
@@ -40,7 +39,7 @@ public class DlqApiPostgresSqlIntegrationTestsConfig {
     }
 
     @Bean
-    public OutboxDlqApiRepository postgresOutboxDlqApiRepository(DataSource dataSource, Clock clock) {
-        return new PostgreSqlOutboxDlqApiRepository(new JdbcTemplate(dataSource), new PostgreSqlUuidHelper(), new DefaultResultSetMapper(), clock);
+    public OutboxDlqApiRepository postgresOutboxDlqApiRepository(DataSource dataSource) {
+        return new PostgreSqlOutboxDlqApiRepository(new JdbcTemplate(dataSource), new PostgreSqlUuidHelper(), new DefaultResultSetMapper());
     }
 }

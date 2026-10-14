@@ -1,6 +1,5 @@
 package io.github.dmitriyiliyov.oncebox.core.outbox;
 
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,7 +11,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -87,7 +85,8 @@ class DefaultOutboxPublisherUnitTests {
     @DisplayName("UT publish(single) when eventType blank should throw IAE")
     void publish_single_whenEventTypeBlank_shouldThrow() {
         // when
-        assertThrows(IllegalArgumentException.class, () -> tested.publish("  ", event));
+        assertThatThrownBy(() -> tested.publish("  ", event))
+                .isInstanceOf(IllegalArgumentException.class);
 
         // then
         verifyNoInteractions(manager, serializer);
@@ -100,7 +99,8 @@ class DefaultOutboxPublisherUnitTests {
         when(properties.existEventType(eventType)).thenReturn(false);
 
         // then
-        assertThrows(IllegalArgumentException.class, () -> tested.publish(eventType, event));
+        assertThatThrownBy(() -> tested.publish(eventType, event))
+                .isInstanceOf(IllegalArgumentException.class);
         verify(properties).existEventType(eventType);
         verifyNoInteractions(manager, serializer);
     }
@@ -109,7 +109,8 @@ class DefaultOutboxPublisherUnitTests {
     @DisplayName("UT publish(single) when event is null should throw NPE")
     void publish_single_whenEventNull_shouldThrow() {
         // when
-        assertThrows(NullPointerException.class, () -> tested.publish(eventType, null));
+        assertThatThrownBy(() -> tested.publish(eventType, null))
+                .isInstanceOf(NullPointerException.class);
 
         // then
         verify(properties).existEventType(eventType);
@@ -139,7 +140,8 @@ class DefaultOutboxPublisherUnitTests {
     @DisplayName("UT publish(batch) when events null should throw NPE")
     void publish_batch_whenNull_shouldThrow() {
         // when
-        assertThrows(NullPointerException.class, () -> tested.publish(eventType, null));
+        assertThatThrownBy(() -> tested.publish(eventType, null))
+                .isInstanceOf(NullPointerException.class);
 
         // then
         verify(properties).existEventType(eventType);
@@ -164,7 +166,8 @@ class DefaultOutboxPublisherUnitTests {
         when(properties.existEventType(eventType)).thenReturn(false);
 
         // then
-        assertThrows(IllegalArgumentException.class, () -> tested.publish(eventType, List.of(event)));
+        assertThatThrownBy(() -> tested.publish(eventType, List.of(event)))
+                .isInstanceOf(IllegalArgumentException.class);
         verify(properties).existEventType(eventType);
         verifyNoInteractions(manager, serializer);
     }
@@ -173,7 +176,8 @@ class DefaultOutboxPublisherUnitTests {
     @DisplayName("UT publish(batch) when eventType blank should throw IAE")
     void publish_batch_whenBlankEventType_shouldThrow() {
         // when
-        assertThrows(IllegalArgumentException.class, () -> tested.publish(" ", List.of(event)));
+        assertThatThrownBy(() -> tested.publish(" ", List.of(event)))
+                .isInstanceOf(IllegalArgumentException.class);
 
         // then
         verifyNoInteractions(manager, serializer);

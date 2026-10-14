@@ -8,23 +8,19 @@ import io.github.dmitriyiliyov.oncebox.core.utils.DefaultResultSetMapper;
 import io.github.dmitriyiliyov.oncebox.postgresql.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.time.Clock;
 
 public class PostgreSqlOnceboxRepositoryFactory implements OnceboxRepositoryFactory {
 
     private final JdbcTemplate jdbcTemplate;
-    private final Clock clock;
 
-    public PostgreSqlOnceboxRepositoryFactory(JdbcTemplate jdbcTemplate, Clock clock) {
+    public PostgreSqlOnceboxRepositoryFactory(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
-        this.clock = clock;
     }
 
     @Override
     public OutboxRepository createOutboxRepository() {
         return new PostgreSqlOutboxRepository(
                 jdbcTemplate,
-                clock,
                 new PostgreSqlUuidHelper(),
                 new DefaultResultSetMapper()
         );
@@ -35,8 +31,7 @@ public class PostgreSqlOnceboxRepositoryFactory implements OnceboxRepositoryFact
         return new PostgreSqlOutboxDlqRepository(
                 jdbcTemplate,
                 new PostgreSqlUuidHelper(),
-                new DefaultResultSetMapper(),
-                clock
+                new DefaultResultSetMapper()
         );
     }
 
@@ -47,6 +42,6 @@ public class PostgreSqlOnceboxRepositoryFactory implements OnceboxRepositoryFact
 
     @Override
     public InboxRepository createInboxRepository() {
-        return new PostgreSqlInboxRepository(jdbcTemplate, clock);
+        return new PostgreSqlInboxRepository(jdbcTemplate);
     }
 }

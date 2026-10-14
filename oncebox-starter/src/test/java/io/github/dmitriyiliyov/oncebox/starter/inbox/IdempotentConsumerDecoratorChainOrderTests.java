@@ -23,7 +23,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.Clock;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -175,7 +174,6 @@ class IdempotentConsumerDecoratorChainOrderTests {
                 .withBean(CacheManager.class, () -> cacheManager)
                 .withBean(TransactionTemplate.class, () -> mock(TransactionTemplate.class))
                 .withBean(OnceboxRepositoryFactory.class, () -> repositoryFactory)
-                .withBean(Clock.class, Clock::systemUTC)
                 .withBean(MeterRegistry.class, SimpleMeterRegistry::new)
                 .withPropertyValues("oncebox.inbox.enabled=true");
     }

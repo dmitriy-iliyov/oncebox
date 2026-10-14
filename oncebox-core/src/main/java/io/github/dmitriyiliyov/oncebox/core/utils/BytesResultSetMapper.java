@@ -1,12 +1,14 @@
 package io.github.dmitriyiliyov.oncebox.core.utils;
 
+import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DlqStatus;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.OutboxDlqEvent;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public abstract class BytesResultSetMapper implements ResultSetMapper {
@@ -20,9 +22,9 @@ public abstract class BytesResultSetMapper implements ResultSetMapper {
                 rs.getString("payload_type"),
                 rs.getString("payload"),
                 rs.getInt("retry_count"),
-                rs.getTimestamp("next_retry_at").toInstant(),
-                rs.getTimestamp("created_at").toInstant(),
-                rs.getTimestamp("updated_at").toInstant()
+                getInstant(rs, "next_retry_at"),
+                getInstant(rs, "created_at"),
+                getInstant(rs, "updated_at")
         );
     }
 
@@ -35,12 +37,16 @@ public abstract class BytesResultSetMapper implements ResultSetMapper {
                 rs.getString("payload_type"),
                 rs.getString("payload"),
                 rs.getInt("retry_count"),
-                rs.getTimestamp("next_retry_at").toInstant(),
-                rs.getTimestamp("created_at").toInstant(),
-                rs.getTimestamp("updated_at").toInstant(),
+                getInstant(rs, "next_retry_at"),
+                getInstant(rs, "created_at"),
+                getInstant(rs, "updated_at"),
                 DlqStatus.fromString(rs.getString("dlq_status")),
-                rs.getTimestamp("moved_at").toInstant()
+                getInstant(rs, "moved_at")
         );
+    }
+
+    protected Instant getInstant(ResultSet rs, String column) throws SQLException {
+        return rs.getObject(column, OffsetDateTime.class).toInstant();
     }
 
     public abstract UUID fromBytesToUuid(byte [] bytes);

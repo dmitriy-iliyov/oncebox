@@ -1,7 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.tests.integration.consume.rabbit;
 
 import io.github.dmitriyiliyov.oncebox.starter.EnableOncebox;
-import io.github.dmitriyiliyov.oncebox.tests.integration.ClockConfig;
 import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.InboxIntegrationTestsConfig;
 import org.springframework.amqp.rabbit.annotation.EnableRabbit;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -24,8 +23,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @EnableRabbit
 @Import({
         InboxIntegrationTestsConfig.class,
-        RabbitIntegrationTestsConfig.class,
-        ClockConfig.class
+        RabbitIntegrationTestsConfig.class
 })
 public class RabbitInboxIntegrationTestApplication {
 }

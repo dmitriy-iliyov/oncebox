@@ -13,7 +13,6 @@ import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 
 import javax.sql.DataSource;
 import java.nio.charset.StandardCharsets;
-import java.time.Clock;
 
 /**
  * Broker-agnostic beans shared across all runs. Broker-specific wiring (sender template, topology,
@@ -24,12 +23,6 @@ public class E2eTestConfig {
 
     public static final DatabaseContainer CONTAINER = DatabaseContainerFactory.DB_CONTAINER;
     public static final DatabaseType DATABASE_TYPE = CONTAINER.getDatabaseType();
-
-    // The library expects the application to provide a Clock bean
-    @Bean
-    public Clock clock() {
-        return Clock.systemDefaultZone();
-    }
 
     @Bean
     public DataSourceInitializer e2eBusinessTablesInitializer(DataSource dataSource) {

@@ -27,7 +27,7 @@ services:
 
   oncebox-producer-mysql:
     container_name: oncebox-producer-mysql
-    image: mysql:8.0.1
+    image: mysql:8
     profiles: [ "mysql" ]
     networks:
       - default
@@ -81,7 +81,7 @@ services:
 
   oncebox-consumer-mysql:
     container_name: oncebox-consumer-mysql
-    image: mysql:8.0.1
+    image: mysql:8
     profiles: [ "mysql" ]
     networks:
       - default

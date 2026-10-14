@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.metrics.outbox;
 
+import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
 import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxPropertiesHolder;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 

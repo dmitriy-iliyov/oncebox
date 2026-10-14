@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.tests.e2e;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.config.BrokerFaultControl;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.domain.BusinessEvent;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.domain.E2eEvents;

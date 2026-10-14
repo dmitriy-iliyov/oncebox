@@ -1,13 +1,13 @@
 package io.github.dmitriyiliyov.oncebox.core.outbox.dlq;
 
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -19,14 +19,14 @@ class LogOutboxDlqHandlerUnitTests {
     @DisplayName("UT handle() when events is null should log warn and not throw")
     void handle_whenEventsNull_shouldLogWarnAndNotThrow() {
         // when + then
-        assertDoesNotThrow(() -> tested.handle(null));
+        assertThatCode(() -> tested.handle(null)).doesNotThrowAnyException();
     }
 
     @Test
     @DisplayName("UT handle() when events is empty should log warn and not throw")
     void handle_whenEventsEmpty_shouldLogWarnAndNotThrow() {
         // when + then
-        assertDoesNotThrow(() -> tested.handle(List.of()));
+        assertThatCode(() -> tested.handle(List.of())).doesNotThrowAnyException();
     }
 
     @Test
@@ -40,6 +40,6 @@ class LogOutboxDlqHandlerUnitTests {
         List<OutboxEvent> events = List.of(event1, event2);
 
         // when + then
-        assertDoesNotThrow(() -> tested.handle(events));
+        assertThatCode(() -> tested.handle(events)).doesNotThrowAnyException();
     }
 }

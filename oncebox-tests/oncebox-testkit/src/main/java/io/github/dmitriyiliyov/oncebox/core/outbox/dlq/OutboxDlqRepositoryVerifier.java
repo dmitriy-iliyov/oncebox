@@ -1,34 +1,75 @@
 package io.github.dmitriyiliyov.oncebox.core.outbox.dlq;
 
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.TestDatabaseClock;
+import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.utils.ResultSetMapper;
 import io.github.dmitriyiliyov.oncebox.core.utils.SqlUuidHelper;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class OutboxDlqRepositoryVerifier {
 
+    // well inside the 6000 seconds an expired event is aged by, and far beyond a fresh one
+    private static final Duration TTL = Duration.ofSeconds(1000);
+
     private final OutboxDlqRepository repository;
     private final JdbcTemplate jdbcTemplate;
     private final SqlUuidHelper sqlUuidHelper;
     private final ResultSetMapper mapper;
+    private final TestDatabaseClock clock;
 
     public OutboxDlqRepositoryVerifier(OutboxDlqRepository repository,
-                                JdbcTemplate jdbcTemplate,
-                                SqlUuidHelper sqlUuidHelper,
-                                ResultSetMapper mapper) {
+                                       JdbcTemplate jdbcTemplate,
+                                       SqlUuidHelper sqlUuidHelper,
+                                       ResultSetMapper mapper,
+                                       TestDatabaseClock clock) {
         this.repository = repository;
         this.jdbcTemplate = jdbcTemplate;
         this.sqlUuidHelper = sqlUuidHelper;
         this.mapper = mapper;
+        this.clock = clock;
+    }
+
+    public void saveBatch_whenEventIsMoved_shouldKeepItsTimesAndStampMovedAtByDatabaseClock() {
+        Instant createdAt = Instant.parse("2026-01-01T10:00:00Z");
+        Instant updatedAt = Instant.parse("2026-01-01T10:01:00Z");
+        Instant nextRetryAt = Instant.parse("2026-01-01T10:05:00Z");
+        OutboxDlqEvent event = OutboxDlqEvent.moved(new OutboxEvent(UUID.randomUUID(), EventStatus.FAILED,
+                "ORDER_CREATED", "io.example.OrderCreated", "{}", 3, nextRetryAt, createdAt, updatedAt));
+
+        repository.saveBatch(List.of(event));
+
+        OutboxDlqEvent found = findById(event.getId()).orElseThrow();
+        assertThat(found.getCreatedAt()).isEqualTo(createdAt);
+        assertThat(found.getUpdatedAt()).isEqualTo(updatedAt);
+        assertThat(found.getNextRetryAt()).isEqualTo(nextRetryAt);
+        assertThat(clock.distanceFromNow("outbox_dlq_events", "moved_at", event.getId()))
+                .isBetween(Duration.ofSeconds(-30), Duration.ofSeconds(30));
+    }
+
+    public void saveBatch_whenReadInAnotherJvmZone_shouldGiveBackTheSameMoments() {
+        Instant createdAt = Instant.parse("2026-01-01T10:00:00Z");
+        TimeZone original = TimeZone.getDefault();
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+            OutboxDlqEvent event = OutboxDlqEvent.moved(new OutboxEvent(UUID.randomUUID(), EventStatus.FAILED,
+                    "ORDER_CREATED", "io.example.OrderCreated", "{}", 3, createdAt, createdAt, createdAt));
+            repository.saveBatch(List.of(event));
+
+            TimeZone.setDefault(TimeZone.getTimeZone("GMT+03:00"));
+            OutboxDlqEvent found = findById(event.getId()).orElseThrow();
+
+            assertThat(found.getCreatedAt()).isEqualTo(createdAt);
+        } finally {
+            TimeZone.setDefault(original);
+        }
     }
 
     public void saveBatch_singleEvent_persistedCorrectly() {
@@ -87,58 +128,57 @@ public class OutboxDlqRepositoryVerifier {
         assertThat(findById(unrelated.getId())).isPresent();
     }
 
-    public void deleteBatchByStatusAndThreshold_matches_deleted() {
-        Instant now = Instant.now();
-        OutboxDlqEvent e1 = buildEventWithUpdatedAt(DlqStatus.RESOLVED, now.minusSeconds(6000));
-        OutboxDlqEvent e2 = buildEventWithUpdatedAt(DlqStatus.RESOLVED, now.minusSeconds(6000));
+    public void deleteBatchByStatusOlderThan_matches_deleted() {
+        Instant past = Instant.now().minusSeconds(6000);
+        OutboxDlqEvent e1 = buildEventWithUpdatedAt(DlqStatus.RESOLVED, past);
+        OutboxDlqEvent e2 = buildEventWithUpdatedAt(DlqStatus.RESOLVED, past);
         repository.saveBatch(List.of(e1, e2));
 
-        int deleted = repository.deleteBatchByStatusAndThreshold(DlqStatus.RESOLVED, now, 10);
+        int deleted = repository.deleteBatchByStatusOlderThan(DlqStatus.RESOLVED, TTL, 10);
 
         assertThat(deleted).isEqualTo(2);
         assertThat(findById(e1.getId())).isEmpty();
         assertThat(findById(e2.getId())).isEmpty();
     }
 
-    public void deleteBatchByStatusAndThreshold_newerThanThreshold_notDeleted() {
+    public void deleteBatchByStatusOlderThan_newerThanAge_notDeleted() {
         Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
         OutboxDlqEvent e1 = buildEventWithUpdatedAt(DlqStatus.RESOLVED, now);
         repository.saveBatch(List.of(e1));
 
-        int deleted = repository.deleteBatchByStatusAndThreshold(DlqStatus.RESOLVED, now.minusSeconds(1000), 10);
+        int deleted = repository.deleteBatchByStatusOlderThan(DlqStatus.RESOLVED, TTL, 10);
 
         assertThat(deleted).isZero();
         assertThat(findById(e1.getId())).isPresent();
     }
 
-    public void deleteBatchByStatusAndThreshold_wrongStatus_notDeleted() {
-        Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
-        OutboxDlqEvent e1 = buildEventWithUpdatedAt(DlqStatus.MOVED, now.minusSeconds(1000));
+    public void deleteBatchByStatusOlderThan_wrongStatus_notDeleted() {
+        Instant past = Instant.now().minusSeconds(6000);
+        OutboxDlqEvent e1 = buildEventWithUpdatedAt(DlqStatus.MOVED, past);
         repository.saveBatch(List.of(e1));
 
-        int deleted = repository.deleteBatchByStatusAndThreshold(DlqStatus.RESOLVED, now, 10);
+        int deleted = repository.deleteBatchByStatusOlderThan(DlqStatus.RESOLVED, TTL, 10);
 
         assertThat(deleted).isZero();
         assertThat(findById(e1.getId())).isPresent();
     }
 
-    public void deleteBatchByStatusAndThreshold_respectsBatchSize() {
-        Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
-        Instant past = now.minusSeconds(1000);
+    public void deleteBatchByStatusOlderThan_respectsBatchSize() {
+        Instant past = Instant.now().minusSeconds(6000);
         OutboxDlqEvent e1 = buildEventWithUpdatedAt(DlqStatus.RESOLVED, past);
         OutboxDlqEvent e2 = buildEventWithUpdatedAt(DlqStatus.RESOLVED, past);
         OutboxDlqEvent e3 = buildEventWithUpdatedAt(DlqStatus.RESOLVED, past);
         repository.saveBatch(List.of(e1, e2, e3));
 
-        int deleted = repository.deleteBatchByStatusAndThreshold(DlqStatus.RESOLVED, now, 2);
+        int deleted = repository.deleteBatchByStatusOlderThan(DlqStatus.RESOLVED, TTL, 2);
 
         assertThat(deleted).isEqualTo(2);
         long remaining = List.of(e1, e2, e3).stream().filter(e -> findById(e.getId()).isPresent()).count();
         assertThat(remaining).isEqualTo(1);
     }
 
-    public void deleteBatchByStatusAndThreshold_noMatches_returnsZero() {
-        int deleted = repository.deleteBatchByStatusAndThreshold(DlqStatus.RESOLVED, Instant.now(), 10);
+    public void deleteBatchByStatusOlderThan_noMatches_returnsZero() {
+        int deleted = repository.deleteBatchByStatusOlderThan(DlqStatus.RESOLVED, TTL, 10);
         assertThat(deleted).isZero();
     }
 

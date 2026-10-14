@@ -4,7 +4,6 @@ import io.github.dmitriyiliyov.oncebox.core.outbox.DefaultOutboxProcessor;
 import io.github.dmitriyiliyov.oncebox.core.outbox.DefaultOutboxProcessorVerifier;
 import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxManager;
 import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxSender;
-import io.github.dmitriyiliyov.oncebox.core.utils.DefaultBytesResultSetMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,7 +14,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.ByteBuffer;
-import java.time.Clock;
 import java.util.UUID;
 
 @Transactional
@@ -35,13 +33,10 @@ public class MySqlDefaultOutboxProcessorIntegrationTests extends BaseMySqlIntegr
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    @Autowired
-    private Clock clock;
-
     @BeforeEach
     void setUp() {
         Mockito.reset(outboxSender);
-        DefaultOutboxProcessor processor = new DefaultOutboxProcessor(outboxManager, outboxSender, clock);
+        DefaultOutboxProcessor processor = new DefaultOutboxProcessor(outboxManager, outboxSender);
         this.verifier = new DefaultOutboxProcessorVerifier(
                 jdbcTemplate,
                 outboxRepository,
@@ -58,7 +53,7 @@ public class MySqlDefaultOutboxProcessorIntegrationTests extends BaseMySqlIntegr
                     bb.putLong(id.getLeastSignificantBits());
                     return bb.array();
                 },
-                new DefaultBytesResultSetMapper()
+                new MySqlResultSetMapper()
         );
     }
 

@@ -5,7 +5,6 @@ import io.github.dmitriyiliyov.oncebox.core.outbox.DefaultOutboxManager;
 import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxManager;
 import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxRepository;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.*;
-import io.github.dmitriyiliyov.oncebox.core.utils.DefaultBytesResultSetMapper;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -51,18 +50,18 @@ public class MySqlIntegrationTestsConfig {
     }
 
     @Bean
-    public OutboxDlqRepository mysqlOutboxDlqRepository(DataSource dataSource, Clock clock) {
-        return new MySqlOutboxDlqRepository(new JdbcTemplate(dataSource), new MySqlUuidHelper(), new DefaultBytesResultSetMapper(), clock);
+    public OutboxDlqRepository mysqlOutboxDlqRepository(DataSource dataSource) {
+        return new MySqlOutboxDlqRepository(new JdbcTemplate(dataSource), new MySqlUuidHelper(), new MySqlResultSetMapper());
     }
 
     @Bean
-    public OutboxRepository mysqlOutboxRepository(DataSource dataSource, Clock clock) {
-        return new MySqlOutboxRepository(new JdbcTemplate(dataSource), clock, new MySqlUuidHelper(), new DefaultBytesResultSetMapper());
+    public OutboxRepository mysqlOutboxRepository(DataSource dataSource) {
+        return new MySqlOutboxRepository(new JdbcTemplate(dataSource), new MySqlUuidHelper(), new MySqlResultSetMapper());
     }
 
     @Bean
-    public InboxRepository mysqlInboxRepository(DataSource dataSource, Clock clock) {
-        return new MySqlInboxRepository(new JdbcTemplate(dataSource), clock, new MySqlUuidHelper(), new DefaultBytesResultSetMapper());
+    public InboxRepository mysqlInboxRepository(DataSource dataSource) {
+        return new MySqlInboxRepository(new JdbcTemplate(dataSource), new MySqlUuidHelper(), new MySqlResultSetMapper());
     }
 
     @Bean
@@ -71,29 +70,26 @@ public class MySqlIntegrationTestsConfig {
     }
 
     @Bean
-    public OutboxDlqManager mysqlOutboxDlqManager(@Qualifier("mysqlOutboxDlqRepository") OutboxDlqRepository repository,
-                                                  Clock clock) {
-        return new DefaultOutboxDlqManager(repository, clock);
+    public OutboxDlqManager mysqlOutboxDlqManager(@Qualifier("mysqlOutboxDlqRepository") OutboxDlqRepository repository) {
+        return new DefaultOutboxDlqManager(repository);
     }
 
     @Bean
-    public OutboxManager mysqlOutboxManager(@Qualifier("mysqlOutboxRepository") OutboxRepository repository,
-                                            Clock clock) {
-        return new DefaultOutboxManager(repository, clock);
+    public OutboxManager mysqlOutboxManager(@Qualifier("mysqlOutboxRepository") OutboxRepository repository) {
+        return new DefaultOutboxManager(repository);
     }
 
     @Bean
     public OutboxDlqTransfer mysqlOutboxDlqTransfer(
             PlatformTransactionManager transactionManager,
             @Qualifier("mysqlOutboxManager") OutboxManager manager,
-            @Qualifier("mysqlOutboxDlqManager") OutboxDlqManager dlqManager,
-            Clock clock
+            @Qualifier("mysqlOutboxDlqManager") OutboxDlqManager dlqManager
     ) {
         return new DefaultOutboxDlqTransfer(
                 new TransactionTemplate(transactionManager),
                 manager,
                 dlqManager,
-                new DefaultOutboxDlqEventMapper(clock),
+                new DefaultOutboxDlqEventMapper(),
                 new LogOutboxDlqHandler()
         );
     }

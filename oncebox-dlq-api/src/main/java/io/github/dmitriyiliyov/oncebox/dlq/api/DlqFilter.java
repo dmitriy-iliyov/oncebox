@@ -1,6 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.dlq.api;
 
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DlqStatus;
+import io.github.dmitriyiliyov.oncebox.core.utils.SetUtils;
 
 import java.util.Set;
 import java.util.UUID;
@@ -42,7 +43,7 @@ public class DlqFilter {
     }
 
     public boolean hasIds() {
-        return ids != null && !ids.isEmpty();
+        return !SetUtils.isEmpty(ids);
     }
 
     public static class Builder {

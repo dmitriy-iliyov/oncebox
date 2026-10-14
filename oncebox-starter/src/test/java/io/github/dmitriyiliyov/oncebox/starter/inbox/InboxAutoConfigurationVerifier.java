@@ -24,7 +24,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.Clock;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -64,7 +63,6 @@ public class InboxAutoConfigurationVerifier {
                 .withBean(MeterRegistry.class, SimpleMeterRegistry::new)
                 .withBean(ObjectMapper.class, ObjectMapper::new)
                 .withBean(CacheManager.class, () -> new ConcurrentMapCacheManager("oncebox"))
-                .withBean(Clock.class, Clock::systemDefaultZone)
                 .withPropertyValues(
                         "spring.datasource.url=" + dbUrl,
                         "spring.datasource.driver-class-name=" + dbDriver,
@@ -185,7 +183,6 @@ public class InboxAutoConfigurationVerifier {
                         OnceboxAutoConfiguration.class,
                         InboxAutoConfiguration.class
                 ))
-                .withBean(Clock.class, Clock::systemDefaultZone)
                 .withPropertyValues(
                         "spring.datasource.url=" + dbUrl,
                         "spring.datasource.driver-class-name=" + dbDriver,

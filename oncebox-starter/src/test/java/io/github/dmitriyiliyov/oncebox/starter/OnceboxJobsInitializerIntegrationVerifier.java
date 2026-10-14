@@ -15,8 +15,6 @@ import org.springframework.boot.autoconfigure.transaction.TransactionAutoConfigu
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.time.Clock;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
@@ -47,7 +45,6 @@ public class OnceboxJobsInitializerIntegrationVerifier {
                         InboxAutoConfiguration.class
                 ))
                 .withBean(ObjectMapper.class, ObjectMapper::new)
-                .withBean(Clock.class, Clock::systemDefaultZone)
                 .withPropertyValues(
                         "spring.datasource.url=" + dbUrl,
                         "spring.datasource.driver-class-name=" + dbDriver,

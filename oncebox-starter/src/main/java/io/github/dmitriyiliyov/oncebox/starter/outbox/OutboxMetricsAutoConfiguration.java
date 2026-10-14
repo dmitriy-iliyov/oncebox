@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.starter.outbox;
 
+import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
 import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxManager;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
 import io.github.dmitriyiliyov.oncebox.metrics.outbox.*;
 import io.github.dmitriyiliyov.oncebox.metrics.outbox.utils.NoopOutboxCache;
 import io.github.dmitriyiliyov.oncebox.metrics.outbox.utils.OutboxCache;

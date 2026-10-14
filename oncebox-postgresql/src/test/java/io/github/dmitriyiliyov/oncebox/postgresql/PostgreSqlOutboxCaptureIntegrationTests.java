@@ -8,8 +8,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
-
 @Transactional
 class PostgreSqlOutboxCaptureIntegrationTests extends BasePostgresSqlIntegrationTests {
 
@@ -19,14 +17,11 @@ class PostgreSqlOutboxCaptureIntegrationTests extends BasePostgresSqlIntegration
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    @Autowired
-    private Clock clock;
-
     private OutboxCaptureVerifier verifier;
 
     @BeforeEach
     void setUp() {
-        verifier = new OutboxCaptureVerifier(repository, jdbcTemplate, clock, id -> id);
+        verifier = new OutboxCaptureVerifier(repository, jdbcTemplate, id -> id);
     }
 
     @Test

@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
 import java.util.List;
 import java.util.stream.IntStream;
 
@@ -27,7 +26,6 @@ class OracleOutboxDlqRepositoryIntegrationTests extends BaseOracleIntegrationTes
     private final JdbcTemplate jdbcTemplate;
     private final OracleSqlUuidHelper oracleSqlUuidHelper = new OracleSqlUuidHelper();
     private final DefaultBytesResultSetMapper mapper = new DefaultBytesResultSetMapper();
-    private final Clock clock = Clock.systemUTC();
 
     public OracleOutboxDlqRepositoryIntegrationTests(
             @Qualifier("oracleOutboxDlqRepository") OutboxDlqRepository repository,
@@ -39,30 +37,35 @@ class OracleOutboxDlqRepositoryIntegrationTests extends BaseOracleIntegrationTes
                 repository,
                 jdbcTemplate,
                 new OracleSqlUuidHelper(),
-                new DefaultBytesResultSetMapper()
+                new DefaultBytesResultSetMapper(),
+                new OracleDatabaseClock(jdbcTemplate)
         );
     }
 
     @Test
     @DisplayName("UT constructor when mapper is null should throw NullPointerException")
     void constructor_whenMapperIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new OracleOutboxDlqRepository(jdbcTemplate, oracleSqlUuidHelper, null, clock))
+        assertThatThrownBy(() -> new OracleOutboxDlqRepository(jdbcTemplate, oracleSqlUuidHelper, null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("mapper cannot be null");
-    }
-
-    @Test
-    @DisplayName("UT constructor when clock is null should throw NullPointerException")
-    void constructor_whenClockIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new OracleOutboxDlqRepository(jdbcTemplate, oracleSqlUuidHelper, mapper, null))
-                .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("clock cannot be null");
     }
 
     @Test
     @DisplayName("IT saveBatch() with single event should persist correctly")
     void saveBatch_singleEvent_persistedCorrectly() {
         delegate.saveBatch_singleEvent_persistedCorrectly();
+    }
+
+    @Test
+    @DisplayName("IT saveBatch() when an event is moved should keep its times and stamp moved_at by the database clock")
+    void saveBatch_whenEventIsMoved_shouldKeepItsTimesAndStampMovedAtByDatabaseClock() {
+        delegate.saveBatch_whenEventIsMoved_shouldKeepItsTimesAndStampMovedAtByDatabaseClock();
+    }
+
+    @Test
+    @DisplayName("IT saveBatch() when read back in another JVM time zone should give back the same moments")
+    void saveBatch_whenReadInAnotherJvmZone_shouldGiveBackTheSameMoments() {
+        delegate.saveBatch_whenReadInAnotherJvmZone_shouldGiveBackTheSameMoments();
     }
 
     @Test
@@ -142,32 +145,32 @@ class OracleOutboxDlqRepositoryIntegrationTests extends BaseOracleIntegrationTes
     }
 
     @Test
-    @DisplayName("IT deleteBatchByStatusAndThreshold() should delete matching events and return count")
-    void deleteBatchByStatusAndThreshold_matches_deleted() {
-        delegate.deleteBatchByStatusAndThreshold_matches_deleted();
+    @DisplayName("IT deleteBatchByStatusOlderThan() should delete matching events and return count")
+    void deleteBatchByStatusOlderThan_matches_deleted() {
+        delegate.deleteBatchByStatusOlderThan_matches_deleted();
     }
 
     @Test
-    @DisplayName("IT deleteBatchByStatusAndThreshold() should not delete events newer than threshold")
-    void deleteBatchByStatusAndThreshold_newerThanThreshold_notDeleted() {
-        delegate.deleteBatchByStatusAndThreshold_newerThanThreshold_notDeleted();
+    @DisplayName("IT deleteBatchByStatusOlderThan() should not delete events newer than threshold")
+    void deleteBatchByStatusOlderThan_newerThanAge_notDeleted() {
+        delegate.deleteBatchByStatusOlderThan_newerThanAge_notDeleted();
     }
 
     @Test
-    @DisplayName("IT deleteBatchByStatusAndThreshold() should not delete events with different status")
-    void deleteBatchByStatusAndThreshold_wrongStatus_notDeleted() {
-        delegate.deleteBatchByStatusAndThreshold_wrongStatus_notDeleted();
+    @DisplayName("IT deleteBatchByStatusOlderThan() should not delete events with different status")
+    void deleteBatchByStatusOlderThan_wrongStatus_notDeleted() {
+        delegate.deleteBatchByStatusOlderThan_wrongStatus_notDeleted();
     }
 
     @Test
-    @DisplayName("IT deleteBatchByStatusAndThreshold() should respect batch size limit")
-    void deleteBatchByStatusAndThreshold_respectsBatchSize() {
-        delegate.deleteBatchByStatusAndThreshold_respectsBatchSize();
+    @DisplayName("IT deleteBatchByStatusOlderThan() should respect batch size limit")
+    void deleteBatchByStatusOlderThan_respectsBatchSize() {
+        delegate.deleteBatchByStatusOlderThan_respectsBatchSize();
     }
 
     @Test
-    @DisplayName("IT deleteBatchByStatusAndThreshold() when no matches should return zero")
-    void deleteBatchByStatusAndThreshold_noMatches_returnsZero() {
-        delegate.deleteBatchByStatusAndThreshold_noMatches_returnsZero();
+    @DisplayName("IT deleteBatchByStatusOlderThan() when no matches should return zero")
+    void deleteBatchByStatusOlderThan_noMatches_returnsZero() {
+        delegate.deleteBatchByStatusOlderThan_noMatches_returnsZero();
     }
 }

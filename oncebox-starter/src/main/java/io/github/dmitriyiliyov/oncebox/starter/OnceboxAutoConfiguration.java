@@ -17,7 +17,6 @@ import org.springframework.jdbc.datasource.init.DataSourceInitializer;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
 import javax.sql.DataSource;
-import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
@@ -65,30 +64,27 @@ public class OnceboxAutoConfiguration {
     @ConditionalOnMissingBean
     @ConditionalOnDatabaseType(type = DatabaseType.POSTGRESQL)
     public OnceboxRepositoryFactory postgreSqlOnceboxRepositoryFactory(
-            @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate,
-            Clock clock
+            @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate
     ) {
-        return new PostgreSqlOnceboxRepositoryFactory(jdbcTemplate, clock);
+        return new PostgreSqlOnceboxRepositoryFactory(jdbcTemplate);
     }
 
     @Bean
     @ConditionalOnMissingBean
     @ConditionalOnDatabaseType(type = DatabaseType.MYSQL)
     public OnceboxRepositoryFactory mySqlOnceboxRepositoryFactory(
-            @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate,
-            Clock clock
+            @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate
     ) {
-        return new MySqlOnceboxRepositoryFactory(jdbcTemplate, clock);
+        return new MySqlOnceboxRepositoryFactory(jdbcTemplate);
     }
 
     @Bean
     @ConditionalOnMissingBean
     @ConditionalOnDatabaseType(type = DatabaseType.ORACLE)
     public OnceboxRepositoryFactory oracleOnceboxRepositoryFactory(
-            @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate,
-            Clock clock
+            @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate
     ) {
-        return new OracleOnceboxRepositoryFactory(jdbcTemplate, clock);
+        return new OracleOnceboxRepositoryFactory(jdbcTemplate);
     }
 
     @Bean

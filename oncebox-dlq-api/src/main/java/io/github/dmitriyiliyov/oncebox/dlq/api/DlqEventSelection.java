@@ -1,5 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.dlq.api;
 
+import io.github.dmitriyiliyov.oncebox.core.utils.SetUtils;
+
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -16,7 +18,7 @@ public interface DlqEventSelection {
     String eventType();
 
     default boolean hasValidIds() {
-        return ids() != null && !ids().isEmpty();
+        return !SetUtils.isEmpty(ids());
     }
 
     default boolean hasValidEventType() {

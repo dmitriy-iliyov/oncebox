@@ -1,28 +1,30 @@
 package io.github.dmitriyiliyov.oncebox.mysql;
 
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.AbstractOutboxDlqRepository;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DlqStatus;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.OutboxDlqEvent;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.utils.BytesResultSetMapper;
 import io.github.dmitriyiliyov.oncebox.core.utils.BytesSqlUuidHelper;
 import io.github.dmitriyiliyov.oncebox.core.utils.RepositoryUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.sql.Timestamp;
-import java.time.Clock;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.time.Duration;
 import java.time.Instant;
-import java.util.*;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class MySqlOutboxDlqRepository extends AbstractOutboxDlqRepository {
 
-    private final Clock clock;
-
-    public MySqlOutboxDlqRepository(JdbcTemplate jdbcTemplate, BytesSqlUuidHelper uuidHelper, BytesResultSetMapper mapper,
-                                    Clock clock) {
+    public MySqlOutboxDlqRepository(JdbcTemplate jdbcTemplate, BytesSqlUuidHelper uuidHelper, BytesResultSetMapper mapper) {
         super(jdbcTemplate, uuidHelper, mapper);
-        this.clock = Objects.requireNonNull(clock, "clock cannot be null");
     }
 
     @Override
@@ -54,15 +56,14 @@ public class MySqlOutboxDlqRepository extends AbstractOutboxDlqRepository {
 
         String lockSql = """
             UPDATE outbox_dlq_events 
-                SET dlq_status = ?, updated_at = ?
+                SET dlq_status = ?, updated_at = UTC_TIMESTAMP(6)
             WHERE id IN (%s)
         """.formatted(RepositoryUtils.generateIdsPlaceholders(ids));
         jdbcTemplate.update(
                 lockSql,
                 ps -> {
                     ps.setString(1, lockStatus.name());
-                    ps.setTimestamp(2, Timestamp.from(clock.instant()));
-                    uuidHelper.setToPs(ps, 3, ids);
+                    uuidHelper.setToPs(ps, 2, ids);
                 }
         );
 
@@ -71,10 +72,10 @@ public class MySqlOutboxDlqRepository extends AbstractOutboxDlqRepository {
     }
 
     @Override
-    public int deleteBatchByStatusAndThreshold(DlqStatus status, Instant threshold, int batchSize) {
+    public int deleteBatchByStatusOlderThan(DlqStatus status, Duration age, int batchSize) {
         String sql = """
             DELETE FROM outbox_dlq_events
-            WHERE dlq_status = ? AND updated_at <= ?
+            WHERE dlq_status = ? AND updated_at <= UTC_TIMESTAMP(6) - INTERVAL (? * 1000) MICROSECOND
             ORDER BY updated_at
             LIMIT ?
         """;
@@ -82,9 +83,17 @@ public class MySqlOutboxDlqRepository extends AbstractOutboxDlqRepository {
                 sql,
                 ps -> {
                     ps.setString(1, status.name());
-                    ps.setTimestamp(2, Timestamp.from(threshold));
+                    ps.setLong(2, age.toMillis());
                     ps.setInt(3, batchSize);
                 }
         );
+    }
+
+    /**
+     * Binds the moment as UTC wall time: a {@code DATETIME} column keeps no time zone.
+     */
+    @Override
+    protected void setInstant(PreparedStatement ps, int index, Instant instant) throws SQLException {
+        ps.setObject(index, LocalDateTime.ofInstant(instant, ZoneOffset.UTC));
     }
 }

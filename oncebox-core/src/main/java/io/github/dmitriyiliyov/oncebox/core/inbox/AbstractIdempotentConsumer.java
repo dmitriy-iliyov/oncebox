@@ -1,5 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.core.inbox;
 
+import io.github.dmitriyiliyov.oncebox.core.utils.ListUtils;
+import io.github.dmitriyiliyov.oncebox.core.utils.SetUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +66,7 @@ public abstract class AbstractIdempotentConsumer implements IdempotentConsumer {
 
     @Override
     public void consume(Set<UUID> ids, Consumer<Set<UUID>> operation) {
-        if (ids == null || ids.isEmpty()) {
+        if (SetUtils.isEmpty(ids)) {
             log.warn("Provided ids set is null or empty");
             return;
         }
@@ -94,7 +96,7 @@ public abstract class AbstractIdempotentConsumer implements IdempotentConsumer {
 
     @Override
     public <T> void consume(List<T> messages, EventIdExtractor<T> idExtractor, Consumer<List<T>> operation) {
-        if (messages == null || messages.isEmpty()) {
+        if (ListUtils.isEmpty(messages)) {
             log.warn("Provided messages set is null or empty");
             return;
         }

@@ -3,6 +3,7 @@ package io.github.dmitriyiliyov.oncebox.starter.outbox.dlq;
 import io.github.dmitriyiliyov.oncebox.dlq.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -47,9 +48,14 @@ public class OutboxDlqApiAutoConfiguration {
         return new DlqStatusQueryConverter();
     }
 
+    /**
+     * Takes the application's own {@link Clock} when it has exactly one, and the UTC system clock otherwise - the
+     * starter adds no {@link Clock} bean of its own, since a configuration imported by {@link
+     * io.github.dmitriyiliyov.oncebox.starter.EnableOncebox} cannot reliably see whether the application declares one.
+     */
     @Bean
     @ConditionalOnMissingBean
-    public OutboxDlqControllerAdvice outboxDlqControllerAdvice(Clock clock) {
-        return new OutboxDlqControllerAdvice(clock);
+    public OutboxDlqControllerAdvice outboxDlqControllerAdvice(ObjectProvider<Clock> clock) {
+        return new OutboxDlqControllerAdvice(clock.getIfUnique(Clock::systemUTC));
     }
 }

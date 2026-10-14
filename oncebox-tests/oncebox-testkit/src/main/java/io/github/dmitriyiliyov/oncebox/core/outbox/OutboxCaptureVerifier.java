@@ -1,10 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.core.outbox;
 
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.Set;
@@ -28,16 +25,13 @@ public class OutboxCaptureVerifier {
 
     private final OutboxRepository repository;
     private final JdbcTemplate jdbcTemplate;
-    private final Clock clock;
     private final DefaultOutboxProcessorVerifier.IdPreparer idPreparer;
 
     public OutboxCaptureVerifier(OutboxRepository repository,
                                  JdbcTemplate jdbcTemplate,
-                                 Clock clock,
                                  DefaultOutboxProcessorVerifier.IdPreparer idPreparer) {
         this.repository = repository;
         this.jdbcTemplate = jdbcTemplate;
-        this.clock = clock;
         this.idPreparer = idPreparer;
     }
 
@@ -46,18 +40,17 @@ public class OutboxCaptureVerifier {
      * PROCESSED; then X records its own, stale outcome - a failure with no retries left.
      */
     public void finalizeBatch_whenStaleCaptureFinalizesAfterRecapture_shouldKeepNewerOutcome() {
-        repository.save(new OutboxEvent(EVENT_ID, EVENT_TYPE, "java.lang.String", "\"payload\"",
-                clock.instant().minusSeconds(1)));
-        OutboxManager poller = new DefaultOutboxManager(repository, clock);
-        OutboxManager recovery = new DefaultOutboxManager(repository, Clock.offset(clock, Duration.ofMinutes(10)));
+        repository.save(new OutboxEvent(EVENT_ID, EVENT_TYPE, "java.lang.String", "\"payload\""));
+        OutboxManager manager = new DefaultOutboxManager(repository);
 
-        List<OutboxEvent> capturedByX = poller.loadBatch(EVENT_TYPE, 10, CAPTURE_X);
-        assertThat(recovery.recoverStuckBatch(MAX_BATCH_PROCESSING_TIME, 100)).isEqualTo(1);
-        List<OutboxEvent> capturedByY = poller.loadBatch(EVENT_TYPE, 10, CAPTURE_Y);
+        List<OutboxEvent> capturedByX = manager.loadBatch(EVENT_TYPE, 10, CAPTURE_X);
+        // a zero processing time makes the capture of X count as stuck right away
+        assertThat(manager.recoverStuckBatch(Duration.ZERO, 100)).isEqualTo(1);
+        List<OutboxEvent> capturedByY = manager.loadBatch(EVENT_TYPE, 10, CAPTURE_Y);
         assertThat(capturedByY).extracting(OutboxEvent::getId).containsExactly(EVENT_ID);
-        poller.finalizeBatch(capturedByY, Set.of(EVENT_ID), Set.of(), 3, retryCount -> clock.instant(), CAPTURE_Y);
+        manager.finalizeBatch(capturedByY, Set.of(EVENT_ID), Set.of(), 3, retryCount -> Duration.ZERO, CAPTURE_Y);
 
-        poller.finalizeBatch(capturedByX, Set.of(), Set.of(EVENT_ID), 0, retryCount -> clock.instant(), CAPTURE_X);
+        manager.finalizeBatch(capturedByX, Set.of(), Set.of(EVENT_ID), 0, retryCount -> Duration.ZERO, CAPTURE_X);
 
         assertThat(status()).isEqualTo(EventStatus.PROCESSED);
     }
@@ -70,13 +63,11 @@ public class OutboxCaptureVerifier {
         TimeZone original = TimeZone.getDefault();
         try {
             TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
-            repository.save(new OutboxEvent(EVENT_ID, EVENT_TYPE, "java.lang.String", "\"payload\"",
-                    clock.instant().minusSeconds(1)));
-            new DefaultOutboxManager(repository, clock).loadBatch(EVENT_TYPE, 10, CAPTURE_X);
+            repository.save(new OutboxEvent(EVENT_ID, EVENT_TYPE, "java.lang.String", "\"payload\""));
+            new DefaultOutboxManager(repository).loadBatch(EVENT_TYPE, 10, CAPTURE_X);
 
             TimeZone.setDefault(TimeZone.getTimeZone("GMT+03:00"));
-            int recovered = new DefaultOutboxManager(repository, clock)
-                    .recoverStuckBatch(MAX_BATCH_PROCESSING_TIME, 100);
+            int recovered = new DefaultOutboxManager(repository).recoverStuckBatch(MAX_BATCH_PROCESSING_TIME, 100);
 
             assertThat(recovered).isZero();
             assertThat(status()).isEqualTo(EventStatus.IN_PROCESS);

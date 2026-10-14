@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS inbox_events (
     id BINARY(16) PRIMARY KEY,
-    consumed_at DATETIME NOT NULL
+    consumed_at DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6))
 );
 
 SET @exists := (

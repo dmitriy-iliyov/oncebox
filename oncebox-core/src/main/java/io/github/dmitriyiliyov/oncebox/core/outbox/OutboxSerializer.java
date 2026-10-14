@@ -1,7 +1,5 @@
 package io.github.dmitriyiliyov.oncebox.core.outbox;
 
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
-
 import java.util.List;
 
 /**

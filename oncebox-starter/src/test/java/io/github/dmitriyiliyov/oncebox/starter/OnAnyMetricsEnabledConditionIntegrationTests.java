@@ -21,7 +21,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
-import java.time.Clock;
 import java.util.Collections;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -71,7 +70,6 @@ class OnAnyMetricsEnabledConditionIntegrationTests {
                 })
                 .withBean(TransactionTemplate.class, () -> mock(TransactionTemplate.class))
                 .withBean(MeterRegistry.class, SimpleMeterRegistry::new)
-                .withBean(Clock.class, Clock::systemDefaultZone)
                 .withPropertyValues(
                         "spring.datasource.url=jdbc:postgresql://outbox-producer-postgresql:5432/outbox_example",
                         "spring.datasource.driver-class-name=org.postgresql.Driver",

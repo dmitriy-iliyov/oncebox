@@ -20,7 +20,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
-import java.time.Clock;
 import java.time.Duration;
 import java.util.Collections;
 
@@ -63,7 +62,6 @@ public class EventsDefaultsInheritanceIntegrationTests {
                 })
                 .withBean(TransactionTemplate.class, () -> Mockito.mock(TransactionTemplate.class))
                 .withBean(MeterRegistry.class, SimpleMeterRegistry::new)
-                .withBean(Clock.class, Clock::systemDefaultZone)
                 .withPropertyValues(
                         "spring.datasource.url=jdbc:postgresql://outbox-producer-postgresql:5432/outbox_example",
                         "spring.datasource.driver-class-name=org.postgresql.Driver",

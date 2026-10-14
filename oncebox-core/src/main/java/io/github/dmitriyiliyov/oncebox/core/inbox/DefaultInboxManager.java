@@ -2,9 +2,7 @@ package io.github.dmitriyiliyov.oncebox.core.inbox;
 
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -13,11 +11,9 @@ import java.util.stream.Collectors;
 public class DefaultInboxManager implements InboxManager {
 
     protected final InboxRepository repository;
-    protected final Clock clock;
 
-    public DefaultInboxManager(InboxRepository repository, Clock clock) {
+    public DefaultInboxManager(InboxRepository repository) {
         this.repository = Objects.requireNonNull(repository, "repository cannot be null");
-        this.clock = Objects.requireNonNull(clock, "clock cannot be null");
     }
 
     @Transactional
@@ -38,7 +34,6 @@ public class DefaultInboxManager implements InboxManager {
     @Transactional
     @Override
     public int cleanBatchByTtl(Duration ttl, int batchSize) {
-        Instant threshold = clock.instant().minusMillis(ttl.toMillis());
-        return repository.deleteBatchByThreshold(threshold, batchSize);
+        return repository.deleteBatchOlderThan(ttl, batchSize);
     }
 }

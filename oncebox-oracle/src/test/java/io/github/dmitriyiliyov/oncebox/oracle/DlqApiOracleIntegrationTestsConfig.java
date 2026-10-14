@@ -11,7 +11,6 @@ import org.springframework.jdbc.datasource.init.DataSourceInitializer;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 
 import javax.sql.DataSource;
-import java.time.Clock;
 
 @TestConfiguration
 @Profile("oracle-it")
@@ -37,7 +36,7 @@ public class DlqApiOracleIntegrationTestsConfig {
     }
 
     @Bean
-    public OutboxDlqApiRepository oracleOutboxDlqApiRepository(DataSource dataSource, Clock clock) {
-        return new OracleOutboxDlqApiRepository(new JdbcTemplate(dataSource), new OracleSqlUuidHelper(), new DefaultBytesResultSetMapper(), clock);
+    public OutboxDlqApiRepository oracleOutboxDlqApiRepository(DataSource dataSource) {
+        return new OracleOutboxDlqApiRepository(new JdbcTemplate(dataSource), new OracleSqlUuidHelper(), new DefaultBytesResultSetMapper());
     }
 }

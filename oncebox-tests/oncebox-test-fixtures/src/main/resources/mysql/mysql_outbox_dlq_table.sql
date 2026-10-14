@@ -6,10 +6,10 @@ CREATE TABLE IF NOT EXISTS outbox_dlq_events (
     payload_type VARCHAR(255) NOT NULL,
     payload TEXT NOT NULL,
     retry_count INTEGER NOT NULL,
-    next_retry_at DATETIME NOT NULL,
-    created_at DATETIME NOT NULL,
-    updated_at DATETIME NOT NULL,
-    moved_at DATETIME NOT NULL
+    next_retry_at DATETIME(6) NOT NULL,
+    created_at DATETIME(6) NOT NULL,
+    updated_at DATETIME(6) NOT NULL,
+    moved_at DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6))
 );
 
 SET @exists := (

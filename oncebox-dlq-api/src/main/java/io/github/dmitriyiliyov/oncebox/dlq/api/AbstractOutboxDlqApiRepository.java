@@ -8,8 +8,6 @@ import io.github.dmitriyiliyov.oncebox.core.utils.SqlUuidHelper;
 import io.github.dmitriyiliyov.oncebox.dlq.api.exception.InvalidDlqFilterException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.sql.Timestamp;
-import java.time.Clock;
 import java.util.*;
 
 public abstract class AbstractOutboxDlqApiRepository implements OutboxDlqApiRepository {
@@ -17,22 +15,19 @@ public abstract class AbstractOutboxDlqApiRepository implements OutboxDlqApiRepo
     protected final JdbcTemplate jdbcTemplate;
     protected final SqlUuidHelper uuidHelper;
     protected final ResultSetMapper mapper;
-    protected final Clock clock;
 
     public AbstractOutboxDlqApiRepository(JdbcTemplate jdbcTemplate,
                                           SqlUuidHelper uuidHelper,
-                                          ResultSetMapper mapper,
-                                          Clock clock) {
+                                          ResultSetMapper mapper) {
         this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate, "jdbcTemplate cannot be null");
         this.uuidHelper = Objects.requireNonNull(uuidHelper, "uuidHelper cannot be null");
         this.mapper = Objects.requireNonNull(mapper, "mapper cannot be null");
-        this.clock = Objects.requireNonNull(clock, "clock cannot be null");
     }
 
     @Override
     public Optional<OutboxDlqEvent> findById(UUID id) {
         String sql = """
-            SELECT id, status, dlq_status, event_type, payload_type, payload, retry_count, next_retry_at, created_at, updated_at, moved_at
+            SELECT *
             FROM outbox_dlq_events
             WHERE id = ?
         """;
@@ -47,7 +42,7 @@ public abstract class AbstractOutboxDlqApiRepository implements OutboxDlqApiRepo
     @Override
     public Optional<OutboxDlqEvent> findByIdForUpdate(UUID id) {
         String sql = """
-            SELECT id, status, dlq_status, event_type, payload_type, payload, retry_count, next_retry_at, created_at, updated_at, moved_at
+            SELECT *
             FROM outbox_dlq_events
             WHERE id = ?
             FOR UPDATE
@@ -63,7 +58,7 @@ public abstract class AbstractOutboxDlqApiRepository implements OutboxDlqApiRepo
     @Override
     public List<OutboxDlqEvent> findBatch(DlqFilter filter, int batchNumber, int batchSize) {
         StringBuilder sql = new StringBuilder("""
-            SELECT id, status, dlq_status, event_type, payload_type, payload, retry_count, next_retry_at, created_at, updated_at, moved_at 
+            SELECT * 
             FROM outbox_dlq_events
         """);
         String sqlEnd = " ORDER BY moved_at, id LIMIT ? OFFSET ?";
@@ -103,11 +98,10 @@ public abstract class AbstractOutboxDlqApiRepository implements OutboxDlqApiRepo
     @Override
     public void updateStatus(UUID id, DlqStatus status) {
         jdbcTemplate.update(
-                "UPDATE outbox_dlq_events SET dlq_status = ?, updated_at = ? WHERE id = ?",
+                "UPDATE outbox_dlq_events SET dlq_status = ?, updated_at = %s WHERE id = ?".formatted(currentTimestampSql()),
                 ps -> {
                     ps.setString(1, status.name());
-                    ps.setTimestamp(2, Timestamp.from(clock.instant()));
-                    uuidHelper.setToPs(ps, 3, id);
+                    uuidHelper.setToPs(ps, 2, id);
                 }
         );
     }
@@ -118,14 +112,13 @@ public abstract class AbstractOutboxDlqApiRepository implements OutboxDlqApiRepo
             throw new InvalidDlqFilterException("Filter must have new event status for update");
         }
         StringBuilder sql = new StringBuilder("""
-            UPDATE outbox_dlq_events 
-            SET dlq_status = ?, updated_at = ? 
+            UPDATE outbox_dlq_events
+            SET dlq_status = ?, updated_at = %s
             WHERE dlq_status != ?
-        """);
+        """.formatted(currentTimestampSql()));
 
         List<Object> params = new LinkedList<>();
         params.add(filter.getStatus().name());
-        params.add(Timestamp.from(clock.instant()));
         params.add(forbiddenStatus.name());
 
         buildModificationQuery(filter, sql, params);
@@ -171,4 +164,10 @@ public abstract class AbstractOutboxDlqApiRepository implements OutboxDlqApiRepo
     }
 
     protected abstract Object convertIdParameter(UUID id);
+
+    /**
+     * The SQL expression of the current database time that {@code updated_at} is set to - the same clock the DLQ
+     * cleanup compares it against.
+     */
+    protected abstract String currentTimestampSql();
 }

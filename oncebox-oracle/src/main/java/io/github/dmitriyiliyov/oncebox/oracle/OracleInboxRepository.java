@@ -7,24 +7,19 @@ import io.github.dmitriyiliyov.oncebox.core.utils.BytesSqlUuidHelper;
 import io.github.dmitriyiliyov.oncebox.core.utils.RepositoryUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.sql.Timestamp;
-import java.time.Clock;
-import java.time.Instant;
+import java.time.Duration;
 import java.util.*;
 
 public class OracleInboxRepository implements InboxRepository {
 
     protected final JdbcTemplate jdbcTemplate;
-    protected final Clock clock;
     protected final BytesSqlUuidHelper uuidHelper;
     protected final BytesResultSetMapper mapper;
 
     public OracleInboxRepository(JdbcTemplate jdbcTemplate,
-                                 Clock clock,
                                  BytesSqlUuidHelper uuidHelper,
                                  BytesResultSetMapper mapper) {
         this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate, "jdbcTemplate cannot be null");
-        this.clock = Objects.requireNonNull(clock, "clock cannot be null");
         this.uuidHelper = Objects.requireNonNull(uuidHelper, "uuidHelper cannot be null");
         this.mapper = Objects.requireNonNull(mapper, "mapper cannot be null");
     }
@@ -34,19 +29,16 @@ public class OracleInboxRepository implements InboxRepository {
         String sql = """
             MERGE INTO inbox_events t
             USING (
-                SELECT ? AS id, ? AS consumed_at FROM dual
+                SELECT ? AS id FROM dual
             ) v_t
             ON (t.id = v_t.id)
             WHEN NOT MATCHED THEN
-                INSERT (id, consumed_at)
-                VALUES (v_t.id, v_t.consumed_at);
+                INSERT (id)
+                VALUES (v_t.id);
         """;
         return jdbcTemplate.update(
                 sql,
-                ps -> {
-                    uuidHelper.setToPs(ps, 1, id);
-                    ps.setTimestamp(2, Timestamp.from(clock.instant()));
-                }
+                ps -> uuidHelper.setToPs(ps, 1, id)
         );
     }
 
@@ -76,19 +68,15 @@ public class OracleInboxRepository implements InboxRepository {
 
         String insertSql = """
             INSERT /*+ IGNORE_ROW_ON_DUPKEY_INDEX(inbox_events (id)) */
-            INTO inbox_events (id, consumed_at)
-            VALUES (?, ?)
+            INTO inbox_events (id)
+            VALUES (?)
         """;
 
-        Instant consumedAt = clock.instant();
         int [][] batchUpdateResult = jdbcTemplate.batchUpdate(
                 insertSql,
                 nonExistsIds,
                 nonExistsIds.size(),
-                (ps, id) -> {
-                    ps.setBytes(1, uuidHelper.uuidToBytes(id));
-                    ps.setTimestamp(2, Timestamp.from(consumedAt));
-                }
+                (ps, id) -> ps.setBytes(1, uuidHelper.uuidToBytes(id))
         );
         int updRowsCount = Arrays.stream(batchUpdateResult)
                 .flatMapToInt(Arrays::stream)
@@ -102,11 +90,11 @@ public class OracleInboxRepository implements InboxRepository {
     }
 
     @Override
-    public int deleteBatchByThreshold(Instant threshold, int batchSize) {
+    public int deleteBatchOlderThan(Duration age, int batchSize) {
         String selectSql = """
             SELECT id
             FROM inbox_events
-            WHERE consumed_at <= ?
+            WHERE consumed_at <= SYSTIMESTAMP - NUMTODSINTERVAL(? / 1000, 'SECOND')
             ORDER BY consumed_at
             FETCH FIRST ? ROWS ONLY
         """;
@@ -115,7 +103,7 @@ public class OracleInboxRepository implements InboxRepository {
                 jdbcTemplate.query(
                         selectSql,
                         ps -> {
-                            ps.setTimestamp(1, Timestamp.from(threshold));
+                            ps.setLong(1, age.toMillis());
                             ps.setInt(2, batchSize);
                         },
                         (rs, rowNum) -> mapper.fromBytesToUuid(rs.getBytes("id"))

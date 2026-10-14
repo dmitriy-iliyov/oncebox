@@ -17,7 +17,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.Clock;
 import java.util.concurrent.ScheduledExecutorService;
 
 @Configuration
@@ -47,8 +46,8 @@ public class OutboxDlqAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(name = "outboxDlqManager")
-    public OutboxDlqManager outboxDlqManager(OutboxDlqRepository repository, Clock clock) {
-        return new DefaultOutboxDlqManager(repository, clock);
+    public OutboxDlqManager outboxDlqManager(OutboxDlqRepository repository) {
+        return new DefaultOutboxDlqManager(repository);
     }
 
     @Bean
@@ -59,8 +58,8 @@ public class OutboxDlqAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public OutboxDlqEventMapper outboxDlqEventMapper(Clock clock) {
-        return new DefaultOutboxDlqEventMapper(clock);
+    public OutboxDlqEventMapper outboxDlqEventMapper() {
+        return new DefaultOutboxDlqEventMapper();
     }
 
     @Bean
@@ -157,15 +156,13 @@ public class OutboxDlqAutoConfiguration {
             matchIfMissing = true
     )
     public OnceboxJobCreateCommand outboxDlqCleanUpJobCreateCommand(OnceboxProperties properties,
-                                                                    @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate,
-                                                                    Clock clock) {
+                                                                    @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate) {
         DistributedLockPropertiesResolver.LockDurations lockDurations = DistributedLockPropertiesResolver.resolve(
                 properties.getDistributedLock(),
                 outboxProperties.getDlq().getCleanUp().getPolling()
         );
         return new DefaultOnceboxJobCreateCommand(
                 jdbcTemplate,
-                clock,
                 OnceboxJob.OUTBOX_DLQ_CLEANUP.getJobName(),
                 lockDurations.atLeastFor(),
                 lockDurations.atMostFor()

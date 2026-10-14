@@ -22,7 +22,8 @@ class PostgreSqlAbstractOutboxDlqApiRepositoryIntegrationTests extends BaseDlqAp
                 repository,
                 jdbcTemplate,
                 new PostgreSqlUuidHelper(),
-                new DefaultResultSetMapper()
+                new DefaultResultSetMapper(),
+                new PostgreSqlDatabaseClock(jdbcTemplate)
         );
     }
 
@@ -108,6 +109,18 @@ class PostgreSqlAbstractOutboxDlqApiRepositoryIntegrationTests extends BaseDlqAp
     @DisplayName("IT updateStatus() for existing event should change status")
     void updateStatus_existingEvent_statusChanged() {
         delegate.updateStatus_existingEvent_statusChanged();
+    }
+
+    @Test
+    @DisplayName("IT updateStatus() should stamp updated_at by the database clock")
+    void updateStatus_whenStatusChanges_shouldStampUpdatedAtByDatabaseClock() {
+        delegate.updateStatus_whenStatusChanges_shouldStampUpdatedAtByDatabaseClock();
+    }
+
+    @Test
+    @DisplayName("IT updateBatchStatus() should stamp updated_at by the database clock")
+    void updateBatchStatus_whenStatusChanges_shouldStampUpdatedAtByDatabaseClock() {
+        delegate.updateBatchStatus_whenStatusChanges_shouldStampUpdatedAtByDatabaseClock();
     }
 
     @Test

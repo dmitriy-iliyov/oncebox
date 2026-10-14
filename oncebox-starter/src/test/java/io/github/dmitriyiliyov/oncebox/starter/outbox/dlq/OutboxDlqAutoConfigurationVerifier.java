@@ -23,8 +23,6 @@ import org.springframework.transaction.IllegalTransactionStateException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.Clock;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -54,7 +52,6 @@ public class OutboxDlqAutoConfigurationVerifier {
                         KafkaAutoConfiguration.class
                 ))
                 .withBean(MeterRegistry.class, SimpleMeterRegistry::new)
-                .withBean(Clock.class, Clock::systemDefaultZone)
                 .withPropertyValues(
                         "spring.datasource.url=" + dbUrl,
                         "spring.datasource.driver-class-name=" + dbDriver,

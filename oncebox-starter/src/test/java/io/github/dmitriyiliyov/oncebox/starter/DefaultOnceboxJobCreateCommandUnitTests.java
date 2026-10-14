@@ -13,11 +13,6 @@ import org.springframework.jdbc.core.PreparedStatementSetter;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.*;
@@ -29,13 +24,11 @@ class DefaultOnceboxJobCreateCommandUnitTests {
     @Mock
     private JdbcTemplate jdbcTemplate;
 
-    private Clock clock;
     private DefaultOnceboxJobCreateCommand command;
 
     @BeforeEach
     void setUp() {
-        clock = Clock.fixed(Instant.now(), ZoneId.of("UTC"));
-        command = new DefaultOnceboxJobCreateCommand(jdbcTemplate, clock, "test_job", 10L, 50L);
+        command = new DefaultOnceboxJobCreateCommand(jdbcTemplate, "test_job", 10L, 50L);
     }
 
     @Test
@@ -49,10 +42,9 @@ class DefaultOnceboxJobCreateCommandUnitTests {
         PreparedStatement ps = mock(PreparedStatement.class);
         setterCaptor.getValue().setValues(ps);
 
-        Timestamp stub = Timestamp.from(clock.instant().minus(1, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MILLIS));
         verify(ps).setString(1, "test_job");
-        verify(ps).setTimestamp(eq(2), eq(stub));
-        verify(ps).setTimestamp(eq(3), eq(stub));
+        verify(ps).setTimestamp(eq(2), eq(DefaultOnceboxJobCreateCommand.EXPIRED_LOCK));
+        verify(ps).setTimestamp(eq(3), eq(DefaultOnceboxJobCreateCommand.EXPIRED_LOCK));
         verify(ps).setLong(4, 10L);
         verify(ps).setLong(5, 50L);
     }

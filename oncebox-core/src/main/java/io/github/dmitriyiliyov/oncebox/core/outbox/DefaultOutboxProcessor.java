@@ -1,12 +1,10 @@
 package io.github.dmitriyiliyov.oncebox.core.outbox;
 
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.SenderResult;
 import io.github.dmitriyiliyov.oncebox.core.utils.SetUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Clock;
+import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -18,12 +16,10 @@ public class DefaultOutboxProcessor implements OutboxProcessor {
 
     protected final OutboxManager manager;
     protected final OutboxSender sender;
-    protected final Clock clock;
 
-    public DefaultOutboxProcessor(OutboxManager manager, OutboxSender sender, Clock clock) {
+    public DefaultOutboxProcessor(OutboxManager manager, OutboxSender sender) {
         this.manager = Objects.requireNonNull(manager, "manager cannot be null");
         this.sender = Objects.requireNonNull(sender, "sender cannot be null");
-        this.clock = Objects.requireNonNull(clock, "clock cannot be null");
     }
 
     @Override
@@ -50,9 +46,8 @@ public class DefaultOutboxProcessor implements OutboxProcessor {
                 result.failedIds(),
                 properties.getMaxRetries(),
                 retryCount -> {
-                    double currentMultiplier = Math.pow(properties.backoffMultiplier(), retryCount);
-                    return clock.instant()
-                            .plusMillis((long) (currentMultiplier * properties.backoffDelay()));
+                    long retryDelayMs = (long) (Math.pow(properties.backoffMultiplier(), retryCount) * properties.backoffDelay());
+                    return Duration.ofMillis(retryDelayMs);
                 },
                 lockToken
         );

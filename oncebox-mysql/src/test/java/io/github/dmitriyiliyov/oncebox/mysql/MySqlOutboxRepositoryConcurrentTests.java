@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.mysql;
 
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxManager;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;

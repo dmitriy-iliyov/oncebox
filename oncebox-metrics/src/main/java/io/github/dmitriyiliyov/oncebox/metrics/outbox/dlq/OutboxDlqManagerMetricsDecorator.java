@@ -3,6 +3,7 @@ package io.github.dmitriyiliyov.oncebox.metrics.outbox.dlq;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DlqStatus;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.OutboxDlqEvent;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.OutboxDlqManager;
+import io.github.dmitriyiliyov.oncebox.core.utils.ListUtils;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 
@@ -37,7 +38,7 @@ public class OutboxDlqManagerMetricsDecorator implements OutboxDlqManager {
     @Override
     public List<OutboxDlqEvent> loadAndLockBatch(DlqStatus status, int batchSize) {
         List<OutboxDlqEvent> events = delegate.loadAndLockBatch(status, batchSize);
-        if (events != null && !events.isEmpty()) {
+        if (!ListUtils.isEmpty(events)) {
             actionCounters.get(ActionType.ATTEMPT_MOVE_TO_OUTBOX).increment(events.size());
         }
         return events;

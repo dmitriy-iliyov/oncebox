@@ -2,6 +2,7 @@ package io.github.dmitriyiliyov.oncebox.starter;
 
 import io.github.dmitriyiliyov.oncebox.core.OnceboxPropertiesHolder;
 import io.github.dmitriyiliyov.oncebox.core.polling.PollingPropertiesHolder;
+import io.github.dmitriyiliyov.oncebox.core.utils.ListUtils;
 import io.github.dmitriyiliyov.oncebox.starter.inbox.InboxProperties;
 import io.github.dmitriyiliyov.oncebox.starter.outbox.OutboxProperties;
 import jakarta.annotation.PostConstruct;
@@ -381,7 +382,7 @@ public class OnceboxProperties implements OnceboxPropertiesHolder {
                 public void applyDefaults() {
                     if (enabled == null || enabled) {
                         enabled = true;
-                        if (ttls == null || ttls.isEmpty() || ttls.size() != DEFAULT_TTLS.size()) {
+                        if (ListUtils.isEmpty(ttls) || ttls.size() != DEFAULT_TTLS.size()) {
                             ttls = DEFAULT_TTLS;
                         }
                     } else {

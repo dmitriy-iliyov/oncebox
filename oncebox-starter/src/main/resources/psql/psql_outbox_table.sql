@@ -5,9 +5,9 @@ CREATE TABLE IF NOT EXISTS outbox_events (
     payload_type VARCHAR(255) NOT NULL,
     payload TEXT NOT NULL,
     retry_count INTEGER NOT NULL,
-    next_retry_at TIMESTAMP NOT NULL,
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL,
+    next_retry_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
     lock_token UUID
 );
 

@@ -7,7 +7,6 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.FilteredClassLoader;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
-import java.time.Clock;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -20,7 +19,6 @@ class OutboxSerializerJacksonConditionUnitTests {
     private ApplicationContextRunner runner(AtomicBoolean definitionRegistered) {
         return new ApplicationContextRunner()
                 .withConfiguration(AutoConfigurations.of(OutboxAutoConfiguration.class))
-                .withBean(Clock.class, Clock::systemDefaultZone)
                 .withPropertyValues(
                         "oncebox.outbox.sender.type=kafka",
                         "oncebox.outbox.sender.bean-name=kafkaTemplate",

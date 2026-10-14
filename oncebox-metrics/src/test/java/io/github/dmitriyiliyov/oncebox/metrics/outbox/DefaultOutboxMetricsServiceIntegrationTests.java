@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.metrics.outbox;
 
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
 import io.github.dmitriyiliyov.oncebox.metrics.outbox.utils.SimpleOutboxCache;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

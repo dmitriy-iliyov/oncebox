@@ -1,7 +1,5 @@
 package io.github.dmitriyiliyov.oncebox.core.outbox;
 
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.SenderResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -11,9 +9,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -21,7 +17,6 @@ import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.eq;
@@ -34,9 +29,6 @@ class DefaultOutboxProcessorUnitTests {
 
     @Mock
     OutboxSender sender;
-
-    @Mock
-    Clock clock;
 
     @InjectMocks
     DefaultOutboxProcessor tested;
@@ -64,7 +56,7 @@ class DefaultOutboxProcessorUnitTests {
     @Test
     @DisplayName("UT constructor when manager is null should throw NullPointerException")
     void constructor_whenManagerIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new DefaultOutboxProcessor(null, sender, clock))
+        assertThatThrownBy(() -> new DefaultOutboxProcessor(null, sender))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("manager cannot be null");
     }
@@ -72,17 +64,9 @@ class DefaultOutboxProcessorUnitTests {
     @Test
     @DisplayName("UT constructor when sender is null should throw NullPointerException")
     void constructor_whenSenderIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new DefaultOutboxProcessor(manager, null, clock))
+        assertThatThrownBy(() -> new DefaultOutboxProcessor(manager, null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("sender cannot be null");
-    }
-
-    @Test
-    @DisplayName("UT constructor when clock is null should throw NullPointerException")
-    void constructor_whenClockIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new DefaultOutboxProcessor(manager, sender, null))
-                .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("clock cannot be null");
     }
 
     @Test
@@ -168,7 +152,8 @@ class DefaultOutboxProcessorUnitTests {
     @Test
     @DisplayName("UT process() when properties is null, should throw NPE")
     void process_whenPropertiesAreNull_shouldThrow() {
-        assertThrows(NullPointerException.class, () -> tested.process(null));
+        assertThatThrownBy(() -> tested.process(null))
+                .isInstanceOf(NullPointerException.class);
         verifyNoInteractions(manager, sender);
     }
 
@@ -201,11 +186,11 @@ class DefaultOutboxProcessorUnitTests {
     @DisplayName("UT process() when batch fails should make each retry wait multiplier times the previous one")
     void process_whenBatchFails_shouldGrowRetryDelayByMultiplier() {
         // given
-        Function<Integer, Instant> nextRetryAt = captureNextRetryAt(3.0, 10_000L);
+        Function<Integer, Duration> retryDelay = captureRetryDelay(3.0, 10_000L);
 
         // when
-        Duration first = Duration.between(NOW, nextRetryAt.apply(1));
-        Duration second = Duration.between(NOW, nextRetryAt.apply(2));
+        Duration first = retryDelay.apply(1);
+        Duration second = retryDelay.apply(2);
 
         // then
         assertThat(first).isPositive();
@@ -216,31 +201,28 @@ class DefaultOutboxProcessorUnitTests {
     @DisplayName("UT process() when multiplier is fractional should grow the retry delay by the exact multiplier")
     void process_whenMultiplierIsFractional_shouldGrowRetryDelayByExactMultiplier() {
         // given
-        Function<Integer, Instant> nextRetryAt = captureNextRetryAt(1.5, 10_000L);
+        Function<Integer, Duration> retryDelay = captureRetryDelay(1.5, 10_000L);
 
         // when
-        Duration first = Duration.between(NOW, nextRetryAt.apply(1));
-        Duration second = Duration.between(NOW, nextRetryAt.apply(2));
+        Duration first = retryDelay.apply(1);
+        Duration second = retryDelay.apply(2);
 
         // then
         assertThat(second.toMillis()).isEqualTo(first.toMillis() * 3 / 2);
     }
 
-    private static final Instant NOW = Instant.parse("2026-09-24T10:00:00Z");
-
     @SuppressWarnings("unchecked")
-    private Function<Integer, Instant> captureNextRetryAt(double multiplier, long delay) {
+    private Function<Integer, Duration> captureRetryDelay(double multiplier, long delay) {
         OutboxEvent event = mock(OutboxEvent.class);
         when(event.getId()).thenReturn(UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"));
         when(manager.loadBatch(eq(eventType), eq(batchSize), any(UUID.class))).thenReturn(List.of(event));
         when(sender.sendEvents(topic, List.of(event))).thenThrow(new RuntimeException("broker down"));
         when(properties.backoffMultiplier()).thenReturn(multiplier);
         when(properties.backoffDelay()).thenReturn(delay);
-        when(clock.instant()).thenReturn(NOW);
 
         tested.process(properties);
 
-        ArgumentCaptor<Function<Integer, Instant>> captor = ArgumentCaptor.forClass(Function.class);
+        ArgumentCaptor<Function<Integer, Duration>> captor = ArgumentCaptor.forClass(Function.class);
         verify(manager).finalizeBatch(anyList(), any(), anySet(), anyInt(), captor.capture(), any(UUID.class));
         return captor.getValue();
     }

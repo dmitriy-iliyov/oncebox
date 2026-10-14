@@ -29,6 +29,11 @@ public class PostgresTestOutboxRepository extends AbstractTestOutboxRepository {
     }
 
     @Override
+    protected String now() {
+        return "clock_timestamp()";
+    }
+
+    @Override
     protected String minusSeconds(String column) {
         return column + " - make_interval(secs => ?)";
     }

@@ -1,15 +1,16 @@
 package io.github.dmitriyiliyov.oncebox.dlq.api;
 
+import io.github.dmitriyiliyov.oncebox.core.TestDatabaseClock;
+import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DlqStatus;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.OutboxDlqEvent;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
 import io.github.dmitriyiliyov.oncebox.core.utils.RepositoryUtils;
 import io.github.dmitriyiliyov.oncebox.core.utils.ResultSetMapper;
 import io.github.dmitriyiliyov.oncebox.core.utils.SqlUuidHelper;
 import io.github.dmitriyiliyov.oncebox.dlq.api.exception.InvalidDlqFilterException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -17,9 +18,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
+import static org.assertj.core.api.Assertions.*;
 
 public class MultiDialectOutboxDlqApiRepositoryVerifier {
 
@@ -27,17 +26,20 @@ public class MultiDialectOutboxDlqApiRepositoryVerifier {
     private final JdbcTemplate jdbcTemplate;
     private final SqlUuidHelper uuidHelper;
     private final ResultSetMapper mapper;
+    private final TestDatabaseClock clock;
 
     public MultiDialectOutboxDlqApiRepositoryVerifier(
             OutboxDlqApiRepository repository,
             JdbcTemplate jdbcTemplate,
             SqlUuidHelper uuidHelper,
-            ResultSetMapper mapper
+            ResultSetMapper mapper,
+            TestDatabaseClock clock
     ) {
         this.repository = repository;
         this.jdbcTemplate = jdbcTemplate;
         this.uuidHelper = uuidHelper;
         this.mapper = mapper;
+        this.clock = clock;
     }
 
     public void findById_notExisting_returnsEmpty() {
@@ -266,6 +268,30 @@ public class MultiDialectOutboxDlqApiRepositoryVerifier {
                 .get()
                 .extracting(OutboxDlqEvent::getDlqStatus)
                 .isEqualTo(DlqStatus.RESOLVED);
+    }
+
+    public void updateStatus_whenStatusChanges_shouldStampUpdatedAtByDatabaseClock() {
+        OutboxDlqEvent event = buildEvent(DlqStatus.MOVED);
+        saveBatch(List.of(event));
+        clock.shift("outbox_dlq_events", "updated_at", event.getId(), Duration.ofHours(1).negated());
+
+        repository.updateStatus(event.getId(), DlqStatus.RESOLVED);
+
+        assertThat(clock.distanceFromNow("outbox_dlq_events", "updated_at", event.getId()))
+                .isBetween(Duration.ofSeconds(-30), Duration.ofSeconds(30));
+    }
+
+    public void updateBatchStatus_whenStatusChanges_shouldStampUpdatedAtByDatabaseClock() {
+        OutboxDlqEvent event = buildEvent(DlqStatus.MOVED);
+        saveBatch(List.of(event));
+        clock.shift("outbox_dlq_events", "updated_at", event.getId(), Duration.ofHours(1).negated());
+
+        repository.updateBatchStatus(
+                DlqFilter.builder().status(DlqStatus.RESOLVED).ids(Set.of(event.getId())).build(), DlqStatus.IN_PROCESS
+        );
+
+        assertThat(clock.distanceFromNow("outbox_dlq_events", "updated_at", event.getId()))
+                .isBetween(Duration.ofSeconds(-30), Duration.ofSeconds(30));
     }
 
     public void updateStatus_notExistingId_doesNotThrow() {
@@ -558,10 +584,10 @@ public class MultiDialectOutboxDlqApiRepositoryVerifier {
                     ps.setString(5, event.getPayloadType());
                     ps.setString(6, event.getPayload());
                     ps.setInt(7, event.getRetryCount());
-                    ps.setTimestamp(8, Timestamp.from(event.getNextRetryAt()));
-                    ps.setTimestamp(9, Timestamp.from(event.getCreatedAt()));
-                    ps.setTimestamp(10, Timestamp.from(event.getUpdatedAt()));
-                    ps.setTimestamp(11, Timestamp.from(event.getMovedAt()));
+                    ps.setObject(8, clock.toColumnValue(event.getNextRetryAt()));
+                    ps.setObject(9, clock.toColumnValue(event.getCreatedAt()));
+                    ps.setObject(10, clock.toColumnValue(event.getUpdatedAt()));
+                    ps.setObject(11, clock.toColumnValue(event.getMovedAt()));
                 });
     }
 

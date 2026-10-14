@@ -1,9 +1,9 @@
 package io.github.dmitriyiliyov.oncebox.core.utils;
 
+import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DlqStatus;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.OutboxDlqEvent;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,14 +14,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -82,7 +81,7 @@ class DefaultBytesResultSetMapperUnitTests {
         String payload = "{}";
         int retryCount = 0;
         Instant now = Instant.now();
-        Timestamp timestamp = Timestamp.from(now);
+        OffsetDateTime timestamp = OffsetDateTime.ofInstant(now, ZoneOffset.UTC);
 
         when(rs.getBytes("id")).thenReturn(idBytes);
         when(rs.getString("status")).thenReturn(status.name());
@@ -90,9 +89,9 @@ class DefaultBytesResultSetMapperUnitTests {
         when(rs.getString("payload_type")).thenReturn(payloadType);
         when(rs.getString("payload")).thenReturn(payload);
         when(rs.getInt("retry_count")).thenReturn(retryCount);
-        when(rs.getTimestamp("next_retry_at")).thenReturn(timestamp);
-        when(rs.getTimestamp("created_at")).thenReturn(timestamp);
-        when(rs.getTimestamp("updated_at")).thenReturn(timestamp);
+        when(rs.getObject("next_retry_at", OffsetDateTime.class)).thenReturn(timestamp);
+        when(rs.getObject("created_at", OffsetDateTime.class)).thenReturn(timestamp);
+        when(rs.getObject("updated_at", OffsetDateTime.class)).thenReturn(timestamp);
 
         // when
         OutboxEvent result = tested.toEvent(rs);
@@ -125,7 +124,7 @@ class DefaultBytesResultSetMapperUnitTests {
         String payload = "{}";
         int retryCount = 3;
         Instant now = Instant.now();
-        Timestamp timestamp = Timestamp.from(now);
+        OffsetDateTime timestamp = OffsetDateTime.ofInstant(now, ZoneOffset.UTC);
         DlqStatus dlqStatus = DlqStatus.MOVED;
 
         when(rs.getBytes("id")).thenReturn(idBytes);
@@ -134,11 +133,11 @@ class DefaultBytesResultSetMapperUnitTests {
         when(rs.getString("payload_type")).thenReturn(payloadType);
         when(rs.getString("payload")).thenReturn(payload);
         when(rs.getInt("retry_count")).thenReturn(retryCount);
-        when(rs.getTimestamp("next_retry_at")).thenReturn(timestamp);
-        when(rs.getTimestamp("created_at")).thenReturn(timestamp);
-        when(rs.getTimestamp("updated_at")).thenReturn(timestamp);
+        when(rs.getObject("next_retry_at", OffsetDateTime.class)).thenReturn(timestamp);
+        when(rs.getObject("created_at", OffsetDateTime.class)).thenReturn(timestamp);
+        when(rs.getObject("updated_at", OffsetDateTime.class)).thenReturn(timestamp);
         when(rs.getString("dlq_status")).thenReturn(dlqStatus.name());
-        when(rs.getTimestamp("moved_at")).thenReturn(timestamp);
+        when(rs.getObject("moved_at", OffsetDateTime.class)).thenReturn(timestamp);
 
         // when
         OutboxDlqEvent result = tested.toDlqEvent(rs);
@@ -171,7 +170,7 @@ class DefaultBytesResultSetMapperUnitTests {
         UUID result = tested.fromBytesToUuid(bytes);
 
         // then
-        assertEquals(expected, result);
+        assertThat(result).isEqualTo(expected);
     }
 
     @Test
@@ -181,7 +180,8 @@ class DefaultBytesResultSetMapperUnitTests {
         byte[] bytes = new byte[15];
 
         // when + then
-        assertThrows(IllegalArgumentException.class, () -> tested.fromBytesToUuid(bytes));
+        assertThatThrownBy(() -> tested.fromBytesToUuid(bytes))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -191,13 +191,15 @@ class DefaultBytesResultSetMapperUnitTests {
         byte[] bytes = new byte[17];
 
         // when + then
-        assertThrows(IllegalArgumentException.class, () -> tested.fromBytesToUuid(bytes));
+        assertThatThrownBy(() -> tested.fromBytesToUuid(bytes))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     @DisplayName("UT fromBytesToUuid() when bytes is null should throw NPE")
     void fromBytesToUuid_whenBytesNull_shouldThrow() {
         // when + then
-        assertThrows(NullPointerException.class, () -> tested.fromBytesToUuid(null));
+        assertThatThrownBy(() -> tested.fromBytesToUuid(null))
+                .isInstanceOf(NullPointerException.class);
     }
 }

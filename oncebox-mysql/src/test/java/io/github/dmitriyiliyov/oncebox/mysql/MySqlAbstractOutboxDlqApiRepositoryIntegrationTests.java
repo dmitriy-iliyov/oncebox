@@ -1,6 +1,5 @@
 package io.github.dmitriyiliyov.oncebox.mysql;
 
-import io.github.dmitriyiliyov.oncebox.core.utils.DefaultBytesResultSetMapper;
 import io.github.dmitriyiliyov.oncebox.dlq.api.MultiDialectOutboxDlqApiRepositoryVerifier;
 import io.github.dmitriyiliyov.oncebox.dlq.api.OutboxDlqApiRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -22,7 +21,8 @@ class MySqlAbstractOutboxDlqApiRepositoryIntegrationTests extends BaseDlqApiMySq
                 repository,
                 jdbcTemplate,
                 new MySqlUuidHelper(),
-                new DefaultBytesResultSetMapper()
+                new MySqlResultSetMapper(),
+                new MySqlDatabaseClock(jdbcTemplate)
         );
     }
 
@@ -120,6 +120,18 @@ class MySqlAbstractOutboxDlqApiRepositoryIntegrationTests extends BaseDlqApiMySq
     @DisplayName("IT updateStatus() for existing event should update status")
     void updateStatus_existingEvent_statusChanged() {
         delegate.updateStatus_existingEvent_statusChanged();
+    }
+
+    @Test
+    @DisplayName("IT updateStatus() should stamp updated_at by the database clock")
+    void updateStatus_whenStatusChanges_shouldStampUpdatedAtByDatabaseClock() {
+        delegate.updateStatus_whenStatusChanges_shouldStampUpdatedAtByDatabaseClock();
+    }
+
+    @Test
+    @DisplayName("IT updateBatchStatus() should stamp updated_at by the database clock")
+    void updateBatchStatus_whenStatusChanges_shouldStampUpdatedAtByDatabaseClock() {
+        delegate.updateBatchStatus_whenStatusChanges_shouldStampUpdatedAtByDatabaseClock();
     }
 
     @Test

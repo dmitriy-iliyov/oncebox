@@ -1,243 +1,148 @@
 package io.github.dmitriyiliyov.oncebox.oracle;
 
 import io.github.dmitriyiliyov.oncebox.core.inbox.ConcurrentInsertException;
+import io.github.dmitriyiliyov.oncebox.core.inbox.InboxRepositoryVerifier;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.ParameterizedPreparedStatementSetter;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Transactional
 class OracleInboxRepositoryIntegrationTests extends BaseOracleIntegrationTests {
 
-    private final OracleInboxRepository repository;
+    private static final UUID ID_1 = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1");
+    private static final UUID ID_2 = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2");
+
+    private final OracleInboxRepository tested;
+    private final InboxRepositoryVerifier delegate;
 
     OracleInboxRepositoryIntegrationTests(
-            @Qualifier("oracleInboxRepository") OracleInboxRepository repository
+            @Qualifier("oracleInboxRepository") OracleInboxRepository tested
     ) {
-        this.repository = repository;
+        this.tested = tested;
+        this.delegate = new InboxRepositoryVerifier(tested, new OracleDatabaseClock(tested.jdbcTemplate));
     }
 
     @Test
     @DisplayName("UT constructor when jdbcTemplate is null should throw NullPointerException")
     void constructor_whenJdbcTemplateIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new OracleInboxRepository(null, repository.clock, repository.uuidHelper, repository.mapper))
+        assertThatThrownBy(() -> new OracleInboxRepository(null, tested.uuidHelper, tested.mapper))
                 .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("jdbcTemplate cannot be null");
-    }
-
-    @Test
-    @DisplayName("UT constructor when clock is null should throw NullPointerException")
-    void constructor_whenClockIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new OracleInboxRepository(repository.jdbcTemplate, null, repository.uuidHelper, repository.mapper))
-                .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("clock cannot be null");
+                .hasMessage("jdbcTemplate cannot be null");
     }
 
     @Test
     @DisplayName("UT constructor when uuidHelper is null should throw NullPointerException")
     void constructor_whenUuidHelperIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new OracleInboxRepository(repository.jdbcTemplate, repository.clock, null, repository.mapper))
+        assertThatThrownBy(() -> new OracleInboxRepository(tested.jdbcTemplate, null, tested.mapper))
                 .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("uuidHelper cannot be null");
+                .hasMessage("uuidHelper cannot be null");
     }
 
     @Test
     @DisplayName("UT constructor when mapper is null should throw NullPointerException")
     void constructor_whenMapperIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new OracleInboxRepository(repository.jdbcTemplate, repository.clock, repository.uuidHelper, null))
+        assertThatThrownBy(() -> new OracleInboxRepository(tested.jdbcTemplate, tested.uuidHelper, null))
                 .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("mapper cannot be null");
+                .hasMessage("mapper cannot be null");
     }
 
     @Test
-    @DisplayName("IT saveIfAbsent(UUID) new id should return 1")
-    void saveIfAbsent_newId_returnsOne() {
-        assertThat(repository.saveIfAbsent(UUID.randomUUID())).isEqualTo(1);
-    }
-
-    @Test
-    @DisplayName("IT saveIfAbsent(UUID) duplicate id should return 0 via DuplicateKeyException")
-    void saveIfAbsent_duplicateId_returnsZero() {
-        UUID id = UUID.randomUUID();
-        repository.saveIfAbsent(id);
-
-        int result = repository.saveIfAbsent(id);
-
-        assertThat(result).isEqualTo(0);
-    }
-
-    @Test
-    @DisplayName("IT saveIfAbsent(UUID) multiple different ids should all return 1")
-    void saveIfAbsent_multipleDifferentIds_eachReturnsOne() {
-        assertThat(repository.saveIfAbsent(UUID.randomUUID())).isEqualTo(1);
-        assertThat(repository.saveIfAbsent(UUID.randomUUID())).isEqualTo(1);
-        assertThat(repository.saveIfAbsent(UUID.randomUUID())).isEqualTo(1);
-    }
-
-    @Test
-    @DisplayName("IT saveIfAbsent(Set) new ids should return all inserted ids")
-    void saveIfAbsent_newIds_returnsAllInserted() {
-        Set<UUID> ids = Set.of(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
-
-        Set<UUID> inserted = repository.saveIfAbsent(ids);
-
-        assertThat(inserted).containsExactlyInAnyOrderElementsOf(ids);
-    }
-
-    @Test
-    @DisplayName("IT saveIfAbsent(Set) duplicate ids should return only new ones")
-    void saveIfAbsent_partiallyDuplicate_returnsOnlyNew() {
-        UUID existing = UUID.randomUUID();
-        repository.saveIfAbsent(existing);
-
-        UUID newId = UUID.randomUUID();
-        Set<UUID> inserted = repository.saveIfAbsent(Set.of(existing, newId));
-
-        assertThat(inserted)
-                .containsOnly(newId)
-                .doesNotContain(existing);
-    }
-
-    @Test
-    @DisplayName("IT saveIfAbsent(Set) all duplicates should return empty set")
-    void saveIfAbsent_allDuplicates_returnsEmptySet() {
-        UUID id1 = UUID.randomUUID();
-        UUID id2 = UUID.randomUUID();
-        repository.saveIfAbsent(Set.of(id1, id2));
-
-        Set<UUID> inserted = repository.saveIfAbsent(Set.of(id1, id2));
-
-        assertThat(inserted).isEmpty();
-    }
-
-    @Test
-    @DisplayName("IT saveIfAbsent(Set) empty set should return empty set")
-    void saveIfAbsent_emptySet_returnsEmptySet() {
-        assertThat(repository.saveIfAbsent(Set.of())).isEmpty();
-    }
-
-    @Test
-    @DisplayName("IT saveIfAbsent(Set) large batch should persist all")
-    void saveIfAbsent_largeBatch_persistsAll() {
-        Set<UUID> ids = IntStream.range(0, 50)
-                .mapToObj(i -> UUID.randomUUID())
-                .collect(Collectors.toSet());
-
-        Set<UUID> inserted = repository.saveIfAbsent(ids);
-
-        assertThat(inserted)
-                .hasSize(50)
-                .containsExactlyInAnyOrderElementsOf(ids);
-    }
-
-    @Test
-    @DisplayName("IT saveIfAbsent(UUID) does not throw on duplicate - catches DuplicateKeyException")
-    void saveIfAbsent_duplicateId_doesNotThrow() {
-        UUID id = UUID.randomUUID();
-        repository.saveIfAbsent(id);
-
-        assertThatCode(() -> repository.saveIfAbsent(id))
-                .doesNotThrowAnyException();
-    }
-
-    @Test
-    @DisplayName("IT saveIfAbsent(Set) single new id returns singleton set")
-    void saveIfAbsent_singleNewId_returnsSingletonSet() {
-        UUID id = UUID.randomUUID();
-
-        Set<UUID> inserted = repository.saveIfAbsent(Set.of(id));
-
-        assertThat(inserted).containsOnly(id);
-    }
-
-    @Test
-    @DisplayName("IT saveIfAbsent(Set) throws ConcurrentInsertException when inserted rows mismatch")
-    void saveIfAbsent_concurrentInsertMismatch_throwsException() {
-        org.springframework.jdbc.core.JdbcTemplate interceptedJdbcTemplate = new org.springframework.jdbc.core.JdbcTemplate(repository.jdbcTemplate.getDataSource()) {
+    @DisplayName("IT saveIfAbsent(Set) when another writer takes an id between the check and the insert should throw ConcurrentInsertException")
+    void saveIfAbsentBatch_whenInsertedRowsMismatch_shouldThrowConcurrentInsertException() {
+        // given
+        JdbcTemplate losingJdbcTemplate = new JdbcTemplate(tested.jdbcTemplate.getDataSource()) {
             @Override
-            public <T> int[][] batchUpdate(String sql, Collection<T> batchArgs, int batchSize, ParameterizedPreparedStatementSetter<T> pss) throws DataAccessException {
-                return new int[0][0];
+            public <T> int[][] batchUpdate(String sql, Collection<T> batchArgs, int batchSize,
+                                           ParameterizedPreparedStatementSetter<T> pss) throws DataAccessException {
+                return new int[][]{{0}};
             }
         };
+        OracleInboxRepository racing = new OracleInboxRepository(losingJdbcTemplate, tested.uuidHelper, tested.mapper);
 
-        OracleInboxRepository testRepository = new OracleInboxRepository(
-                interceptedJdbcTemplate,
-                repository.clock,
-                repository.uuidHelper,
-                repository.mapper
-        );
-
-        Set<UUID> ids = Set.of(UUID.randomUUID(), UUID.randomUUID());
-
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> testRepository.saveIfAbsent(ids))
+        // when / then
+        assertThatThrownBy(() -> racing.saveIfAbsent(Set.of(ID_1, ID_2)))
                 .isInstanceOf(ConcurrentInsertException.class);
     }
 
     @Test
-    @DisplayName("IT deleteBatchByThreshold() should delete old events")
-    void deleteBatchByThreshold_deletesOldEvents() {
-        repository.saveIfAbsent(UUID.randomUUID());
-        repository.saveIfAbsent(UUID.randomUUID());
-
-        Instant futureThreshold = Instant.now().plusSeconds(10).truncatedTo(ChronoUnit.MILLIS);
-        int deleted = repository.deleteBatchByThreshold(futureThreshold, 10);
-
-        assertThat(deleted).isEqualTo(2);
+    @DisplayName("IT saveIfAbsent(UUID) when the id is new should return 1 and stamp consumed_at by the database clock")
+    void saveIfAbsent_whenIdIsNew_shouldReturnOneAndStampConsumedAtByDatabaseClock() {
+        delegate.saveIfAbsent_whenIdIsNew_shouldReturnOneAndStampConsumedAtByDatabaseClock();
     }
 
     @Test
-    @DisplayName("IT deleteBatchByThreshold() should not delete fresh events")
-    void deleteBatchByThreshold_doesNotDeleteFreshEvents() {
-        repository.saveIfAbsent(UUID.randomUUID());
-        repository.saveIfAbsent(UUID.randomUUID());
-
-        Instant pastThreshold = Instant.now().minusSeconds(60).truncatedTo(ChronoUnit.MILLIS);
-        int deleted = repository.deleteBatchByThreshold(pastThreshold, 10);
-
-        assertThat(deleted).isEqualTo(0);
+    @DisplayName("IT saveIfAbsent(UUID) when the id is already recorded should return 0")
+    void saveIfAbsent_whenIdIsAlreadyRecorded_shouldReturnZero() {
+        delegate.saveIfAbsent_whenIdIsAlreadyRecorded_shouldReturnZero();
     }
 
     @Test
-    @DisplayName("IT deleteBatchByThreshold() should respect batch size via FETCH FIRST ROWS ONLY")
-    void deleteBatchByThreshold_respectsBatchSize() {
-        IntStream.range(0, 5).forEach(i -> repository.saveIfAbsent(UUID.randomUUID()));
-
-        Instant futureThreshold = Instant.now().plusSeconds(10).truncatedTo(ChronoUnit.MILLIS);
-        int deleted = repository.deleteBatchByThreshold(futureThreshold, 3);
-
-        assertThat(deleted).isEqualTo(3);
+    @DisplayName("IT saveIfAbsent(Set) when every id is new should return all of them and stamp consumed_at")
+    void saveIfAbsentBatch_whenEveryIdIsNew_shouldReturnAllAndStampConsumedAt() {
+        delegate.saveIfAbsentBatch_whenEveryIdIsNew_shouldReturnAllAndStampConsumedAt();
     }
 
     @Test
-    @DisplayName("IT deleteBatchByThreshold() when no events should return zero")
-    void deleteBatchByThreshold_noEvents_returnsZero() {
-        Instant futureThreshold = Instant.now().plusSeconds(10);
-        int deleted = repository.deleteBatchByThreshold(futureThreshold, 10);
-        assertThat(deleted).isEqualTo(0);
+    @DisplayName("IT saveIfAbsent(Set) when some ids are recorded should return only the new ones")
+    void saveIfAbsentBatch_whenSomeIdsAreRecorded_shouldReturnOnlyNewOnes() {
+        delegate.saveIfAbsentBatch_whenSomeIdsAreRecorded_shouldReturnOnlyNewOnes();
     }
 
     @Test
-    @DisplayName("IT deleteBatchByThreshold() should not affect events above threshold")
-    void deleteBatchByThreshold_doesNotAffectEventsAboveThreshold() {
-        UUID fresh = UUID.randomUUID();
-        repository.saveIfAbsent(fresh);
+    @DisplayName("IT saveIfAbsent(Set) when every id is recorded should return empty set")
+    void saveIfAbsentBatch_whenEveryIdIsRecorded_shouldReturnEmptySet() {
+        delegate.saveIfAbsentBatch_whenEveryIdIsRecorded_shouldReturnEmptySet();
+    }
 
-        Instant pastThreshold = Instant.now().minusSeconds(1).truncatedTo(ChronoUnit.MILLIS);
-        repository.deleteBatchByThreshold(pastThreshold, 10);
+    @Test
+    @DisplayName("IT saveIfAbsent(Set) when ids are empty should return empty set")
+    void saveIfAbsentBatch_whenIdsAreEmpty_shouldReturnEmptySet() {
+        delegate.saveIfAbsentBatch_whenIdsAreEmpty_shouldReturnEmptySet();
+    }
 
-        int result = repository.saveIfAbsent(fresh);
-        assertThat(result).isEqualTo(0);
+    @Test
+    @DisplayName("IT saveIfAbsent(Set) when the batch is large should record every id")
+    void saveIfAbsentBatch_whenBatchIsLarge_shouldRecordEveryId() {
+        delegate.saveIfAbsentBatch_whenBatchIsLarge_shouldRecordEveryId();
+    }
+
+    @Test
+    @DisplayName("IT deleteBatchOlderThan() should delete the records consumed longer than age ago and keep the fresh")
+    void deleteBatchOlderThan_whenSomeRecordsAreOld_shouldDeleteOnlyThem() {
+        delegate.deleteBatchOlderThan_whenSomeRecordsAreOld_shouldDeleteOnlyThem();
+    }
+
+    @Test
+    @DisplayName("IT deleteBatchOlderThan() when every record is fresh should delete nothing")
+    void deleteBatchOlderThan_whenEveryRecordIsFresh_shouldDeleteNothing() {
+        delegate.deleteBatchOlderThan_whenEveryRecordIsFresh_shouldDeleteNothing();
+    }
+
+    @Test
+    @DisplayName("IT deleteBatchOlderThan() should delete at most batchSize records")
+    void deleteBatchOlderThan_whenMoreRecordsAreOld_shouldDeleteAtMostBatchSize() {
+        delegate.deleteBatchOlderThan_whenMoreRecordsAreOld_shouldDeleteAtMostBatchSize();
+    }
+
+    @Test
+    @DisplayName("IT deleteBatchOlderThan() when there are no records should return zero")
+    void deleteBatchOlderThan_whenThereAreNoRecords_shouldReturnZero() {
+        delegate.deleteBatchOlderThan_whenThereAreNoRecords_shouldReturnZero();
+    }
+
+    @Test
+    @DisplayName("IT deleteBatchOlderThan() when the JVM runs in another time zone should still keep a fresh record")
+    void deleteBatchOlderThan_whenJvmRunsInAnotherZone_shouldKeepFreshRecord() {
+        delegate.deleteBatchOlderThan_whenJvmRunsInAnotherZone_shouldKeepFreshRecord();
     }
 }

@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.metrics.outbox;
 
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -10,7 +10,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,7 +29,8 @@ class MultiDialectOutboxMetricsRepositoryUnitTests {
     @Test
     @DisplayName("UT constructor should throw NPE when jdbcTemplate is null")
     void constructor_shouldThrowNPE_whenJdbcTemplateIsNull() {
-        assertThrows(NullPointerException.class, () -> new MultiDialectOutboxMetricsRepository(null));
+        assertThatThrownBy(() -> new MultiDialectOutboxMetricsRepository(null))
+                .isInstanceOf(NullPointerException.class);
     }
 
     @Test

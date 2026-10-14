@@ -1,9 +1,9 @@
 package io.github.dmitriyiliyov.oncebox.kafka;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.SenderResult;
+import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxEvent;
+import io.github.dmitriyiliyov.oncebox.core.outbox.SenderResult;
 import org.apache.kafka.common.KafkaException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -23,8 +23,6 @@ import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -105,8 +103,8 @@ public class KafkaOutboxSenderUnitTests {
         SenderResult result = tested.sendEvents(topic, events);
 
         // then
-        assertEquals(Set.of(event.getId()), result.processedIds());
-        assertEquals(Set.of(), result.failedIds());
+        assertThat(result.processedIds()).isEqualTo(Set.of(event.getId()));
+        assertThat(result.failedIds()).isEqualTo(Set.of());
         verify(kafkaTemplate, times(events.size())).send(any(Message.class));
         verifyNoMoreInteractions(kafkaTemplate);
     }
@@ -134,8 +132,8 @@ public class KafkaOutboxSenderUnitTests {
         SenderResult result = tested.sendEvents(topic, events);
 
         // then
-        assertEquals(Set.of(event.getId()), result.failedIds());
-        assertEquals(Set.of(), result.processedIds());
+        assertThat(result.failedIds()).isEqualTo(Set.of(event.getId()));
+        assertThat(result.processedIds()).isEqualTo(Set.of());
         verify(kafkaTemplate, times(events.size())).send(any(Message.class));
         verifyNoMoreInteractions(kafkaTemplate);
     }
@@ -165,8 +163,8 @@ public class KafkaOutboxSenderUnitTests {
         SenderResult result = tested.sendEvents(topic, events);
 
         // then
-        assertEquals(Set.of(event.getId()), result.failedIds());
-        assertEquals(Set.of(), result.processedIds());
+        assertThat(result.failedIds()).isEqualTo(Set.of(event.getId()));
+        assertThat(result.processedIds()).isEqualTo(Set.of());
         verify(kafkaTemplate, times(events.size())).send(any(Message.class));
         verifyNoMoreInteractions(kafkaTemplate);
     }
@@ -196,8 +194,8 @@ public class KafkaOutboxSenderUnitTests {
         SenderResult result = tested.sendEvents(topic, events);
 
         // then
-        assertEquals(Set.of(event.getId()), result.failedIds());
-        assertEquals(Set.of(), result.processedIds());
+        assertThat(result.failedIds()).isEqualTo(Set.of(event.getId()));
+        assertThat(result.processedIds()).isEqualTo(Set.of());
     }
 
     @Test
@@ -223,8 +221,8 @@ public class KafkaOutboxSenderUnitTests {
         SenderResult result = tested.sendEvents(topic, events);
 
         // then
-        assertEquals(Set.of(event.getId()), result.failedIds());
-        assertEquals(Set.of(), result.processedIds());
+        assertThat(result.failedIds()).isEqualTo(Set.of(event.getId()));
+        assertThat(result.processedIds()).isEqualTo(Set.of());
         verify(kafkaTemplate).send(any(Message.class));
         verifyNoMoreInteractions(kafkaTemplate);
     }
@@ -269,11 +267,11 @@ public class KafkaOutboxSenderUnitTests {
         SenderResult result = tested.sendEvents(topic, events);
 
         // then
-        assertTrue(result.processedIds().contains(validEvent.getId()), "Valid event should be processed");
-        assertTrue(result.failedIds().contains(badEvent.getId()), "Bad event should be failed");
+        assertThat(result.processedIds().contains(validEvent.getId())).as("Valid event should be processed").isTrue();
+        assertThat(result.failedIds().contains(badEvent.getId())).as("Bad event should be failed").isTrue();
 
-        assertEquals(1, result.processedIds().size());
-        assertEquals(1, result.failedIds().size());
+        assertThat(result.processedIds().size()).isEqualTo(1);
+        assertThat(result.failedIds().size()).isEqualTo(1);
 
         verify(kafkaTemplate, times(2)).send(any(Message.class));
     }

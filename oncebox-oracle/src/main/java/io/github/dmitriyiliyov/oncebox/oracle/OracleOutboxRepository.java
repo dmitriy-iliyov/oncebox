@@ -1,17 +1,19 @@
 package io.github.dmitriyiliyov.oncebox.oracle;
 
 import io.github.dmitriyiliyov.oncebox.core.outbox.AbstractOutboxRepository;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
+import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.utils.BytesResultSetMapper;
 import io.github.dmitriyiliyov.oncebox.core.utils.RepositoryUtils;
 import io.github.dmitriyiliyov.oncebox.core.utils.SqlUuidHelper;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.sql.PreparedStatement;
-import java.sql.Timestamp;
-import java.time.Clock;
+import java.sql.SQLException;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -20,11 +22,15 @@ public class OracleOutboxRepository extends AbstractOutboxRepository {
     protected final BytesResultSetMapper mapper;
 
     public OracleOutboxRepository(JdbcTemplate jdbcTemplate,
-                                  Clock clock,
                                   SqlUuidHelper uuidHelper,
                                   BytesResultSetMapper mapper) {
-        super(jdbcTemplate, clock, uuidHelper);
+        super(jdbcTemplate, uuidHelper);
         this.mapper = Objects.requireNonNull(mapper, "mapper cannot be null");
+    }
+
+    @Override
+    protected void setCreatedAt(PreparedStatement ps, int parameterIndex, Instant createdAt) throws SQLException {
+        ps.setObject(parameterIndex, OffsetDateTime.ofInstant(createdAt, ZoneOffset.UTC));
     }
 
     @Override
@@ -36,7 +42,7 @@ public class OracleOutboxRepository extends AbstractOutboxRepository {
         String selectSql = """
             SELECT *
             FROM outbox_events
-            WHERE event_type = ? AND status = ? AND next_retry_at <= ?
+            WHERE event_type = ? AND status = ? AND next_retry_at <= SYSTIMESTAMP
             ORDER BY next_retry_at
             FOR UPDATE SKIP LOCKED
         """;
@@ -46,7 +52,6 @@ public class OracleOutboxRepository extends AbstractOutboxRepository {
                     ps.setMaxRows(batchSize);
                     ps.setString(1, eventType);
                     ps.setString(2, status.name());
-                    ps.setTimestamp(3, Timestamp.from(clock.instant()));
                     return ps;
                 },
                 (rs, rowNum) -> mapper.toEvent(rs)
@@ -77,7 +82,8 @@ public class OracleOutboxRepository extends AbstractOutboxRepository {
 
     /**
      * Sets the status of the selected events and, when {@code lockToken} is given, the token of this capture;
-     * without one the event keeps the token it already carries.
+     * without one the event keeps the token it already carries. {@code updated_at} is set by the database clock,
+     * so the returned events keep the {@code updatedAt} they were selected with.
      */
     private List<OutboxEvent> updateStatus(List<OutboxEvent> events, EventStatus lockStatus, UUID lockToken) {
         Set<UUID> ids = events.stream()
@@ -90,16 +96,14 @@ public class OracleOutboxRepository extends AbstractOutboxRepository {
 
         String lockSql = """
             UPDATE outbox_events
-                SET status = ?, updated_at = ?%s
+                SET status = ?, updated_at = SYSTIMESTAMP%s
             WHERE id IN (%s)
         """.formatted(lockToken == null ? "" : ", lock_token = ?", RepositoryUtils.generateIdsPlaceholders(ids));
-        Instant updatedAt = clock.instant();
         jdbcTemplate.update(
                 lockSql,
                 ps -> {
                     ps.setString(1, lockStatus.name());
-                    ps.setTimestamp(2, Timestamp.from(updatedAt));
-                    int index = 3;
+                    int index = 2;
                     if (lockToken != null) {
                         uuidHelper.setToPs(ps, index++, lockToken);
                     }
@@ -107,22 +111,41 @@ public class OracleOutboxRepository extends AbstractOutboxRepository {
                 }
         );
 
-        events.forEach(event -> {
-            event.setStatus(lockStatus);
-            event.setUpdatedAt(updatedAt);
-        });
+        events.forEach(event -> event.setStatus(lockStatus));
         return events;
     }
 
     @Override
-    public int updateBatchStatusByStatusAndThreshold(EventStatus status, Instant threshold, int batchSize, EventStatus newStatus) {
+    protected String updateBatchStatusByLockTokenSql(Set<UUID> ids) {
+        return """
+            UPDATE outbox_events
+            SET status = ?, updated_at = SYSTIMESTAMP
+            WHERE lock_token = ? AND id IN (%s)
+        """.formatted(RepositoryUtils.generateIdsPlaceholders(ids));
+    }
+
+    @Override
+    protected String partiallyUpdateBatchByLockTokenSql() {
+        return """
+            UPDATE outbox_events
+            SET
+                retry_count = ?,
+                status = ?,
+                next_retry_at = COALESCE(SYSTIMESTAMP + NUMTODSINTERVAL(? / 1000, 'SECOND'), next_retry_at),
+                updated_at = SYSTIMESTAMP
+            WHERE id = ? AND lock_token = ?
+        """;
+    }
+
+    @Override
+    public int updateBatchStatusByStatusOlderThan(EventStatus status, Duration age, int batchSize, EventStatus newStatus) {
         String selectSql = """
             SELECT id
             FROM outbox_events
             WHERE id IN (
                 SELECT id
                 FROM outbox_events
-                WHERE status = ? AND updated_at <= ?
+                WHERE status = ? AND updated_at <= SYSTIMESTAMP - NUMTODSINTERVAL(? / 1000, 'SECOND')
                 ORDER BY updated_at
                 FETCH FIRST ? ROWS ONLY
             )
@@ -133,7 +156,7 @@ public class OracleOutboxRepository extends AbstractOutboxRepository {
                 selectSql,
                 ps -> {
                     ps.setString(1, status.name());
-                    ps.setTimestamp(2, Timestamp.from(threshold));
+                    ps.setLong(2, age.toMillis());
                     ps.setInt(3, batchSize);
                 },
                 (rs, rowNum) -> mapper.fromBytesToUuid(rs.getBytes("id")))
@@ -145,24 +168,23 @@ public class OracleOutboxRepository extends AbstractOutboxRepository {
 
         String lockSql = """
             UPDATE outbox_events
-                SET status = ?, updated_at = ?
+                SET status = ?, updated_at = SYSTIMESTAMP
             WHERE id IN(%s)
         """.formatted(RepositoryUtils.generateIdsPlaceholders(ids));
         return jdbcTemplate.update(
                 lockSql,
                 ps -> {
                     ps.setString(1, newStatus.name());
-                    ps.setTimestamp(2, Timestamp.from(clock.instant()));
-                    uuidHelper.setToPs(ps, 3, ids);
+                    uuidHelper.setToPs(ps, 2, ids);
                 }
         );
     }
 
     @Override
-    public int deleteBatchByStatusAndThreshold(EventStatus status, Instant threshold, int batchSize) {
+    public int deleteBatchByStatusOlderThan(EventStatus status, Duration age, int batchSize) {
         String selectSql = """
             SELECT id FROM outbox_events
-            WHERE status = ? AND updated_at <= ?
+            WHERE status = ? AND updated_at <= SYSTIMESTAMP - NUMTODSINTERVAL(? / 1000, 'SECOND')
             ORDER BY updated_at
             FETCH FIRST ? ROWS ONLY
         """;
@@ -171,7 +193,7 @@ public class OracleOutboxRepository extends AbstractOutboxRepository {
                 selectSql,
                 ps -> {
                     ps.setString(1, status.name());
-                    ps.setTimestamp(2, Timestamp.from(threshold));
+                    ps.setLong(2, age.toMillis());
                     ps.setInt(3, batchSize);
                 },
                 (rs, numRow) -> mapper.fromBytesToUuid(rs.getBytes("id"))

@@ -1,8 +1,8 @@
 package io.github.dmitriyiliyov.oncebox.oracle;
 
 import io.github.dmitriyiliyov.oncebox.core.outbox.AbstractOutboxRepositoryIntegrationTests;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
+import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.utils.DefaultBytesResultSetMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -10,9 +10,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
@@ -27,7 +24,6 @@ class OracleOutboxRepositoryIntegrationTests extends BaseOracleIntegrationTests 
     private final AbstractOutboxRepositoryIntegrationTests delegate;
 
     private final JdbcTemplate jdbcTemplate;
-    private final Clock clock = Clock.systemUTC();
     private final OracleSqlUuidHelper oracleSqlUuidHelper = new OracleSqlUuidHelper();
     private final DefaultBytesResultSetMapper mapper = new DefaultBytesResultSetMapper();
 
@@ -37,16 +33,55 @@ class OracleOutboxRepositoryIntegrationTests extends BaseOracleIntegrationTests 
     ) {
         this.repository = repository;
         this.jdbcTemplate = jdbcTemplate;
-        this.delegate = new AbstractOutboxRepositoryIntegrationTests(repository);
+        this.delegate = new AbstractOutboxRepositoryIntegrationTests(repository, new OracleDatabaseClock(jdbcTemplate));
     }
 
     @Test
     @DisplayName("UT constructor when mapper is null should throw NullPointerException")
     void constructor_whenMapperIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new OracleOutboxRepository(jdbcTemplate, clock, oracleSqlUuidHelper, null))
+        assertThatThrownBy(() -> new OracleOutboxRepository(jdbcTemplate, oracleSqlUuidHelper, null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("mapper cannot be null");
     }
+
+    @Test @DisplayName("IT save() when the event is new should leave every time to the database")
+    void save_whenEventIsNew_shouldLeaveEveryTimeToDatabase() { delegate.save_whenEventIsNew_shouldLeaveEveryTimeToDatabase(); }
+
+    @Test @DisplayName("IT saveBatchWithCreatedAt() should keep the creation time and make the event due at once")
+    void saveBatchWithCreatedAt_whenEventHasCreatedAt_shouldKeepItAndMakeEventDueAtOnce() { delegate.saveBatchWithCreatedAt_whenEventHasCreatedAt_shouldKeepItAndMakeEventDueAtOnce(); }
+
+    @Test @DisplayName("IT saveBatchWithCreatedAt() when read back in another JVM time zone should give back the same moment")
+    void saveBatchWithCreatedAt_whenReadInAnotherJvmZone_shouldGiveBackTheSameMoment() { delegate.saveBatchWithCreatedAt_whenReadInAnotherJvmZone_shouldGiveBackTheSameMoment(); }
+
+    @Test @DisplayName("IT saveBatchWithCreatedAt() when an event has no creation time should throw and save nothing")
+    void saveBatchWithCreatedAt_whenEventHasNoCreatedAt_shouldThrowAndSaveNothing() { delegate.saveBatchWithCreatedAt_whenEventHasNoCreatedAt_shouldThrowAndSaveNothing(); }
+
+    @Test @DisplayName("IT findAndLockBatchByEventTypeAndStatus() when the next retry is ahead should skip the event")
+    void findAndLockBatchByEventTypeAndStatus_whenNextRetryIsAhead_shouldSkipEvent() { delegate.findAndLockBatchByEventTypeAndStatus_whenNextRetryIsAhead_shouldSkipEvent(); }
+
+    @Test @DisplayName("IT findAndLockBatchByEventTypeAndStatus() should stamp updated_at by the database clock")
+    void findAndLockBatchByEventTypeAndStatus_whenCaptured_shouldStampUpdatedAtByDatabaseClock() { delegate.findAndLockBatchByEventTypeAndStatus_whenCaptured_shouldStampUpdatedAtByDatabaseClock(); }
+
+    @Test @DisplayName("IT partiallyUpdateBatchByLockToken() when a delay is given should count the next retry from the database time")
+    void partiallyUpdateBatchByLockToken_whenDelayIsGiven_shouldCountNextRetryFromDatabaseTime() { delegate.partiallyUpdateBatch_whenDelayIsGiven_shouldCountNextRetryFromDatabaseTime(); }
+
+    @Test @DisplayName("IT partiallyUpdateBatchByLockToken() when the delay is null should keep next_retry_at")
+    void partiallyUpdateBatchByLockToken_whenDelayIsNull_shouldKeepNextRetryAt() { delegate.partiallyUpdateBatch_whenDelayIsNull_shouldKeepNextRetryAt(); }
+
+    @Test @DisplayName("IT updateBatchStatusByStatusOlderThan() when some events are old should update only them")
+    void updateBatchStatusByStatusOlderThan_whenSomeEventsAreOld_shouldUpdateOnlyThem() { delegate.updateBatchStatusByStatusOlderThan_whenSomeEventsAreOld_shouldUpdateOnlyThem(); }
+
+    @Test @DisplayName("IT updateBatchStatusByStatusOlderThan() when nothing is old enough should return zero")
+    void updateBatchStatusByStatusOlderThan_whenNothingIsOldEnough_shouldReturnZero() { delegate.updateBatchStatusByStatusOlderThan_whenNothingIsOldEnough_shouldReturnZero(); }
+
+    @Test @DisplayName("IT updateBatchStatusByStatusOlderThan() should update at most batchSize events")
+    void updateBatchStatusByStatusOlderThan_whenMoreEventsAreOld_shouldUpdateAtMostBatchSize() { delegate.updateBatchStatusByStatusOlderThan_whenMoreEventsAreOld_shouldUpdateAtMostBatchSize(); }
+
+    @Test @DisplayName("IT deleteBatchByStatusOlderThan() should delete only the old events of that status")
+    void deleteBatchByStatusOlderThan_whenSomeEventsAreOld_shouldDeleteOnlyOldOfThatStatus() { delegate.deleteBatchByStatusOlderThan_whenSomeEventsAreOld_shouldDeleteOnlyOldOfThatStatus(); }
+
+    @Test @DisplayName("IT deleteBatchByStatusOlderThan() should delete at most batchSize events")
+    void deleteBatchByStatusOlderThan_whenMoreEventsAreOld_shouldDeleteAtMostBatchSize() { delegate.deleteBatchByStatusOlderThan_whenMoreEventsAreOld_shouldDeleteAtMostBatchSize(); }
 
     @Test @DisplayName("IT save() should persist event correctly")
     void save_singleEvent_persistedCorrectly() { delegate.save_singleEvent_persistedCorrectly(); }
@@ -169,12 +204,8 @@ class OracleOutboxRepositoryIntegrationTests extends BaseOracleIntegrationTests 
     @Test
     @DisplayName("IT findAndLockBatchByEventTypeAndStatus() should lock only matching event type")
     void findAndLockBatchByEventTypeAndStatus_locksOnlyMatchingType() {
-        Instant pastRetryAt = Instant.now().minusSeconds(10).truncatedTo(ChronoUnit.MILLIS);
-
-        OutboxEvent orderEvent   = delegate.buildEventWithNextRetryAt(EventStatus.PENDING, pastRetryAt);
-        OutboxEvent paymentEvent = delegate.buildEventWithTypeAndNextRetryAt(
-                EventStatus.PENDING, "PAYMENT_CREATED", pastRetryAt
-        );
+        OutboxEvent orderEvent   = delegate.buildEvent(EventStatus.PENDING);
+        OutboxEvent paymentEvent = delegate.buildEventWithType(EventStatus.PENDING, "PAYMENT_CREATED");
         repository.saveBatch(List.of(orderEvent, paymentEvent));
 
         List<OutboxEvent> locked = repository.findAndLockBatchByEventTypeAndStatus(
@@ -185,113 +216,5 @@ class OracleOutboxRepositoryIntegrationTests extends BaseOracleIntegrationTests 
                 .extracting(OutboxEvent::getId)
                 .containsOnly(orderEvent.getId())
                 .doesNotContain(paymentEvent.getId());
-    }
-
-    @Test
-    @DisplayName("IT findAndLockBatchByEventTypeAndStatus() should respect next_retry_at threshold")
-    void findAndLockBatchByEventTypeAndStatus_respectsNextRetryAt() {
-        OutboxEvent ready = delegate.buildEventWithNextRetryAt(
-                EventStatus.PENDING, Instant.now().minusSeconds(10).truncatedTo(ChronoUnit.MILLIS)
-        );
-        OutboxEvent notReady = delegate.buildEventWithNextRetryAt(
-                EventStatus.PENDING, Instant.now().plusSeconds(300).truncatedTo(ChronoUnit.MILLIS)
-        );
-        repository.saveBatch(List.of(ready, notReady));
-
-        List<OutboxEvent> locked = repository.findAndLockBatchByEventTypeAndStatus(
-                "ORDER_CREATED", EventStatus.PENDING, 10, UUID.randomUUID(), EventStatus.IN_PROCESS
-        );
-
-        assertThat(locked)
-                .extracting(OutboxEvent::getId)
-                .contains(ready.getId())
-                .doesNotContain(notReady.getId());
-    }
-
-    @Test
-    @DisplayName("IT updateBatchStatusByStatusAndThreshold() should update only old events via SELECT + UPDATE")
-    void updateBatchStatusByStatusAndThreshold_updatesOnlyOldEvents() {
-        repository.saveBatch(List.of(delegate.buildEvent(EventStatus.IN_PROCESS)));
-
-        Instant threshold = Instant.now().plusSeconds(1);
-        int updated = repository.updateBatchStatusByStatusAndThreshold(
-                EventStatus.IN_PROCESS, threshold, 10, EventStatus.PENDING
-        );
-
-        assertThat(updated).isGreaterThanOrEqualTo(1);
-    }
-
-    @Test
-    @DisplayName("IT updateBatchStatusByStatusAndThreshold() should respect batch size via FETCH FIRST")
-    void updateBatchStatusByStatusAndThreshold_respectsLockedBatchSize() {
-        repository.saveBatch(
-                IntStream.range(0, 5)
-                        .mapToObj(i -> delegate.buildEvent(EventStatus.IN_PROCESS))
-                        .toList()
-        );
-
-        Instant threshold = Instant.now().plusSeconds(1);
-        int updated = repository.updateBatchStatusByStatusAndThreshold(
-                EventStatus.IN_PROCESS, threshold, 3, EventStatus.PENDING
-        );
-
-        assertThat(updated).isEqualTo(3);
-    }
-
-    @Test
-    @DisplayName("IT updateBatchStatusByStatusAndThreshold() when no matches should return zero")
-    void updateBatchStatusByStatusAndThreshold_noMatches_returnsZero() {
-        Instant pastThreshold = Instant.now().minusSeconds(3600);
-
-        int updated = repository.updateBatchStatusByStatusAndThreshold(
-                EventStatus.IN_PROCESS, pastThreshold, 10, EventStatus.PENDING
-        );
-
-        assertThat(updated).isEqualTo(0);
-    }
-
-    @Test
-    @DisplayName("IT deleteBatchByStatusAndThreshold() should delete old processed events via SELECT + DELETE")
-    void deleteBatchByStatusAndThreshold_deletesOldEvents() {
-        repository.saveBatch(List.of(
-                delegate.buildEvent(EventStatus.PROCESSED),
-                delegate.buildEvent(EventStatus.PROCESSED)
-        ));
-
-        Instant threshold = Instant.now().plusSeconds(1);
-        int deleted = repository.deleteBatchByStatusAndThreshold(
-                EventStatus.PROCESSED, threshold, 10
-        );
-
-        assertThat(deleted).isGreaterThanOrEqualTo(2);
-    }
-
-    @Test
-    @DisplayName("IT deleteBatchByStatusAndThreshold() should respect batch size via FETCH FIRST")
-    void deleteBatchByStatusAndThreshold_respectsBatchSize() {
-        repository.saveBatch(
-                IntStream.range(0, 5)
-                        .mapToObj(i -> delegate.buildEvent(EventStatus.PROCESSED))
-                        .toList()
-        );
-
-        Instant threshold = Instant.now().plusSeconds(1);
-        int deleted = repository.deleteBatchByStatusAndThreshold(
-                EventStatus.PROCESSED, threshold, 3
-        );
-
-        assertThat(deleted).isEqualTo(3);
-    }
-
-    @Test
-    @DisplayName("IT deleteBatchByStatusAndThreshold() when no matches should return zero")
-    void deleteBatchByStatusAndThreshold_noMatches_returnsZero() {
-        Instant pastThreshold = Instant.now().minusSeconds(3600);
-
-        int deleted = repository.deleteBatchByStatusAndThreshold(
-                EventStatus.PROCESSED, pastThreshold, 10
-        );
-
-        assertThat(deleted).isEqualTo(0);
     }
 }

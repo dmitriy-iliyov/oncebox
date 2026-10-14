@@ -14,9 +14,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
 import java.util.UUID;
-
 
 @Transactional
 class PostgreSqlDefaultOutboxProcessorIntegrationTests extends BasePostgresSqlIntegrationTests {
@@ -35,13 +33,10 @@ class PostgreSqlDefaultOutboxProcessorIntegrationTests extends BasePostgresSqlIn
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    @Autowired
-    private Clock clock;
-
     @BeforeEach
     void setUp() {
         Mockito.reset(outboxSender);
-        DefaultOutboxProcessor processor = new DefaultOutboxProcessor(outboxManager, outboxSender, clock);
+        DefaultOutboxProcessor processor = new DefaultOutboxProcessor(outboxManager, outboxSender);
         this.verifier = new DefaultOutboxProcessorVerifier(
                 jdbcTemplate,
                 outboxRepository,

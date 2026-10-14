@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.core.outbox.dlq;
 
-import java.time.Instant;
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -13,7 +13,8 @@ import java.util.UUID;
 public interface OutboxDlqRepository {
 
     /**
-     * Saves a batch of DLQ events to the repository.
+     * Saves a batch of DLQ events to the repository, writing {@code next_retry_at}, {@code created_at} and
+     * {@code updated_at} from each event; {@code moved_at} is set by the database clock.
      * <p>
      * Does nothing if the list is null or empty.
      *
@@ -46,5 +47,16 @@ public interface OutboxDlqRepository {
      */
     int deleteBatch(Set<UUID> ids);
 
-    int deleteBatchByStatusAndThreshold(DlqStatus status, Instant threshold, int batchSize);
+    /**
+     * Deletes DLQ events that match a given status and were last updated at least {@code age} ago by the database
+     * clock.
+     * <p>
+     * At most {@code batchSize} events are deleted per call.
+     *
+     * @param status    the DLQ status of events to delete.
+     * @param age       how long ago an event has to have been last updated to be deleted.
+     * @param batchSize the maximum number of events to delete in one call.
+     * @return          the number of deleted events.
+     */
+    int deleteBatchByStatusOlderThan(DlqStatus status, Duration age, int batchSize);
 }

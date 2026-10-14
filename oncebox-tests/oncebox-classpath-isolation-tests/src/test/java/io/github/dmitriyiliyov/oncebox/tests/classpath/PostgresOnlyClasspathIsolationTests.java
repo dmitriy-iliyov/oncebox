@@ -15,7 +15,6 @@ import org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerA
 import org.springframework.boot.autoconfigure.transaction.TransactionAutoConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
-import java.time.Clock;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
@@ -46,7 +45,6 @@ class PostgresOnlyClasspathIsolationTests {
 
     private ApplicationContextRunner baseRunner() {
         return new ApplicationContextRunner()
-                .withBean(Clock.class, Clock::systemDefaultZone)
                 .withPropertyValues(
                         "spring.datasource.url=" + PostgresTestContainerSingleton.INSTANCE.getJdbcUrl(),
                         "spring.datasource.driver-class-name=org.postgresql.Driver",

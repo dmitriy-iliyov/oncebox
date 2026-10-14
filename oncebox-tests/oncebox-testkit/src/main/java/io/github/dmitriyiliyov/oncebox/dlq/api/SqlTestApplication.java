@@ -2,7 +2,6 @@ package io.github.dmitriyiliyov.oncebox.dlq.api;
 
 
 import io.github.dmitriyiliyov.oncebox.dlq.api.it.config.BaseIntegrationTestsConfig;
-import io.github.dmitriyiliyov.oncebox.dlq.api.it.config.ClockConfig;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
@@ -25,8 +24,5 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
         }
 )
 @EnableTransactionManagement
-@Import({
-        ClockConfig.class,
-        BaseIntegrationTestsConfig.class
-})
+@Import(BaseIntegrationTestsConfig.class)
 public class SqlTestApplication { }

@@ -3,10 +3,6 @@ package io.github.dmitriyiliyov.oncebox.starter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneId;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class DefaultOnceboxJobCreateCommandIntegrationVerifier {
@@ -22,8 +18,7 @@ public class DefaultOnceboxJobCreateCommandIntegrationVerifier {
         dataSource.setPassword(dbPassword);
         this.jdbcTemplate = new JdbcTemplate(dataSource);
 
-        Clock clock = Clock.fixed(Instant.now(), ZoneId.of("UTC"));
-        this.command = new DefaultOnceboxJobCreateCommand(this.jdbcTemplate, clock, "integration_job", 1000L, 5000L);
+        this.command = new DefaultOnceboxJobCreateCommand(this.jdbcTemplate, "integration_job", 1000L, 5000L);
     }
 
     public void setUpSchema() {

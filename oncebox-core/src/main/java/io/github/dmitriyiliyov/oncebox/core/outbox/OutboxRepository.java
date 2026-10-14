@@ -1,9 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.core.outbox;
 
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
-
-import java.time.Instant;
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -30,6 +27,17 @@ public interface OutboxRepository {
      * @param eventBatch the list of events to save.
      */
     void saveBatch(List<OutboxEvent> eventBatch);
+
+    /**
+     * Saves a batch of outbox events that already have a creation time, such as events brought back from the DLQ.
+     * <p>
+     * {@code created_at} is written from each event; the next retry time and {@code updated_at} are set by the
+     * database clock, so the events are due at once. Does nothing if the list is empty.
+     *
+     * @param eventBatch the list of events to save.
+     * @throws NullPointerException if an event has no creation time.
+     */
+    void saveBatchWithCreatedAt(List<OutboxEvent> eventBatch);
 
     /**
      * Finds and locks a batch of events by their type and status.
@@ -92,25 +100,9 @@ public interface OutboxRepository {
     int updateBatchStatusByLockToken(Set<UUID> ids, UUID lockToken, EventStatus newStatus);
 
     /**
-     * Updates the status of events that match a given status and were last updated
-     * at or before the given threshold.
-     * <p>
-     * Typically used for recovering events stuck in {@link EventStatus#IN_PROCESS}.
-     * At most {@code batchSize} events are updated per call.
-     *
-     * @param status    the current status of events to update.
-     * @param threshold events with {@code updated_at} at or before this timestamp will be updated.
-     * @param batchSize the maximum number of events to update in one call.
-     * @param newStatus the new status to set.
-     * @return          the number of updated events.
-     */
-    int updateBatchStatusByStatusAndThreshold(EventStatus status,
-                                              Instant threshold,
-                                              int batchSize,
-                                              EventStatus newStatus);
-
-    /**
-     * Updates a batch of events using the state carried by each event object.
+     * Updates a batch of events using the state carried by each event object: its retry count and status are
+     * written, its next retry time is set to the database time plus its retry delay, or left as it is when the
+     * delay is {@code null}.
      * <p>
      * Used when finalizing a batch where some events failed processing.
      * Does nothing and returns 0 if the list is null or empty.
@@ -122,6 +114,24 @@ public interface OutboxRepository {
      * @return          the number of updated events.
      */
     int partiallyUpdateBatchByLockToken(List<OutboxEvent> events, UUID lockToken);
+
+    /**
+     * Updates the status of events that match a given status and were last updated at least {@code age} ago by the
+     * database clock.
+     * <p>
+     * Typically used for recovering events stuck in {@link EventStatus#IN_PROCESS}.
+     * At most {@code batchSize} events are updated per call.
+     *
+     * @param status    the current status of events to update.
+     * @param age       how long ago an event has to have been last updated to be updated.
+     * @param batchSize the maximum number of events to update in one call.
+     * @param newStatus the new status to set.
+     * @return          the number of updated events.
+     */
+    int updateBatchStatusByStatusOlderThan(EventStatus status,
+                                           Duration age,
+                                           int batchSize,
+                                           EventStatus newStatus);
 
     /**
      * Deletes a batch of events by their IDs.
@@ -136,15 +146,14 @@ public interface OutboxRepository {
     int deleteBatch(Set<UUID> ids);
 
     /**
-     * Deletes events that match a given status and were last updated
-     * at or before the given threshold.
+     * Deletes events that match a given status and were last updated at least {@code age} ago by the database clock.
      * <p>
      * At most {@code batchSize} events are deleted per call.
      *
      * @param status    the status of events to delete.
-     * @param threshold events with {@code updated_at} at or before this timestamp will be deleted.
+     * @param age       how long ago an event has to have been last updated to be deleted.
      * @param batchSize the maximum number of events to delete in one call.
      * @return          the number of deleted events.
      */
-    int deleteBatchByStatusAndThreshold(EventStatus status, Instant threshold, int batchSize);
+    int deleteBatchByStatusOlderThan(EventStatus status, Duration age, int batchSize);
 }

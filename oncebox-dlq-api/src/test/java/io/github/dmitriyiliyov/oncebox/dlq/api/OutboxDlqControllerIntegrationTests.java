@@ -1,9 +1,9 @@
 package io.github.dmitriyiliyov.oncebox.dlq.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DlqStatus;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.OutboxDlqEvent;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
 import io.github.dmitriyiliyov.oncebox.dlq.api.exception.OutboxDlqEventInProcessException;
 import io.github.dmitriyiliyov.oncebox.dlq.api.exception.OutboxDlqEventNotFoundException;
 import org.junit.jupiter.api.DisplayName;

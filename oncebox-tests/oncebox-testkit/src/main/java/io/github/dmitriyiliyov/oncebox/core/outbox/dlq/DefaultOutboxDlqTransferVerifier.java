@@ -1,8 +1,8 @@
 package io.github.dmitriyiliyov.oncebox.core.outbox.dlq;
 
+import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxRepository;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.Instant;
@@ -159,6 +159,23 @@ public class DefaultOutboxDlqTransferVerifier {
         Map<String, Object> row = rows.get(0);
         assertThat(row.get("event_type")).isEqualTo(toRetry.getEventType());
         assertThat(row.get("payload")).isEqualTo(toRetry.getPayload());
+    }
+
+    public void transferFromDlq_whenEventIsBroughtBack_shouldKeepItsCreationTime() {
+        Instant createdAt = Instant.parse("2026-01-01T10:00:00Z");
+        OutboxDlqEvent toRetry = new OutboxDlqEvent(
+                UUID.randomUUID(), EventStatus.FAILED, "ORDER_CREATED",
+                "io.example.OrderCreated", "{\"orderId\":\"123\"}",
+                3, createdAt, createdAt, createdAt, DlqStatus.TO_RETRY, null
+        );
+        dlqRepository.saveBatch(List.of(toRetry));
+
+        transfer.transferFromDlq(10);
+
+        assertThat(outboxRepository.findAndLockBatchByStatus(EventStatus.PENDING, 10, EventStatus.IN_PROCESS))
+                .singleElement()
+                .extracting(OutboxEvent::getCreatedAt)
+                .isEqualTo(createdAt);
     }
 
     public void transferToDlq_concurrent(int eventCount, int threadCount) throws InterruptedException {

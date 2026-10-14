@@ -3,7 +3,6 @@ package io.github.dmitriyiliyov.oncebox.starter.outbox;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.dmitriyiliyov.oncebox.aop.OutboxPublishAspect;
 import io.github.dmitriyiliyov.oncebox.core.outbox.*;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
 import io.github.dmitriyiliyov.oncebox.metrics.outbox.OutboxManagerMetricsDecorator;
 import io.github.dmitriyiliyov.oncebox.metrics.outbox.OutboxMetrics;
 import io.github.dmitriyiliyov.oncebox.metrics.outbox.OutboxMetricsRepository;
@@ -26,8 +25,6 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.transaction.IllegalTransactionStateException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-
-import java.time.Clock;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -58,7 +55,6 @@ public class OutboxAutoConfigurationVerifier {
                         KafkaAutoConfiguration.class
                 ))
                 .withBean(MeterRegistry.class, SimpleMeterRegistry::new)
-                .withBean(Clock.class, Clock::systemDefaultZone)
                 .withBean(ObjectMapper.class, ObjectMapper::new)
                 .withPropertyValues(
                         "spring.datasource.url=" + dbUrl,

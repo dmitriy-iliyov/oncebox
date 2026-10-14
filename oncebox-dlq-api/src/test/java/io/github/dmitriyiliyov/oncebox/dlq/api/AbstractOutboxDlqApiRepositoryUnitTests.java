@@ -9,13 +9,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementSetter;
 import org.springframework.jdbc.core.RowMapper;
 
-import java.time.Clock;
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -35,63 +34,29 @@ class AbstractOutboxDlqApiRepositoryUnitTests {
 
     ResultSetMapper mapper = mock(ResultSetMapper.class);
 
-    Clock clock = mock(Clock.class);
-
     AbstractOutboxDlqApiRepository tested;
 
     @BeforeEach
     public void construct() {
-        tested = new AbstractOutboxDlqApiRepository(jdbcTemplate, uuidHelper, mapper, clock) {
-            @Override
-            protected Object convertIdParameter(UUID id) {
-                return id;
-            }
-        };
-        lenient().when(clock.instant()).thenReturn(Instant.now());
+        tested = repository(jdbcTemplate, uuidHelper, mapper);
     }
 
     @Test
     @DisplayName("UT constructor should throw NPE when jdbcTemplate is null")
     void constructor_shouldThrowNPE_whenJdbcTemplateIsNull() {
-        assertThatThrownBy(() -> new AbstractOutboxDlqApiRepository(null, uuidHelper, mapper, clock) {
-            @Override
-            protected Object convertIdParameter(UUID id) {
-                return id;
-            }
-        }).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> repository(null, uuidHelper, mapper)).isInstanceOf(NullPointerException.class);
     }
 
     @Test
     @DisplayName("UT constructor should throw NPE when uuidHelper is null")
     void constructor_shouldThrowNPE_whenUuidHelperIsNull() {
-        assertThatThrownBy(() -> new AbstractOutboxDlqApiRepository(jdbcTemplate, null, mapper, clock) {
-            @Override
-            protected Object convertIdParameter(UUID id) {
-                return id;
-            }
-        }).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> repository(jdbcTemplate, null, mapper)).isInstanceOf(NullPointerException.class);
     }
 
     @Test
     @DisplayName("UT constructor should throw NPE when mapper is null")
     void constructor_shouldThrowNPE_whenMapperIsNull() {
-        assertThatThrownBy(() -> new AbstractOutboxDlqApiRepository(jdbcTemplate, uuidHelper, null, clock) {
-            @Override
-            protected Object convertIdParameter(UUID id) {
-                return id;
-            }
-        }).isInstanceOf(NullPointerException.class);
-    }
-
-    @Test
-    @DisplayName("UT constructor should throw NPE when clock is null")
-    void constructor_shouldThrowNPE_whenClockIsNull() {
-        assertThatThrownBy(() -> new AbstractOutboxDlqApiRepository(jdbcTemplate, uuidHelper, mapper, null) {
-            @Override
-            protected Object convertIdParameter(UUID id) {
-                return id;
-            }
-        }).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> repository(jdbcTemplate, uuidHelper, null)).isInstanceOf(NullPointerException.class);
     }
 
     @Test
@@ -313,11 +278,25 @@ class AbstractOutboxDlqApiRepositoryUnitTests {
     }
 
     @Test
-    @DisplayName("UT updateStatus() should call jdbc")
-    void updateStatus_shouldCallJdbc() {
-        tested.updateStatus(UUID.randomUUID(), DlqStatus.MOVED);
+    @DisplayName("UT updateStatus() should set updated_at to the database time and bind only the status and the id")
+    void updateStatus_whenCalled_shouldSetUpdatedAtToDatabaseTime() throws Exception {
+        // given
+        UUID id = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1");
 
-        verify(jdbcTemplate).update(anyString(), any(PreparedStatementSetter.class));
+        // when
+        tested.updateStatus(id, DlqStatus.MOVED);
+
+        // then
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<PreparedStatementSetter> setter = ArgumentCaptor.forClass(PreparedStatementSetter.class);
+        verify(jdbcTemplate).update(sql.capture(), setter.capture());
+        assertThat(sql.getValue()).contains("updated_at = " + DB_NOW);
+
+        java.sql.PreparedStatement ps = mock(java.sql.PreparedStatement.class);
+        setter.getValue().setValues(ps);
+        verify(ps).setString(1, DlqStatus.MOVED.name());
+        verify(uuidHelper).setToPs(ps, 2, id);
+        verifyNoMoreInteractions(ps);
     }
 
     @Test
@@ -346,7 +325,11 @@ class AbstractOutboxDlqApiRepositoryUnitTests {
         int result = tested.updateBatchStatus(filter, DlqStatus.IN_PROCESS);
 
         assertThat(result).isEqualTo(3);
-        verify(jdbcTemplate).update(anyString(), any(Object[].class));
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object[]> params = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbcTemplate).update(sql.capture(), params.capture());
+        assertThat(sql.getValue()).contains("updated_at = " + DB_NOW);
+        assertThat(params.getValue()).containsExactly(DlqStatus.MOVED.name(), DlqStatus.IN_PROCESS.name(), "ORDER_CREATED");
     }
 
     @Test
@@ -459,5 +442,23 @@ class AbstractOutboxDlqApiRepositoryUnitTests {
 
         assertThatThrownBy(() -> tested.deleteBatch(filter, DlqStatus.IN_PROCESS))
                 .isInstanceOf(InvalidDlqFilterException.class);
+    }
+
+    private static final String DB_NOW = "db_now()";
+
+    private static AbstractOutboxDlqApiRepository repository(JdbcTemplate jdbcTemplate,
+                                                             SqlUuidHelper uuidHelper,
+                                                             ResultSetMapper mapper) {
+        return new AbstractOutboxDlqApiRepository(jdbcTemplate, uuidHelper, mapper) {
+            @Override
+            protected Object convertIdParameter(UUID id) {
+                return id;
+            }
+
+            @Override
+            protected String currentTimestampSql() {
+                return DB_NOW;
+            }
+        };
     }
 }

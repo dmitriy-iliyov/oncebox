@@ -14,8 +14,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.time.Clock;
-
 @Configuration
 @ConditionalOnDatabaseType(type = DatabaseType.POSTGRESQL)
 @ConditionalOnClass(PostgreSqlOutboxDlqApiRepository.class)
@@ -23,13 +21,11 @@ public class PostgreSqlOutboxDlqApiRepositoryConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public OutboxDlqApiRepository postgreSqlOutboxDlqApiRepository(@Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate,
-                                                                   Clock clock) {
+    public OutboxDlqApiRepository postgreSqlOutboxDlqApiRepository(@Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate) {
         return new PostgreSqlOutboxDlqApiRepository(
                 jdbcTemplate,
                 new PostgreSqlUuidHelper(),
-                new DefaultResultSetMapper(),
-                clock
+                new DefaultResultSetMapper()
         );
     }
 }

@@ -4,19 +4,16 @@ import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DlqStatus;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.OutboxDlqEvent;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.OutboxDlqRepository;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.OutboxDlqRepositoryVerifier;
-import io.github.dmitriyiliyov.oncebox.core.utils.DefaultBytesResultSetMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
 import java.util.List;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Transactional
 class MySqlOutboxDlqRepositoryIntegrationTests extends BaseMySqlIntegrationTests {
@@ -26,8 +23,7 @@ class MySqlOutboxDlqRepositoryIntegrationTests extends BaseMySqlIntegrationTests
 
     private final JdbcTemplate jdbcTemplate;
     private final MySqlUuidHelper mySqlUuidHelper = new MySqlUuidHelper();
-    private final DefaultBytesResultSetMapper mapper = new DefaultBytesResultSetMapper();
-    private final Clock clock = Clock.systemUTC();
+    private final MySqlResultSetMapper mapper = new MySqlResultSetMapper();
 
     public MySqlOutboxDlqRepositoryIntegrationTests(
             @Qualifier("mysqlOutboxDlqRepository") OutboxDlqRepository repository,
@@ -39,22 +35,27 @@ class MySqlOutboxDlqRepositoryIntegrationTests extends BaseMySqlIntegrationTests
                 repository,
                 jdbcTemplate,
                 new MySqlUuidHelper(),
-                new DefaultBytesResultSetMapper()
+                new MySqlResultSetMapper(),
+                new MySqlDatabaseClock(jdbcTemplate)
         );
-    }
-
-    @Test
-    @DisplayName("UT constructor when clock is null should throw NullPointerException")
-    void constructor_whenClockIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new MySqlOutboxDlqRepository(jdbcTemplate, mySqlUuidHelper, mapper, null))
-                .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("clock cannot be null");
     }
 
     @Test
     @DisplayName("IT saveBatch() with single event should persist correctly")
     void saveBatch_singleEvent_persistedCorrectly() {
         delegate.saveBatch_singleEvent_persistedCorrectly();
+    }
+
+    @Test
+    @DisplayName("IT saveBatch() when an event is moved should keep its times and stamp moved_at by the database clock")
+    void saveBatch_whenEventIsMoved_shouldKeepItsTimesAndStampMovedAtByDatabaseClock() {
+        delegate.saveBatch_whenEventIsMoved_shouldKeepItsTimesAndStampMovedAtByDatabaseClock();
+    }
+
+    @Test
+    @DisplayName("IT saveBatch() when read back in another JVM time zone should give back the same moments")
+    void saveBatch_whenReadInAnotherJvmZone_shouldGiveBackTheSameMoments() {
+        delegate.saveBatch_whenReadInAnotherJvmZone_shouldGiveBackTheSameMoments();
     }
 
     @Test
@@ -136,20 +137,20 @@ class MySqlOutboxDlqRepositoryIntegrationTests extends BaseMySqlIntegrationTests
     }
 
     @Test
-    @DisplayName("IT deleteBatchByStatusAndThreshold() should not delete events newer than threshold")
-    void deleteBatchByStatusAndThreshold_newerThanThreshold_notDeleted() {
-        delegate.deleteBatchByStatusAndThreshold_newerThanThreshold_notDeleted();
+    @DisplayName("IT deleteBatchByStatusOlderThan() should not delete events newer than threshold")
+    void deleteBatchByStatusOlderThan_newerThanAge_notDeleted() {
+        delegate.deleteBatchByStatusOlderThan_newerThanAge_notDeleted();
     }
 
     @Test
-    @DisplayName("IT deleteBatchByStatusAndThreshold() should not delete events with different status")
-    void deleteBatchByStatusAndThreshold_wrongStatus_notDeleted() {
-        delegate.deleteBatchByStatusAndThreshold_wrongStatus_notDeleted();
+    @DisplayName("IT deleteBatchByStatusOlderThan() should not delete events with different status")
+    void deleteBatchByStatusOlderThan_wrongStatus_notDeleted() {
+        delegate.deleteBatchByStatusOlderThan_wrongStatus_notDeleted();
     }
 
     @Test
-    @DisplayName("IT deleteBatchByStatusAndThreshold() when no matches should return zero")
-    void deleteBatchByStatusAndThreshold_noMatches_returnsZero() {
-        delegate.deleteBatchByStatusAndThreshold_noMatches_returnsZero();
+    @DisplayName("IT deleteBatchByStatusOlderThan() when no matches should return zero")
+    void deleteBatchByStatusOlderThan_noMatches_returnsZero() {
+        delegate.deleteBatchByStatusOlderThan_noMatches_returnsZero();
     }
 }

@@ -15,7 +15,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.ByteBuffer;
-import java.time.Clock;
 import java.util.UUID;
 
 @Transactional
@@ -34,13 +33,10 @@ public class OracleDefaultOutboxProcessorIntegrationTests extends BaseOracleInte
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    @Autowired
-    private Clock clock;
-
     @BeforeEach
     void setUp() {
         Mockito.reset(outboxSender);
-        DefaultOutboxProcessor processor = new DefaultOutboxProcessor(outboxManager, outboxSender, clock);
+        DefaultOutboxProcessor processor = new DefaultOutboxProcessor(outboxManager, outboxSender);
         this.verifier = new DefaultOutboxProcessorVerifier(
                 jdbcTemplate,
                 outboxRepository,

@@ -1,29 +1,34 @@
 package io.github.dmitriyiliyov.oncebox.core.outbox;
 
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
+import io.github.dmitriyiliyov.oncebox.core.TestDatabaseClock;
 
+import java.time.Duration;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
+import static org.assertj.core.api.Assertions.*;
 
 public class AbstractOutboxRepositoryIntegrationTests {
 
     private static final UUID LOCK_TOKEN = UUID.fromString("0192f5a0-0000-7000-8000-0000000000b1");
     private static final UUID OTHER_LOCK_TOKEN = UUID.fromString("0192f5a0-0000-7000-8000-0000000000b2");
+    private static final String TABLE = "outbox_events";
+    private static final Duration AGE = Duration.ofMinutes(30);
+    private static final Duration LONG_AGO = Duration.ofHours(1).negated();
+    // the database time moves on between the statement that sets a time and the one that reads it back
+    private static final Duration SLACK = Duration.ofSeconds(30);
 
     private final OutboxRepository repository;
+    private final TestDatabaseClock clock;
 
-    public AbstractOutboxRepositoryIntegrationTests(OutboxRepository repository) {
+    public AbstractOutboxRepositoryIntegrationTests(OutboxRepository repository, TestDatabaseClock clock) {
         this.repository = repository;
+        this.clock = clock;
     }
 
     public void save_singleEvent_persistedCorrectly() {
@@ -44,6 +49,16 @@ public class AbstractOutboxRepositoryIntegrationTests {
         assertThat(found.getPayloadType()).isEqualTo(event.getPayloadType());
         assertThat(found.getPayload()).isEqualTo(event.getPayload());
         assertThat(found.getRetryCount()).isEqualTo(event.getRetryCount());
+    }
+
+    public void save_whenEventIsNew_shouldLeaveEveryTimeToDatabase() {
+        OutboxEvent event = buildEvent(EventStatus.PENDING);
+
+        repository.save(event);
+
+        assertThat(distance(event.getId(), "created_at")).isBetween(SLACK.negated(), SLACK);
+        assertThat(distance(event.getId(), "updated_at")).isBetween(SLACK.negated(), SLACK);
+        assertThat(distance(event.getId(), "next_retry_at")).isBetween(SLACK.negated(), SLACK);
     }
 
     public void saveBatch_multipleEvents_allPersisted() {
@@ -68,6 +83,71 @@ public class AbstractOutboxRepositoryIntegrationTests {
     public void saveBatch_emptyList_doesNotThrow() {
         assertThatCode(() -> repository.saveBatch(List.of()))
                 .doesNotThrowAnyException();
+    }
+
+    public void saveBatchWithCreatedAt_whenEventHasCreatedAt_shouldKeepItAndMakeEventDueAtOnce() {
+        Instant createdAt = Instant.parse("2026-01-01T10:00:00Z");
+        String eventType = "restored-" + UUID.randomUUID();
+        OutboxEvent event = buildEventWithCreatedAt(eventType, createdAt);
+
+        repository.saveBatchWithCreatedAt(List.of(event));
+
+        assertThat(distance(event.getId(), "next_retry_at")).isBetween(SLACK.negated(), SLACK);
+        assertThat(distance(event.getId(), "updated_at")).isBetween(SLACK.negated(), SLACK);
+        assertThat(repository.findAndLockBatchByEventTypeAndStatus(
+                eventType, EventStatus.PENDING, 10, LOCK_TOKEN, EventStatus.IN_PROCESS
+        )).singleElement().extracting(OutboxEvent::getCreatedAt).isEqualTo(createdAt);
+    }
+
+    public void saveBatchWithCreatedAt_whenReadInAnotherJvmZone_shouldGiveBackTheSameMoment() {
+        Instant createdAt = Instant.parse("2026-01-01T10:00:00Z");
+        String eventType = "restored-" + UUID.randomUUID();
+        TimeZone original = TimeZone.getDefault();
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+            repository.saveBatchWithCreatedAt(List.of(buildEventWithCreatedAt(eventType, createdAt)));
+            TimeZone.setDefault(TimeZone.getTimeZone("GMT+03:00"));
+
+            List<OutboxEvent> found = repository.findAndLockBatchByEventTypeAndStatus(
+                    eventType, EventStatus.PENDING, 10, LOCK_TOKEN, EventStatus.IN_PROCESS
+            );
+
+            assertThat(found).singleElement().extracting(OutboxEvent::getCreatedAt).isEqualTo(createdAt);
+        } finally {
+            TimeZone.setDefault(original);
+        }
+    }
+
+    public void saveBatchWithCreatedAt_whenEventHasNoCreatedAt_shouldThrowAndSaveNothing() {
+        String eventType = "restored-" + UUID.randomUUID();
+        OutboxEvent event = buildEventWithType(EventStatus.PENDING, eventType);
+
+        assertThatThrownBy(() -> repository.saveBatchWithCreatedAt(List.of(event)))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("createdAt cannot be null");
+        assertThat(repository.findAndLockBatchByEventTypeAndStatus(
+                eventType, EventStatus.PENDING, 10, LOCK_TOKEN, EventStatus.IN_PROCESS
+        )).isEmpty();
+    }
+
+    public void findAndLockBatchByEventTypeAndStatus_whenNextRetryIsAhead_shouldSkipEvent() {
+        String eventType = "retry-" + UUID.randomUUID();
+        OutboxEvent due = buildEventWithType(EventStatus.PENDING, eventType);
+        OutboxEvent notDue = buildEventWithType(EventStatus.PENDING, eventType);
+        repository.saveBatch(List.of(due, notDue));
+        clock.shift(TABLE, "next_retry_at", notDue.getId(), Duration.ofMinutes(5));
+
+        List<OutboxEvent> locked = repository.findAndLockBatchByEventTypeAndStatus(
+                eventType, EventStatus.PENDING, 10, LOCK_TOKEN, EventStatus.IN_PROCESS
+        );
+
+        assertThat(locked).extracting(OutboxEvent::getId).containsExactly(due.getId());
+    }
+
+    public void findAndLockBatchByEventTypeAndStatus_whenCaptured_shouldStampUpdatedAtByDatabaseClock() {
+        UUID id = capture(LOCK_TOKEN, 1).iterator().next();
+
+        assertThat(distance(id, "updated_at")).isBetween(SLACK.negated(), SLACK);
     }
 
     public void updateBatchStatus_toPending_updatesAll() {
@@ -102,7 +182,7 @@ public class AbstractOutboxRepositoryIntegrationTests {
 
     public void updateBatchStatus_doesNotAffectOtherEvents() {
         Set<UUID> target = capture(LOCK_TOKEN, 1);
-        OutboxEvent unrelated = buildEventWithNextRetryAt(EventStatus.PENDING, Instant.now().minusSeconds(1));
+        OutboxEvent unrelated = buildEvent(EventStatus.PENDING);
         repository.saveBatch(List.of(unrelated));
 
         repository.updateBatchStatusByLockToken(target, LOCK_TOKEN, EventStatus.PROCESSED);
@@ -136,13 +216,33 @@ public class AbstractOutboxRepositoryIntegrationTests {
     public void partiallyUpdateBatch_incrementsRetryCount() {
         UUID id = capture(LOCK_TOKEN, 1).iterator().next();
 
-        OutboxEvent updated = buildEventWithRetry(
-                id, EventStatus.FAILED, 1,
-                Instant.now().plusSeconds(60).truncatedTo(ChronoUnit.MILLIS)
+        int count = repository.partiallyUpdateBatchByLockToken(
+                List.of(buildEventWithRetry(id, EventStatus.FAILED, 1, null)), LOCK_TOKEN
         );
-        int count = repository.partiallyUpdateBatchByLockToken(List.of(updated), LOCK_TOKEN);
 
         assertThat(count).isEqualTo(1);
+    }
+
+    public void partiallyUpdateBatch_whenDelayIsGiven_shouldCountNextRetryFromDatabaseTime() {
+        UUID id = capture(LOCK_TOKEN, 1).iterator().next();
+        Duration delay = Duration.ofMinutes(10);
+
+        repository.partiallyUpdateBatchByLockToken(
+                List.of(buildEventWithRetry(id, EventStatus.PENDING, 1, delay)), LOCK_TOKEN
+        );
+
+        assertThat(distance(id, "next_retry_at")).isBetween(delay.minus(SLACK), delay.plus(SLACK));
+    }
+
+    public void partiallyUpdateBatch_whenDelayIsNull_shouldKeepNextRetryAt() {
+        UUID id = capture(LOCK_TOKEN, 1).iterator().next();
+        clock.shift(TABLE, "next_retry_at", id, LONG_AGO);
+
+        repository.partiallyUpdateBatchByLockToken(
+                List.of(buildEventWithRetry(id, EventStatus.FAILED, 3, null)), LOCK_TOKEN
+        );
+
+        assertThat(distance(id, "next_retry_at")).isBetween(LONG_AGO.minus(SLACK), LONG_AGO.plus(SLACK));
     }
 
     public void partiallyUpdateBatch_emptyList_returnsZero() {
@@ -156,10 +256,9 @@ public class AbstractOutboxRepositoryIntegrationTests {
     public void partiallyUpdateBatch_multipleEvents_allUpdated() {
         List<UUID> ids = List.copyOf(capture(LOCK_TOKEN, 2));
 
-        Instant nextRetry = Instant.now().plusSeconds(60).truncatedTo(ChronoUnit.MILLIS);
         int count = repository.partiallyUpdateBatchByLockToken(List.of(
-                buildEventWithRetry(ids.get(0), EventStatus.FAILED, 1, nextRetry),
-                buildEventWithRetry(ids.get(1), EventStatus.FAILED, 2, nextRetry)
+                buildEventWithRetry(ids.get(0), EventStatus.FAILED, 1, Duration.ofMinutes(1)),
+                buildEventWithRetry(ids.get(1), EventStatus.FAILED, 2, Duration.ofMinutes(1))
         ), LOCK_TOKEN);
 
         assertThat(count).isEqualTo(2);
@@ -167,8 +266,7 @@ public class AbstractOutboxRepositoryIntegrationTests {
 
     public void partiallyUpdateBatch_whenHeldByAnotherLockToken_updatesNothing() {
         UUID id = capture(LOCK_TOKEN, 1).iterator().next();
-        Instant nextRetry = Instant.now().plusSeconds(60).truncatedTo(ChronoUnit.MILLIS);
-        List<OutboxEvent> outcome = List.of(buildEventWithRetry(id, EventStatus.FAILED, 1, nextRetry));
+        List<OutboxEvent> outcome = List.of(buildEventWithRetry(id, EventStatus.FAILED, 1, Duration.ofMinutes(1)));
 
         int stale = repository.partiallyUpdateBatchByLockToken(outcome, OTHER_LOCK_TOKEN);
 
@@ -184,6 +282,63 @@ public class AbstractOutboxRepositoryIntegrationTests {
 
         assertThat(relocked).extracting(OutboxEvent::getId).containsAll(ids);
         assertThat(repository.updateBatchStatusByLockToken(ids, LOCK_TOKEN, EventStatus.PROCESSED)).isEqualTo(1);
+    }
+
+    public void updateBatchStatusByStatusOlderThan_whenSomeEventsAreOld_shouldUpdateOnlyThem() {
+        OutboxEvent old = buildEvent(EventStatus.IN_PROCESS);
+        OutboxEvent fresh = buildEvent(EventStatus.IN_PROCESS);
+        repository.saveBatch(List.of(old, fresh));
+        clock.shift(TABLE, "updated_at", old.getId(), LONG_AGO);
+
+        int updated = repository.updateBatchStatusByStatusOlderThan(EventStatus.IN_PROCESS, AGE, 10, EventStatus.PENDING);
+
+        assertThat(updated).isEqualTo(1);
+        assertThat(repository.findAndLockBatchByStatus(EventStatus.PENDING, 10, EventStatus.IN_PROCESS))
+                .extracting(OutboxEvent::getId)
+                .containsExactly(old.getId());
+    }
+
+    public void updateBatchStatusByStatusOlderThan_whenNothingIsOldEnough_shouldReturnZero() {
+        repository.saveBatch(List.of(buildEvent(EventStatus.IN_PROCESS)));
+
+        int updated = repository.updateBatchStatusByStatusOlderThan(EventStatus.IN_PROCESS, AGE, 10, EventStatus.PENDING);
+
+        assertThat(updated).isZero();
+    }
+
+    public void updateBatchStatusByStatusOlderThan_whenMoreEventsAreOld_shouldUpdateAtMostBatchSize() {
+        List<OutboxEvent> events = IntStream.range(0, 5).mapToObj(i -> buildEvent(EventStatus.IN_PROCESS)).toList();
+        repository.saveBatch(events);
+        events.forEach(event -> clock.shift(TABLE, "updated_at", event.getId(), LONG_AGO));
+
+        int updated = repository.updateBatchStatusByStatusOlderThan(EventStatus.IN_PROCESS, AGE, 3, EventStatus.PENDING);
+
+        assertThat(updated).isEqualTo(3);
+    }
+
+    public void deleteBatchByStatusOlderThan_whenSomeEventsAreOld_shouldDeleteOnlyOldOfThatStatus() {
+        OutboxEvent oldProcessed = buildEvent(EventStatus.PROCESSED);
+        OutboxEvent freshProcessed = buildEvent(EventStatus.PROCESSED);
+        OutboxEvent oldPending = buildEvent(EventStatus.PENDING);
+        repository.saveBatch(List.of(oldProcessed, freshProcessed, oldPending));
+        clock.shift(TABLE, "updated_at", oldProcessed.getId(), LONG_AGO);
+        clock.shift(TABLE, "updated_at", oldPending.getId(), LONG_AGO);
+
+        int deleted = repository.deleteBatchByStatusOlderThan(EventStatus.PROCESSED, AGE, 10);
+
+        assertThat(deleted).isEqualTo(1);
+        assertThat(repository.deleteBatch(Set.of(oldProcessed.getId(), freshProcessed.getId(), oldPending.getId())))
+                .isEqualTo(2);
+    }
+
+    public void deleteBatchByStatusOlderThan_whenMoreEventsAreOld_shouldDeleteAtMostBatchSize() {
+        List<OutboxEvent> events = IntStream.range(0, 5).mapToObj(i -> buildEvent(EventStatus.PROCESSED)).toList();
+        repository.saveBatch(events);
+        events.forEach(event -> clock.shift(TABLE, "updated_at", event.getId(), LONG_AGO));
+
+        int deleted = repository.deleteBatchByStatusOlderThan(EventStatus.PROCESSED, AGE, 3);
+
+        assertThat(deleted).isEqualTo(3);
     }
 
     public void deleteBatch_existingIds_deletedAndReturnsCount() {
@@ -223,14 +378,14 @@ public class AbstractOutboxRepositoryIntegrationTests {
     }
 
     /**
-     * Saves {@code count} due events of an event type of their own and captures them with the given token, the
-     * way a poller does - the finalization methods only touch events captured with the token they are given.
+     * Saves {@code count} events of an event type of their own, due at once since the database stamps their next
+     * retry time on insert, and captures them with the given token, the way a poller does - the finalization
+     * methods only touch events captured with the token they are given.
      */
     private Set<UUID> capture(UUID lockToken, int count) {
         String eventType = "capture-" + UUID.randomUUID();
-        Instant due = Instant.now().minusSeconds(1).truncatedTo(ChronoUnit.MILLIS);
         List<OutboxEvent> events = IntStream.range(0, count)
-                .mapToObj(i -> buildEventWithTypeAndNextRetryAt(EventStatus.PENDING, eventType, due))
+                .mapToObj(i -> buildEventWithType(EventStatus.PENDING, eventType))
                 .toList();
         repository.saveBatch(events);
         List<OutboxEvent> captured = repository.findAndLockBatchByEventTypeAndStatus(
@@ -240,62 +395,37 @@ public class AbstractOutboxRepositoryIntegrationTests {
         return captured.stream().map(OutboxEvent::getId).collect(Collectors.toSet());
     }
 
-    public OutboxEvent buildEvent(EventStatus status) {
-        Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
-        return new OutboxEvent(
-                UUID.randomUUID(),
-                status,
-                "ORDER_CREATED",
-                "io.example.OrderCreated",
-                "{\"orderId\":\"123\"}",
-                -1,
-                now.plusSeconds(60),
-                now,
-                now
-        );
+    private Duration distance(UUID id, String column) {
+        return clock.distanceFromNow(TABLE, column, id);
     }
 
-    private OutboxEvent buildEventWithRetry(
-            UUID id, EventStatus status, int retryCount, Instant nextRetryAt
-    ) {
-        Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
-        return new OutboxEvent(
-                id,
-                status,
-                "ORDER_CREATED",
-                "io.example.OrderCreated",
-                "{\"orderId\":\"123\"}",
-                retryCount,
-                nextRetryAt,
-                now,
-                now
-        );
+    public OutboxEvent buildEvent(EventStatus status) {
+        return buildEventWithType(status, "ORDER_CREATED");
     }
 
     public OutboxEvent buildEventWithType(EventStatus status, String eventType) {
-        Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
         return new OutboxEvent(
                 UUID.randomUUID(), status, eventType,
                 "io.example.OrderCreated", "{\"orderId\":\"123\"}",
-                -1, now.plusSeconds(60), now, now
+                -1, null, null, null
         );
     }
 
-    public OutboxEvent buildEventWithNextRetryAt(EventStatus status, Instant nextRetryAt) {
-        Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private OutboxEvent buildEventWithCreatedAt(String eventType, Instant createdAt) {
         return new OutboxEvent(
-                UUID.randomUUID(), status, "ORDER_CREATED",
+                UUID.randomUUID(), EventStatus.PENDING, eventType,
                 "io.example.OrderCreated", "{\"orderId\":\"123\"}",
-                -1, nextRetryAt, now, now
+                -1, null, createdAt, null
         );
     }
 
-    public OutboxEvent buildEventWithTypeAndNextRetryAt(EventStatus status, String eventType, Instant nextRetryAt) {
-        Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
-        return new OutboxEvent(
-                UUID.randomUUID(), status, eventType,
+    private OutboxEvent buildEventWithRetry(UUID id, EventStatus status, int retryCount, Duration retryDelay) {
+        OutboxEvent event = new OutboxEvent(
+                id, status, "ORDER_CREATED",
                 "io.example.OrderCreated", "{\"orderId\":\"123\"}",
-                -1, nextRetryAt, now, now
+                retryCount, null, null, null
         );
+        event.setRetryDelay(retryDelay);
+        return event;
     }
 }

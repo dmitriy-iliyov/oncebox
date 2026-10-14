@@ -1,7 +1,5 @@
 package io.github.dmitriyiliyov.oncebox.core.outbox;
 
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.utils.SqlUuidHelper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -16,8 +14,8 @@ import org.springframework.jdbc.core.PreparedStatementSetter;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.time.Clock;
+import java.sql.Types;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
@@ -40,40 +38,126 @@ class AbstractOutboxRepositoryUnitTests {
     JdbcTemplate jdbcTemplate;
 
     @Mock
-    Clock clock;
-
-    @Mock
     SqlUuidHelper uuidHelper;
 
     AbstractOutboxRepository tested;
 
     @BeforeEach
     void setUp() {
-        tested = new TestOutboxRepository(jdbcTemplate, clock, uuidHelper);
+        tested = new TestOutboxRepository(jdbcTemplate, uuidHelper);
     }
 
     @Test
     @DisplayName("UT constructor when jdbcTemplate is null should throw NullPointerException")
     void constructor_whenJdbcTemplateIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new TestOutboxRepository(null, clock, uuidHelper))
+        assertThatThrownBy(() -> new TestOutboxRepository(null, uuidHelper))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessage("jdbcTemplate cannot be null");
     }
 
     @Test
-    @DisplayName("UT constructor when clock is null should throw NullPointerException")
-    void constructor_whenClockIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new TestOutboxRepository(jdbcTemplate, null, uuidHelper))
+    @DisplayName("UT constructor when uuidHelper is null should throw NullPointerException")
+    void constructor_whenUuidHelperIsNull_shouldThrowNullPointerException() {
+        assertThatThrownBy(() -> new TestOutboxRepository(jdbcTemplate, null))
                 .isInstanceOf(NullPointerException.class)
-                .hasMessage("clock cannot be null");
+                .hasMessage("uuidHelper cannot be null");
     }
 
     @Test
-    @DisplayName("UT constructor when uuidHelper is null should throw NullPointerException")
-    void constructor_whenUuidHelperIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new TestOutboxRepository(jdbcTemplate, clock, null))
+    @DisplayName("UT save() should write the event without any time, leaving the times to the database")
+    void save_whenCalled_shouldWriteEventWithoutTimes() throws SQLException {
+        // given
+        OutboxEvent event = new OutboxEvent(EVENT_ID, "event-type", "payload-type", "{}");
+
+        // when
+        tested.save(event);
+
+        // then
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<PreparedStatementSetter> setter = ArgumentCaptor.forClass(PreparedStatementSetter.class);
+        verify(jdbcTemplate).update(sql.capture(), setter.capture());
+        assertThat(sql.getValue()).contains("(id, status, event_type, payload_type, payload, retry_count)")
+                .contains("VALUES (?, ?, ?, ?, ?, ?)");
+
+        PreparedStatement ps = mock(PreparedStatement.class);
+        setter.getValue().setValues(ps);
+        verify(uuidHelper).setToPs(ps, 1, EVENT_ID);
+        verify(ps).setString(2, EventStatus.PENDING.name());
+        verify(ps).setString(3, "event-type");
+        verify(ps).setString(4, "payload-type");
+        verify(ps).setString(5, "{}");
+        verify(ps).setInt(6, -1);
+        verifyNoMoreInteractions(ps);
+    }
+
+    @Test
+    @DisplayName("UT saveBatch() should write every event without any time")
+    @SuppressWarnings("unchecked")
+    void saveBatch_whenCalled_shouldWriteEventsWithoutTimes() throws SQLException {
+        // given
+        OutboxEvent event = new OutboxEvent(EVENT_ID, "event-type", "payload-type", "{}");
+
+        // when
+        tested.saveBatch(List.of(event));
+
+        // then
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<ParameterizedPreparedStatementSetter<OutboxEvent>> setter =
+                ArgumentCaptor.forClass(ParameterizedPreparedStatementSetter.class);
+        verify(jdbcTemplate).batchUpdate(sql.capture(), eq(List.of(event)), eq(1), setter.capture());
+        assertThat(sql.getValue()).contains("VALUES (?, ?, ?, ?, ?, ?)");
+
+        PreparedStatement ps = mock(PreparedStatement.class);
+        setter.getValue().setValues(ps, event);
+        verify(ps).setInt(6, -1);
+        verify(ps, never()).setTimestamp(anyInt(), any());
+        verify(ps, never()).setObject(anyInt(), any());
+    }
+
+    @Test
+    @DisplayName("UT saveBatchWithCreatedAt() should write the creation time of each event and leave the other times to the database")
+    @SuppressWarnings("unchecked")
+    void saveBatchWithCreatedAt_whenEventHasCreatedAt_shouldWriteOnlyItAmongTimes() throws SQLException {
+        // given
+        OutboxEvent event = event(null);
+
+        // when
+        tested.saveBatchWithCreatedAt(List.of(event));
+
+        // then
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<ParameterizedPreparedStatementSetter<OutboxEvent>> setter =
+                ArgumentCaptor.forClass(ParameterizedPreparedStatementSetter.class);
+        verify(jdbcTemplate).batchUpdate(sql.capture(), eq(List.of(event)), eq(1), setter.capture());
+        assertThat(sql.getValue())
+                .contains("(id, status, event_type, payload_type, payload, retry_count, created_at)")
+                .contains("VALUES (?, ?, ?, ?, ?, ?, ?)")
+                .doesNotContain("next_retry_at")
+                .doesNotContain("updated_at");
+
+        PreparedStatement ps = mock(PreparedStatement.class);
+        setter.getValue().setValues(ps, event);
+        verify(uuidHelper).setToPs(ps, 1, EVENT_ID);
+        verify(ps).setString(2, EventStatus.PENDING.name());
+        verify(ps).setInt(6, 2);
+        assertThat(((TestOutboxRepository) tested).createdAtBindings).containsExactly(7 + "=" + NOW);
+    }
+
+    @Test
+    @DisplayName("UT saveBatchWithCreatedAt() when an event has no creation time should throw NullPointerException")
+    @SuppressWarnings("unchecked")
+    void saveBatchWithCreatedAt_whenEventHasNoCreatedAt_shouldThrowNullPointerException() {
+        // given
+        OutboxEvent event = new OutboxEvent(EVENT_ID, "event-type", "payload-type", "{}");
+        tested.saveBatchWithCreatedAt(List.of(event));
+        ArgumentCaptor<ParameterizedPreparedStatementSetter<OutboxEvent>> setter =
+                ArgumentCaptor.forClass(ParameterizedPreparedStatementSetter.class);
+        verify(jdbcTemplate).batchUpdate(anyString(), eq(List.of(event)), eq(1), setter.capture());
+
+        // when / then
+        assertThatThrownBy(() -> setter.getValue().setValues(mock(PreparedStatement.class), event))
                 .isInstanceOf(NullPointerException.class)
-                .hasMessage("uuidHelper cannot be null");
+                .hasMessage("createdAt cannot be null");
     }
 
     @Test
@@ -81,7 +165,6 @@ class AbstractOutboxRepositoryUnitTests {
     void updateBatchStatusByLockToken_shouldUpdateOnlyEventsHeldByLockToken() throws SQLException {
         // given
         Set<UUID> ids = Set.of(EVENT_ID, OTHER_EVENT_ID);
-        when(clock.instant()).thenReturn(NOW);
         when(jdbcTemplate.update(anyString(), any(PreparedStatementSetter.class))).thenReturn(1);
 
         // when
@@ -92,14 +175,14 @@ class AbstractOutboxRepositoryUnitTests {
         ArgumentCaptor<PreparedStatementSetter> setter = ArgumentCaptor.forClass(PreparedStatementSetter.class);
         verify(jdbcTemplate).update(sql.capture(), setter.capture());
         assertThat(updated).isEqualTo(1);
-        assertThat(sql.getValue()).contains("WHERE lock_token = ? AND id IN (?, ?)");
+        assertThat(sql.getValue()).isEqualTo(TestOutboxRepository.updateByLockTokenSql(ids));
 
         PreparedStatement ps = mock(PreparedStatement.class);
         setter.getValue().setValues(ps);
         verify(ps).setString(1, EventStatus.PROCESSED.name());
-        verify(ps).setTimestamp(2, Timestamp.from(NOW));
-        verify(uuidHelper).setToPs(ps, 3, LOCK_TOKEN);
-        verify(uuidHelper).setToPs(ps, 4, ids);
+        verify(uuidHelper).setToPs(ps, 2, LOCK_TOKEN);
+        verify(uuidHelper).setToPs(ps, 3, ids);
+        verifyNoMoreInteractions(ps);
     }
 
     @Test
@@ -138,11 +221,7 @@ class AbstractOutboxRepositoryUnitTests {
     @SuppressWarnings("unchecked")
     void partiallyUpdateBatchByLockToken_shouldWriteStateOnlyWhileLockTokenHolds() throws SQLException {
         // given
-        Instant nextRetryAt = NOW.plusSeconds(30);
-        OutboxEvent event = new OutboxEvent(
-                EVENT_ID, EventStatus.PENDING, "event-type", "payload-type", "{}", 2, nextRetryAt, NOW, NOW
-        );
-        when(clock.instant()).thenReturn(NOW);
+        OutboxEvent event = event(Duration.ofSeconds(30));
         when(jdbcTemplate.batchUpdate(anyString(), anyList(), anyInt(), any(ParameterizedPreparedStatementSetter.class)))
                 .thenReturn(new int[][]{{1}});
 
@@ -155,16 +234,38 @@ class AbstractOutboxRepositoryUnitTests {
                 ArgumentCaptor.forClass(ParameterizedPreparedStatementSetter.class);
         verify(jdbcTemplate).batchUpdate(sql.capture(), eq(List.of(event)), eq(1), setter.capture());
         assertThat(updated).isEqualTo(1);
-        assertThat(sql.getValue()).contains("WHERE id = ? AND lock_token = ?");
+        assertThat(sql.getValue()).isEqualTo(TestOutboxRepository.PARTIAL_UPDATE_SQL);
 
         PreparedStatement ps = mock(PreparedStatement.class);
         setter.getValue().setValues(ps, event);
         verify(ps).setInt(1, 2);
         verify(ps).setString(2, EventStatus.PENDING.name());
-        verify(ps).setTimestamp(3, Timestamp.from(nextRetryAt));
-        verify(ps).setTimestamp(4, Timestamp.from(NOW));
-        verify(uuidHelper).setToPs(ps, 5, EVENT_ID);
-        verify(uuidHelper).setToPs(ps, 6, LOCK_TOKEN);
+        verify(ps).setLong(3, 30_000L);
+        verify(uuidHelper).setToPs(ps, 4, EVENT_ID);
+        verify(uuidHelper).setToPs(ps, 5, LOCK_TOKEN);
+        verifyNoMoreInteractions(ps);
+    }
+
+    @Test
+    @DisplayName("UT partiallyUpdateBatchByLockToken() when the retry delay is null should bind the delay as SQL NULL")
+    @SuppressWarnings("unchecked")
+    void partiallyUpdateBatchByLockToken_whenRetryDelayIsNull_shouldBindDelayAsSqlNull() throws SQLException {
+        // given
+        OutboxEvent event = event(null);
+        when(jdbcTemplate.batchUpdate(anyString(), anyList(), anyInt(), any(ParameterizedPreparedStatementSetter.class)))
+                .thenReturn(new int[][]{{1}});
+
+        // when
+        tested.partiallyUpdateBatchByLockToken(List.of(event), LOCK_TOKEN);
+
+        // then
+        ArgumentCaptor<ParameterizedPreparedStatementSetter<OutboxEvent>> setter =
+                ArgumentCaptor.forClass(ParameterizedPreparedStatementSetter.class);
+        verify(jdbcTemplate).batchUpdate(anyString(), eq(List.of(event)), eq(1), setter.capture());
+        PreparedStatement ps = mock(PreparedStatement.class);
+        setter.getValue().setValues(ps, event);
+        verify(ps).setNull(3, Types.BIGINT);
+        verify(ps, never()).setLong(eq(3), anyLong());
     }
 
     @Test
@@ -210,10 +311,41 @@ class AbstractOutboxRepositoryUnitTests {
         verifyNoInteractions(jdbcTemplate);
     }
 
+    private static OutboxEvent event(Duration retryDelay) {
+        OutboxEvent event = new OutboxEvent(
+                EVENT_ID, EventStatus.PENDING, "event-type", "payload-type", "{}", 2, NOW, NOW, NOW
+        );
+        event.setRetryDelay(retryDelay);
+        return event;
+    }
+
     static final class TestOutboxRepository extends AbstractOutboxRepository {
 
-        TestOutboxRepository(JdbcTemplate jdbcTemplate, Clock clock, SqlUuidHelper uuidHelper) {
-            super(jdbcTemplate, clock, uuidHelper);
+        static final String PARTIAL_UPDATE_SQL = "partial update by lock token";
+
+        final List<String> createdAtBindings = new java.util.ArrayList<>();
+
+        TestOutboxRepository(JdbcTemplate jdbcTemplate, SqlUuidHelper uuidHelper) {
+            super(jdbcTemplate, uuidHelper);
+        }
+
+        static String updateByLockTokenSql(Set<UUID> ids) {
+            return "update by lock token of " + ids.size();
+        }
+
+        @Override
+        protected String updateBatchStatusByLockTokenSql(Set<UUID> ids) {
+            return updateByLockTokenSql(ids);
+        }
+
+        @Override
+        protected String partiallyUpdateBatchByLockTokenSql() {
+            return PARTIAL_UPDATE_SQL;
+        }
+
+        @Override
+        protected void setCreatedAt(PreparedStatement ps, int parameterIndex, Instant createdAt) {
+            createdAtBindings.add(parameterIndex + "=" + createdAt);
         }
 
         @Override
@@ -231,15 +363,15 @@ class AbstractOutboxRepositoryUnitTests {
         }
 
         @Override
-        public int updateBatchStatusByStatusAndThreshold(EventStatus status,
-                                                         Instant threshold,
-                                                         int batchSize,
-                                                         EventStatus newStatus) {
+        public int updateBatchStatusByStatusOlderThan(EventStatus status,
+                                                      Duration age,
+                                                      int batchSize,
+                                                      EventStatus newStatus) {
             return 0;
         }
 
         @Override
-        public int deleteBatchByStatusAndThreshold(EventStatus status, Instant threshold, int batchSize) {
+        public int deleteBatchByStatusOlderThan(EventStatus status, Duration age, int batchSize) {
             return 0;
         }
     }

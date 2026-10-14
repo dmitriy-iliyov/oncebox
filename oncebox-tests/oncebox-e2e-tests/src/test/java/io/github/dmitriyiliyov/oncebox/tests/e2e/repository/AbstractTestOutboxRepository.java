@@ -1,12 +1,10 @@
 package io.github.dmitriyiliyov.oncebox.tests.e2e.repository;
 
+import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DlqStatus;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.sql.Timestamp;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -43,6 +41,11 @@ public abstract class AbstractTestOutboxRepository implements TestOutboxReposito
      * with exactly one bind placeholder.
      */
     protected abstract String minusSeconds(String column);
+
+    /**
+     * Returns the SQL expression of the current database time, the clock the library itself writes by.
+     */
+    protected abstract String now();
 
     /**
      * Returns the statements used to clear all outbox and business tables between tests.
@@ -85,13 +88,15 @@ public abstract class AbstractTestOutboxRepository implements TestOutboxReposito
     @Override
     public UUID insertEvent(String eventType, EventStatus status, String payloadType, String payload, Duration age) {
         UUID id = UUID.randomUUID();
-        Timestamp timestamp = Timestamp.from(Instant.now().minus(age));
         jdbcTemplate.update("""
-                INSERT INTO outbox_events (id, status, event_type, payload_type, payload, retry_count, next_retry_at, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)
+                INSERT INTO outbox_events (id, status, event_type, payload_type, payload, retry_count)
+                VALUES (?, ?, ?, ?, ?, 0)
                 """,
-                idParam(id), status.name(), eventType, payloadType, payload, timestamp, timestamp, timestamp
+                idParam(id), status.name(), eventType, payloadType, payload
         );
+        if (!age.isZero()) {
+            shiftEventTimestamps(id, age);
+        }
         return id;
     }
 
@@ -126,13 +131,11 @@ public abstract class AbstractTestOutboxRepository implements TestOutboxReposito
     @Override
     public UUID insertDlqEvent(String eventType, DlqStatus dlqStatus, String payloadType, String payload) {
         UUID id = UUID.randomUUID();
-        Timestamp timestamp = Timestamp.from(Instant.now());
         jdbcTemplate.update("""
-                INSERT INTO outbox_dlq_events (id, status, dlq_status, event_type, payload_type, payload, retry_count, next_retry_at, created_at, updated_at, moved_at)
-                VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
-                """,
-                idParam(id), EventStatus.FAILED.name(), dlqStatus.name(), eventType, payloadType, payload,
-                timestamp, timestamp, timestamp, timestamp
+                INSERT INTO outbox_dlq_events (id, status, dlq_status, event_type, payload_type, payload, retry_count, next_retry_at, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, 0, %s, %s, %s)
+                """.formatted(now(), now(), now()),
+                idParam(id), EventStatus.FAILED.name(), dlqStatus.name(), eventType, payloadType, payload
         );
         return id;
     }

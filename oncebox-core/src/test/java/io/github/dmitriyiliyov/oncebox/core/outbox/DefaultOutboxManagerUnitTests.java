@@ -1,7 +1,5 @@
 package io.github.dmitriyiliyov.oncebox.core.outbox;
 
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,512 +8,51 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class DefaultOutboxManagerUnitTests {
+class DefaultOutboxManagerUnitTests {
 
     private static final UUID LOCK_TOKEN = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+    private static final UUID ID_1 = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1");
+    private static final UUID ID_2 = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2");
+    private static final UUID ID_3 = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3");
+    private static final Instant NEXT_RETRY_AT = Instant.parse("2026-01-01T10:05:00Z");
+    private static final Instant CREATED_AT = Instant.parse("2026-01-01T10:00:00Z");
+    private static final Duration DELAY = Duration.ofSeconds(30);
+    private static final Function<Integer, Duration> FIXED_DELAY = retryCount -> DELAY;
 
     @Mock
-    OutboxRepository repository;
-
-    @Mock
-    Clock clock;
+    private OutboxRepository repository;
 
     @InjectMocks
-    DefaultOutboxManager tested;
+    private DefaultOutboxManager tested;
 
     @Test
     @DisplayName("UT constructor when repository is null should throw NullPointerException")
     void constructor_whenRepositoryIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new DefaultOutboxManager(null, clock))
+        assertThatThrownBy(() -> new DefaultOutboxManager(null))
                 .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("repository cannot be null");
-    }
-
-    @Test
-    @DisplayName("UT constructor when clock is null should throw NullPointerException")
-    void constructor_whenClockIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new DefaultOutboxManager(repository, null))
-                .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("clock cannot be null");
-    }
-
-    @Test
-    @DisplayName("UT loadBatch(String, int) when events is not empty, should update status and return event list")
-    public void loadBatch_whenEventsIsNotEmpty_shouldUpdateStatusAndReturnEvents() {
-        // given
-        String eventType = "event-type";
-        int batchSize = 10;
-        EventStatus lockStatus = EventStatus.IN_PROCESS;
-
-        OutboxEvent event1 = mock(OutboxEvent.class);
-        OutboxEvent event2 = mock(OutboxEvent.class);
-        List<OutboxEvent> eventMocks = List.of(event1, event2);
-
-        when(repository.findAndLockBatchByEventTypeAndStatus(eventType, EventStatus.PENDING, batchSize, LOCK_TOKEN, lockStatus))
-                .thenReturn(eventMocks);
-
-        // when
-        List<OutboxEvent> result = tested.loadBatch(eventType, batchSize, LOCK_TOKEN);
-
-        // then
-        assertThat(result)
-                .hasSize(2)
-                .containsExactly(event1, event2);
-
-        verify(repository, times(1))
-                .findAndLockBatchByEventTypeAndStatus(eventType, EventStatus.PENDING, batchSize, LOCK_TOKEN, lockStatus);
-        verifyNoMoreInteractions(repository);
-    }
-
-    @Test
-    @DisplayName("UT loadBatch(String, int) when events is empty, should not update status and return empty event list")
-    public void loadBatch_whenEventsIsEmpty_shouldReturnEmptyList() {
-        // given
-        String eventType = "event-type";
-        int batchSize = 10;
-        EventStatus lockStatus = EventStatus.IN_PROCESS;
-
-        when(repository.findAndLockBatchByEventTypeAndStatus(eventType, EventStatus.PENDING, batchSize, LOCK_TOKEN, lockStatus))
-                .thenReturn(List.of());
-
-        // when
-        List<OutboxEvent> result = tested.loadBatch(eventType, batchSize, LOCK_TOKEN);
-
-        // then
-        assertTrue(result.isEmpty());
-
-        verify(repository, times(1))
-                .findAndLockBatchByEventTypeAndStatus(eventType, EventStatus.PENDING, batchSize, LOCK_TOKEN, lockStatus);
-        verifyNoMoreInteractions(repository);
-    }
-
-    @Test
-    @DisplayName("UT loadBatch(String, int, UUID) when lockToken is null should throw and capture nothing")
-    void loadBatch_whenLockTokenIsNull_shouldThrowAndCaptureNothing() {
-        // when / then
-        assertThatThrownBy(() -> tested.loadBatch("event-type", 10, null))
-                .isInstanceOf(NullPointerException.class)
-                .hasMessage("lockToken cannot be null");
-        verifyNoInteractions(repository);
-    }
-
-    @Test
-    @DisplayName("UT finalizeBatch() when lockToken is null should throw and write nothing")
-    void finalizeBatch_whenLockTokenIsNull_shouldThrowAndWriteNothing() {
-        // given
-        Set<UUID> processedIds = Set.of(UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"));
-
-        // when / then
-        assertThatThrownBy(() -> tested.finalizeBatch(List.of(), processedIds, null, 3, i -> Instant.now(), null))
-                .isInstanceOf(NullPointerException.class)
-                .hasMessage("lockToken cannot be null");
-        verifyNoInteractions(repository);
-    }
-
-    @Test
-    @DisplayName("UT finalizeBatch() when maxRetryCount is negative should throw and write nothing")
-    void finalizeBatch_whenMaxRetryCountIsNegative_shouldThrowAndWriteNothing() {
-        // given
-        Set<UUID> failedIds = Set.of(UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"));
-
-        // when / then
-        assertThatThrownBy(() -> tested.finalizeBatch(List.of(), null, failedIds, -1, i -> Instant.now(), LOCK_TOKEN))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("maxRetryCount cannot be negative");
-        verifyNoInteractions(repository);
-    }
-
-    @Test
-    @DisplayName("UT saveBatch() when eventBatch is null should save nothing")
-    void saveBatch_whenEventBatchIsNull_shouldSaveNothing() {
-        // when
-        tested.saveBatch(null);
-
-        // then
-        verifyNoInteractions(repository);
-    }
-
-    @Test
-    @DisplayName("UT saveBatch() when eventBatch is empty should save nothing")
-    void saveBatch_whenEventBatchIsEmpty_shouldSaveNothing() {
-        // when
-        tested.saveBatch(List.of());
-
-        // then
-        verifyNoInteractions(repository);
-    }
-
-    @Test
-    @DisplayName("UT loadBatch(EventStatus, int, String) when events is not empty, should update status and return event list")
-    public void loadBatch2_whenEventsIsNotEmpty_shouldUpdateStatusAndReturnEvents() {
-        // given
-        EventStatus status = EventStatus.FAILED;
-        int batchSize = 10;
-        EventStatus lockStatus = EventStatus.IN_PROCESS;
-
-        OutboxEvent event1 = mock(OutboxEvent.class);
-        OutboxEvent event2 = mock(OutboxEvent.class);
-        List<OutboxEvent> eventMocks = List.of(event1, event2);
-
-        when(repository.findAndLockBatchByStatus(status, batchSize, lockStatus)).thenReturn(eventMocks);
-
-        // when
-        List<OutboxEvent> result = tested.loadBatch(status, batchSize);
-
-        // then
-        assertThat(result)
-                .hasSize(2)
-                .containsExactly(event1, event2);
-
-        verify(repository, times(1)).findAndLockBatchByStatus(status, batchSize, lockStatus);
-        verifyNoMoreInteractions(repository);
-    }
-
-    @Test
-    @DisplayName("UT loadBatch(EventStatus, int, String) when events is empty, should not update status and return empty event list")
-    public void loadBatch2_whenEventsIsEmpty_shouldReturnEmptyList() {
-        // given
-        EventStatus status = EventStatus.FAILED;
-        int batchSize = 10;
-        EventStatus lockStatus = EventStatus.IN_PROCESS;
-
-        when(repository.findAndLockBatchByStatus(status, batchSize, lockStatus)).thenReturn(List.of());
-
-        // when
-        List<OutboxEvent> result = tested.loadBatch(status, batchSize);
-
-        // then
-        assertTrue(result.isEmpty());
-        verify(repository, times(1)).findAndLockBatchByStatus(status, batchSize, lockStatus);
-        verifyNoMoreInteractions(repository);
-    }
-
-    @Test
-    @DisplayName("UT finalizeBatch() when processed and failed ids are non-empty")
-    public void finalizeBatch_whenProcessedAndFailed_shouldCallCorrectRepositoryMethods() {
-        // given
-        UUID idProcessed = UUID.randomUUID();
-        UUID idFailed = UUID.randomUUID();
-        OutboxEvent failedEvent = new OutboxEvent(idFailed, EventStatus.PENDING, "type", "payloadType",
-                "payload", 0, Instant.now(), Instant.now(), Instant.now());
-        List<OutboxEvent> events = List.of(failedEvent);
-        Set<UUID> processedIds = new HashSet<>(Set.of(idProcessed));
-        Set<UUID> failedIds = new HashSet<>(Set.of(idFailed));
-
-        // when
-        tested.finalizeBatch(events, processedIds, failedIds, 3, i -> Instant.now().plusSeconds(60), LOCK_TOKEN);
-
-        // then
-        verify(repository, times(1)).updateBatchStatusByLockToken(processedIds, LOCK_TOKEN, EventStatus.PROCESSED);
-
-        ArgumentCaptor<List<OutboxEvent>> failedCaptor = ArgumentCaptor.forClass(List.class);
-        verify(repository, times(1)).partiallyUpdateBatchByLockToken(failedCaptor.capture(), eq(LOCK_TOKEN));
-        assertThat(failedCaptor.getValue()).hasSize(1);
-        assertThat(failedCaptor.getValue().get(0).getId()).isEqualTo(idFailed);
-
-        verifyNoMoreInteractions(repository);
-    }
-
-    @Test
-    @DisplayName("UT finalizeBatch() when processed ids is null")
-    public void finalizeBatch_whenProcessedIdsNull_shouldProcessFailedOnly() {
-        // given
-        UUID idFailed = UUID.randomUUID();
-        OutboxEvent failedEvent = new OutboxEvent(idFailed, EventStatus.PENDING, "type", "payloadType",
-                "payload", 0, Instant.now(), Instant.now(), Instant.now());
-        List<OutboxEvent> events = List.of(failedEvent);
-
-        // when
-        tested.finalizeBatch(events, null, Set.of(idFailed), 2, i -> Instant.now(), LOCK_TOKEN);
-
-        // then
-        verify(repository, never()).updateBatchStatusByLockToken(any(), any(), any());
-        verify(repository, times(1)).partiallyUpdateBatchByLockToken(any(), any());
-        verifyNoMoreInteractions(repository);
-    }
-
-    @Test
-    @DisplayName("UT finalizeBatch() when processed ids is empty")
-    public void finalizeBatch_whenProcessedIdsEmpty_shouldProcessFailedOnly() {
-        // given
-        UUID idFailed = UUID.randomUUID();
-        OutboxEvent failedEvent = new OutboxEvent(idFailed, EventStatus.PENDING, "type", "payloadType",
-                "payload", 0, Instant.now(), Instant.now(), Instant.now());
-        List<OutboxEvent> events = List.of(failedEvent);
-
-        // when
-        tested.finalizeBatch(events, Set.of(), Set.of(idFailed), 2, i -> Instant.now(), LOCK_TOKEN);
-
-        // then
-        verify(repository, never()).updateBatchStatusByLockToken(any(), any(), any());
-        verify(repository, times(1)).partiallyUpdateBatchByLockToken(any(), any());
-        verifyNoMoreInteractions(repository);
-    }
-
-    @Test
-    @DisplayName("UT finalizeBatch() when failed ids is null")
-    public void finalizeBatch_whenFailedIdsNull_shouldProcessProcessedOnly() {
-        // given
-        UUID idProcessed = UUID.randomUUID();
-        Set<UUID> processedIds = Set.of(idProcessed);
-
-        // when
-        tested.finalizeBatch(List.of(), processedIds, null, 2, i -> Instant.now(), LOCK_TOKEN);
-
-        // then
-        verify(repository, times(1)).updateBatchStatusByLockToken(processedIds, LOCK_TOKEN, EventStatus.PROCESSED);
-        verify(repository, never()).partiallyUpdateBatchByLockToken(any(), any());
-        verifyNoMoreInteractions(repository);
-    }
-
-    @Test
-    @DisplayName("UT finalizeBatch() when both processedIds and failedIds empty should not call repository")
-    public void finalizeBatch_whenBothEmpty_shouldNotCallRepository() {
-        // given / when
-        tested.finalizeBatch(List.of(), Collections.emptySet(), Collections.emptySet(), 1, i -> Instant.now(), LOCK_TOKEN);
-
-        // then
-        verifyNoInteractions(repository);
-    }
-
-    @Test
-    @DisplayName("UT finalizeBatch() when processedIds and failedIds overlap should remove overlap from processed")
-    public void finalizeBatch_whenOverlap_shouldRemoveOverlapFromProcessed() {
-        // given
-        UUID common = UUID.randomUUID();
-        UUID idProcessed = UUID.randomUUID();
-        UUID idFailed = UUID.randomUUID();
-        Set<UUID> processedIds = new HashSet<>(Set.of(common, idProcessed));
-        Set<UUID> failedIds = new HashSet<>(Set.of(common, idFailed));
-        List<OutboxEvent> events = List.of(
-                new OutboxEvent(common, EventStatus.IN_PROCESS, "type", "payloadType",
-                        "payload", 0, Instant.now(), Instant.now(), Instant.now()),
-                new OutboxEvent(idProcessed, EventStatus.IN_PROCESS, "type", "payloadType",
-                        "payload", 0, Instant.now(), Instant.now(), Instant.now()),
-                new OutboxEvent(idFailed, EventStatus.IN_PROCESS, "type", "payloadType",
-                        "payload", 0, Instant.now(), Instant.now(), Instant.now())
-        );
-
-        // when
-        tested.finalizeBatch(events, processedIds, failedIds, 3, i -> Instant.now(), LOCK_TOKEN);
-
-        // then
-        verify(repository, times(1)).updateBatchStatusByLockToken(Set.of(idProcessed), LOCK_TOKEN, EventStatus.PROCESSED);
-        ArgumentCaptor<List<OutboxEvent>> eventsCaptor = ArgumentCaptor.forClass(List.class);
-        verify(repository, times(1)).partiallyUpdateBatchByLockToken(eventsCaptor.capture(), eq(LOCK_TOKEN));
-        assertThat(eventsCaptor.getValue()).containsExactlyInAnyOrder(
-                new OutboxEvent(common, EventStatus.PENDING, "type", "payloadType",
-                        "payload", 1, Instant.now(), Instant.now(), Instant.now()),
-                new OutboxEvent(idFailed, EventStatus.PENDING, "type", "payloadType",
-                        "payload", 1, Instant.now(), Instant.now(), Instant.now())
-        );
-        verifyNoMoreInteractions(repository);
-    }
-
-    @Test
-    @DisplayName("UT finalizeBatch() when processedIds after overlap resolving is empty")
-    public void finalizeBatch_whenProcessedIdsIsEmptyAfterOverlapResolve_shouldNotInvolveRepository() {
-        // given
-        UUID common = UUID.randomUUID();
-        UUID idFailed = UUID.randomUUID();
-        Set<UUID> processedIds = new HashSet<>(Set.of(common));
-        Set<UUID> failedIds = new HashSet<>(Set.of(common, idFailed));
-        List<OutboxEvent> events = List.of(
-                new OutboxEvent(common, EventStatus.IN_PROCESS, "type", "payloadType", "payload", 0, Instant.now(), Instant.now(), Instant.now()),
-                new OutboxEvent(idFailed, EventStatus.IN_PROCESS, "type", "payloadType", "payload", 0, Instant.now(), Instant.now(), Instant.now())
-        );
-
-        // when
-        tested.finalizeBatch(events, processedIds, failedIds, 3, i -> Instant.now(), LOCK_TOKEN);
-
-        // then
-        verify(repository, never()).updateBatchStatusByLockToken(any(Set.class), eq(LOCK_TOKEN), any(EventStatus.class));
-        verify(repository, times(1)).partiallyUpdateBatchByLockToken(any(), any());
-        verifyNoMoreInteractions(repository);
-    }
-
-    @Test
-    @DisplayName("UT prepareFailedEvents() when retry count exceeded threshold should set FAILED as new status")
-    public void prepareFailedEvents_whenRetryCountExceededThreshold_shouldSetFailed() {
-        // given
-        UUID common = UUID.randomUUID();
-        UUID idProcessed = UUID.randomUUID();
-        UUID idFailed1 = UUID.randomUUID();
-        UUID idFailed2 = UUID.randomUUID();
-        Set<UUID> processedIds = new HashSet<>(Set.of(common, idProcessed));
-        Set<UUID> failedIds = new HashSet<>(Set.of(common, idFailed1, idFailed2));
-        List<OutboxEvent> events = List.of(
-                new OutboxEvent(common, EventStatus.IN_PROCESS, "type", "payloadType",
-                        "payload", 0, Instant.now(), Instant.now(), Instant.now()),
-                new OutboxEvent(idProcessed, EventStatus.IN_PROCESS, "type", "payloadType",
-                        "payload",  0, Instant.now(), Instant.now(), Instant.now()),
-                new OutboxEvent(idFailed1, EventStatus.IN_PROCESS, "type", "payloadType",
-                        "payload", 1, Instant.now(), Instant.now(), Instant.now()),
-                new OutboxEvent(idFailed2, EventStatus.IN_PROCESS, "failed-event", "payloadType",
-                        "payload", 2, Instant.now(), Instant.now(), Instant.now())
-        );
-
-        // when
-        tested.finalizeBatch(events, processedIds, failedIds, 3, i -> Instant.now(), LOCK_TOKEN);
-
-        // then
-        verify(repository, times(1)).updateBatchStatusByLockToken(any(Set.class), eq(LOCK_TOKEN), any(EventStatus.class));
-        ArgumentCaptor<List<OutboxEvent>> eventsCaptor = ArgumentCaptor.forClass(List.class);
-        verify(repository, times(1)).partiallyUpdateBatchByLockToken(eventsCaptor.capture(), eq(LOCK_TOKEN));
-        List<OutboxEvent> resultEvents = eventsCaptor.getValue();
-        assertEquals(3, resultEvents.size());
-        for (OutboxEvent event: resultEvents) {
-            if (event.getId().equals(idFailed2)) {
-                assertEquals("failed-event", event.getEventType());
-                assertEquals(EventStatus.FAILED, event.getStatus());
-            } else {
-                assertEquals(EventStatus.PENDING, event.getStatus());
-            }
-        }
-        verifyNoMoreInteractions(repository);
-    }
-
-    @Test
-    @DisplayName("UT prepareFailedEvents() when retry count not exceeded threshold should set FAILED as new status")
-    public void prepareFailedEvents_whenRetryCountNotExceededThreshold_shouldSetNotFailed() {
-        // given
-        UUID common = UUID.randomUUID();
-        UUID idProcessed = UUID.randomUUID();
-        UUID idFailed1 = UUID.randomUUID();
-        UUID idFailed2 = UUID.randomUUID();
-        Set<UUID> processedIds = new HashSet<>(Set.of(common, idProcessed));
-        Set<UUID> failedIds = new HashSet<>(Set.of(common, idFailed1, idFailed2));
-        List<OutboxEvent> events = List.of(
-                new OutboxEvent(common, EventStatus.IN_PROCESS, "type", "payloadType",
-                        "payload", 1, Instant.now(), Instant.now(), Instant.now()),
-                new OutboxEvent(idProcessed, EventStatus.IN_PROCESS, "type", "payloadType",
-                        "payload",  0, Instant.now(), Instant.now(), Instant.now()),
-                new OutboxEvent(idFailed1, EventStatus.IN_PROCESS, "type", "payloadType",
-                        "payload", 1, Instant.now(), Instant.now(), Instant.now()),
-                new OutboxEvent(idFailed2, EventStatus.IN_PROCESS, "type", "payloadType",
-                        "payload", 1, Instant.now(), Instant.now(), Instant.now())
-        );
-
-        // when
-        tested.finalizeBatch(events, processedIds, failedIds, 3, i -> Instant.now(), LOCK_TOKEN);
-
-        // then
-        ArgumentCaptor<Set<UUID>> processedIdsCaptor = ArgumentCaptor.forClass(Set.class);
-        verify(repository, times(1)).updateBatchStatusByLockToken(processedIdsCaptor.capture(), eq(LOCK_TOKEN), eq(EventStatus.PROCESSED));
-        assertFalse(processedIdsCaptor.getValue().contains(common));
-
-        ArgumentCaptor<List<OutboxEvent>> eventsCaptor = ArgumentCaptor.forClass(List.class);
-        verify(repository, times(1)).partiallyUpdateBatchByLockToken(eventsCaptor.capture(), eq(LOCK_TOKEN));
-        List<OutboxEvent> resultEvents = eventsCaptor.getValue();
-        for (OutboxEvent event: resultEvents) {
-            assertEquals(EventStatus.PENDING, event.getStatus());
-        }
-        verifyNoMoreInteractions(repository);
-    }
-
-    @Test
-    @DisplayName("recoverStuckBatch() with valid arguments should calculate threshold and recover events")
-    void recoverStuckBatch_validArguments_recoversEvents() {
-        Duration maxProcessingTime = Duration.ofMinutes(15);
-        int batchSize = 50;
-        int expectedRecoveredCount = 12;
-        Instant now = Instant.now();
-        Instant expectedThreshold = now.minusMillis(maxProcessingTime.toMillis());
-
-        when(repository.updateBatchStatusByStatusAndThreshold(
-                eq(EventStatus.IN_PROCESS),
-                any(Instant.class),
-                eq(batchSize),
-                eq(EventStatus.PENDING)
-        )).thenReturn(expectedRecoveredCount);
-        when(clock.instant()).thenReturn(now);
-
-        int actualCount = tested.recoverStuckBatch(maxProcessingTime, batchSize);
-
-        assertThat(actualCount).isEqualTo(expectedRecoveredCount);
-
-        verify(repository).updateBatchStatusByStatusAndThreshold(
-                eq(EventStatus.IN_PROCESS),
-                eq(expectedThreshold),
-                eq(batchSize),
-                eq(EventStatus.PENDING)
-        );
-
-        verifyNoMoreInteractions(repository);
-    }
-
-    @Test
-    @DisplayName("recoverStuckBatch() with null maxBatchProcessingTime should throw NullPointerException")
-    void recoverStuckBatch_nullDuration_throwsNullPointerException() {
-        int batchSize = 50;
-
-        assertThatThrownBy(() -> tested.recoverStuckBatch(null, batchSize))
-                .isInstanceOf(NullPointerException.class);
-
-        verifyNoInteractions(repository);
-    }
-
-    @Test
-    @DisplayName("UT deleteBatch() when ids not null and not empty should delete")
-    public void delete_whenIdsValid_shouldDelete() {
-        // given
-        UUID id1 = UUID.randomUUID();
-        UUID id2 = UUID.randomUUID();
-        Set<UUID> ids = Set.of(id1, id2);
-
-        // when
-        tested.deleteBatch(ids);
-
-        // then
-        ArgumentCaptor<Set<UUID>> idsCaptor = ArgumentCaptor.forClass(Set.class);
-        verify(repository, times(1)).deleteBatch(idsCaptor.capture());
-        assertThat(idsCaptor.getValue()).containsExactlyInAnyOrder(id1, id2);
-
-        verifyNoMoreInteractions(repository);
-    }
-
-    @Test
-    @DisplayName("UT deleteBatch() when ids null should not delete")
-    public void delete_whenIdsIsNull_shouldNotDelete() {
-        // given
-        Set<UUID> ids = null;
-
-        // when
-        tested.deleteBatch(ids);
-
-        // then
-        verifyNoInteractions(repository);
-    }
-
-    @Test
-    @DisplayName("UT deleteBatch() when ids is empty should not delete")
-    public void delete_whenIdsIsEmpty_shouldNotDelete() {
-        // given
-        Set<UUID> ids = Set.of();
-
-        // when
-        tested.deleteBatch(ids);
-
-        // then
-        verifyNoInteractions(repository);
+                .hasMessage("repository cannot be null");
     }
 
     @Test
     @DisplayName("UT save() should hand the event to the repository")
-    void save_shouldDelegateToRepository() {
+    void save_whenCalled_shouldHandEventToRepository() {
         // given
-        OutboxEvent event = mock(OutboxEvent.class);
+        OutboxEvent event = event(ID_1, 0);
 
         // when
         tested.save(event);
@@ -526,9 +63,9 @@ public class DefaultOutboxManagerUnitTests {
 
     @Test
     @DisplayName("UT saveBatch() should hand the batch to the repository")
-    void saveBatch_shouldDelegateToRepository() {
+    void saveBatch_whenBatchIsNotEmpty_shouldHandBatchToRepository() {
         // given
-        List<OutboxEvent> batch = List.of(mock(OutboxEvent.class));
+        List<OutboxEvent> batch = List.of(event(ID_1, 0));
 
         // when
         tested.saveBatch(batch);
@@ -538,18 +75,313 @@ public class DefaultOutboxManagerUnitTests {
     }
 
     @Test
-    @DisplayName("UT deleteProcessedBatch() should delete PROCESSED events updated before now minus ttl")
-    void deleteProcessedBatch_shouldDeleteProcessedOlderThanTtl() {
+    @DisplayName("UT saveBatch() when the batch is null should save nothing")
+    void saveBatch_whenBatchIsNull_shouldSaveNothing() {
+        // when
+        tested.saveBatch(null);
+
+        // then
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    @DisplayName("UT saveBatch() when the batch is empty should save nothing")
+    void saveBatch_whenBatchIsEmpty_shouldSaveNothing() {
+        // when
+        tested.saveBatch(List.of());
+
+        // then
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    @DisplayName("UT saveBatchWithCreatedAt() should hand the batch to the repository")
+    void saveBatchWithCreatedAt_whenBatchIsNotEmpty_shouldHandBatchToRepository() {
         // given
-        Instant now = Instant.parse("2026-09-24T10:00:00Z");
-        when(clock.instant()).thenReturn(now);
-        when(repository.deleteBatchByStatusAndThreshold(EventStatus.PROCESSED, now.minus(Duration.ofHours(24)), 100))
-                .thenReturn(7);
+        List<OutboxEvent> batch = List.of(event(ID_1, 0));
 
         // when
-        int deleted = tested.deleteProcessedBatch(Duration.ofHours(24), 100);
+        tested.saveBatchWithCreatedAt(batch);
+
+        // then
+        verify(repository).saveBatchWithCreatedAt(batch);
+    }
+
+    @Test
+    @DisplayName("UT saveBatchWithCreatedAt() when the batch is null should save nothing")
+    void saveBatchWithCreatedAt_whenBatchIsNull_shouldSaveNothing() {
+        // when
+        tested.saveBatchWithCreatedAt(null);
+
+        // then
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    @DisplayName("UT saveBatchWithCreatedAt() when the batch is empty should save nothing")
+    void saveBatchWithCreatedAt_whenBatchIsEmpty_shouldSaveNothing() {
+        // when
+        tested.saveBatchWithCreatedAt(List.of());
+
+        // then
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    @DisplayName("UT loadBatch(String) should capture due PENDING events as IN_PROCESS under the lock token")
+    void loadBatchByType_whenEventsAreDue_shouldCaptureThemUnderLockToken() {
+        // given
+        List<OutboxEvent> captured = List.of(event(ID_1, 0), event(ID_2, 0));
+        when(repository.findAndLockBatchByEventTypeAndStatus("type", EventStatus.PENDING, 10, LOCK_TOKEN,
+                EventStatus.IN_PROCESS)).thenReturn(captured);
+
+        // when
+        List<OutboxEvent> result = tested.loadBatch("type", 10, LOCK_TOKEN);
+
+        // then
+        assertThat(result).isEqualTo(captured);
+    }
+
+    @Test
+    @DisplayName("UT loadBatch(String) when nothing is due should return empty list")
+    void loadBatchByType_whenNothingIsDue_shouldReturnEmptyList() {
+        // given
+        when(repository.findAndLockBatchByEventTypeAndStatus("type", EventStatus.PENDING, 10, LOCK_TOKEN,
+                EventStatus.IN_PROCESS)).thenReturn(List.of());
+
+        // when
+        List<OutboxEvent> result = tested.loadBatch("type", 10, LOCK_TOKEN);
+
+        // then
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("UT loadBatch(String) when lockToken is null should throw and capture nothing")
+    void loadBatchByType_whenLockTokenIsNull_shouldThrowAndCaptureNothing() {
+        // when / then
+        assertThatThrownBy(() -> tested.loadBatch("type", 10, null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("lockToken cannot be null");
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    @DisplayName("UT loadBatch(EventStatus) should capture the events of that status as IN_PROCESS")
+    void loadBatchByStatus_whenEventsHaveStatus_shouldCaptureThemAsInProcess() {
+        // given
+        List<OutboxEvent> captured = List.of(event(ID_1, 3));
+        when(repository.findAndLockBatchByStatus(EventStatus.FAILED, 10, EventStatus.IN_PROCESS)).thenReturn(captured);
+
+        // when
+        List<OutboxEvent> result = tested.loadBatch(EventStatus.FAILED, 10);
+
+        // then
+        assertThat(result).isEqualTo(captured);
+    }
+
+    @Test
+    @DisplayName("UT finalizeBatch() when lockToken is null should throw and write nothing")
+    void finalizeBatch_whenLockTokenIsNull_shouldThrowAndWriteNothing() {
+        // when / then
+        assertThatThrownBy(() -> tested.finalizeBatch(List.of(), Set.of(ID_1), null, 3, FIXED_DELAY, null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("lockToken cannot be null");
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    @DisplayName("UT finalizeBatch() when maxRetryCount is negative should throw and write nothing")
+    void finalizeBatch_whenMaxRetryCountIsNegative_shouldThrowAndWriteNothing() {
+        // when / then
+        assertThatThrownBy(() -> tested.finalizeBatch(List.of(), null, Set.of(ID_1), -1, FIXED_DELAY, LOCK_TOKEN))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("maxRetryCount cannot be negative");
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    @DisplayName("UT finalizeBatch() when both id sets are empty should write nothing")
+    void finalizeBatch_whenBothIdSetsAreEmpty_shouldWriteNothing() {
+        // when
+        tested.finalizeBatch(List.of(), Set.of(), Set.of(), 3, FIXED_DELAY, LOCK_TOKEN);
+
+        // then
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    @DisplayName("UT finalizeBatch() when only processed ids are given should mark them PROCESSED under the token")
+    void finalizeBatch_whenOnlyProcessedIds_shouldMarkThemProcessedUnderToken() {
+        // when
+        tested.finalizeBatch(List.of(event(ID_1, 0)), Set.of(ID_1), null, 3, FIXED_DELAY, LOCK_TOKEN);
+
+        // then
+        verify(repository).updateBatchStatusByLockToken(Set.of(ID_1), LOCK_TOKEN, EventStatus.PROCESSED);
+        verify(repository, never()).partiallyUpdateBatchByLockToken(any(), any());
+    }
+
+    @Test
+    @DisplayName("UT finalizeBatch() when only failed ids are given should write only their retry state")
+    void finalizeBatch_whenOnlyFailedIds_shouldWriteOnlyRetryState() {
+        // when
+        tested.finalizeBatch(List.of(event(ID_1, 0)), Set.of(), Set.of(ID_1), 3, FIXED_DELAY, LOCK_TOKEN);
+
+        // then
+        verify(repository).partiallyUpdateBatchByLockToken(any(), eq(LOCK_TOKEN));
+        verify(repository, never()).updateBatchStatusByLockToken(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("UT finalizeBatch() when a failed event has retries left should make it PENDING with the supplied delay")
+    void finalizeBatch_whenFailedEventHasRetriesLeft_shouldMakeItPendingWithSuppliedDelay() {
+        // given
+        List<Integer> askedFor = new ArrayList<>();
+        Function<Integer, Duration> delays = retryCount -> {
+            askedFor.add(retryCount);
+            return DELAY;
+        };
+
+        // when
+        tested.finalizeBatch(List.of(event(ID_1, 1)), null, Set.of(ID_1), 3, delays, LOCK_TOKEN);
+
+        // then
+        OutboxEvent written = writtenFailedEvents().getFirst();
+        assertThat(written.getStatus()).isEqualTo(EventStatus.PENDING);
+        assertThat(written.getRetryCount()).isEqualTo(2);
+        assertThat(written.getRetryDelay()).isEqualTo(DELAY);
+        assertThat(askedFor).containsExactly(2);
+    }
+
+    @Test
+    @DisplayName("UT finalizeBatch() when a failed event runs out of retries should make it FAILED with no delay")
+    void finalizeBatch_whenFailedEventRunsOutOfRetries_shouldMakeItFailedWithNoDelay() {
+        // when
+        tested.finalizeBatch(List.of(event(ID_1, 2)), null, Set.of(ID_1), 3, FIXED_DELAY, LOCK_TOKEN);
+
+        // then
+        OutboxEvent written = writtenFailedEvents().getFirst();
+        assertThat(written.getStatus()).isEqualTo(EventStatus.FAILED);
+        assertThat(written.getRetryCount()).isEqualTo(3);
+        assertThat(written.getRetryDelay()).isNull();
+    }
+
+    @Test
+    @DisplayName("UT finalizeBatch() when maxRetryCount is zero should fail the event at once without asking for a delay")
+    void finalizeBatch_whenMaxRetryCountIsZero_shouldFailEventWithoutAskingForDelay() {
+        // given
+        Function<Integer, Duration> delays = retryCount -> {
+            throw new AssertionError("no delay is needed for an event out of retries");
+        };
+
+        // when
+        tested.finalizeBatch(List.of(event(ID_1, 0)), null, Set.of(ID_1), 0, delays, LOCK_TOKEN);
+
+        // then
+        OutboxEvent written = writtenFailedEvents().getFirst();
+        assertThat(written.getStatus()).isEqualTo(EventStatus.FAILED);
+        assertThat(written.getRetryCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("UT finalizeBatch() when an id is both processed and failed should treat it as failed")
+    void finalizeBatch_whenIdIsBothProcessedAndFailed_shouldTreatItAsFailed() {
+        // given
+        List<OutboxEvent> events = List.of(event(ID_1, 0), event(ID_2, 0), event(ID_3, 0));
+
+        // when
+        tested.finalizeBatch(events, Set.of(ID_1, ID_2), Set.of(ID_1, ID_3), 3, FIXED_DELAY, LOCK_TOKEN);
+
+        // then
+        verify(repository).updateBatchStatusByLockToken(Set.of(ID_2), LOCK_TOKEN, EventStatus.PROCESSED);
+        assertThat(writtenFailedEvents()).extracting(OutboxEvent::getId).containsExactlyInAnyOrder(ID_1, ID_3);
+    }
+
+    @Test
+    @DisplayName("UT finalizeBatch() when every processed id is also failed should mark nothing PROCESSED")
+    void finalizeBatch_whenEveryProcessedIdIsAlsoFailed_shouldMarkNothingProcessed() {
+        // when
+        tested.finalizeBatch(List.of(event(ID_1, 0)), Set.of(ID_1), Set.of(ID_1), 3, FIXED_DELAY, LOCK_TOKEN);
+
+        // then
+        verify(repository, never()).updateBatchStatusByLockToken(any(), any(), any());
+        assertThat(writtenFailedEvents()).extracting(OutboxEvent::getId).containsExactly(ID_1);
+    }
+
+    @Test
+    @DisplayName("UT recoverStuckBatch() should hand IN_PROCESS events older than the processing time back to PENDING")
+    void recoverStuckBatch_whenEventsAreStuck_shouldHandThemBackToPending() {
+        // given
+        Duration maxProcessingTime = Duration.ofMinutes(15);
+        when(repository.updateBatchStatusByStatusOlderThan(EventStatus.IN_PROCESS, maxProcessingTime, 50,
+                EventStatus.PENDING)).thenReturn(12);
+
+        // when
+        int recovered = tested.recoverStuckBatch(maxProcessingTime, 50);
+
+        // then
+        assertThat(recovered).isEqualTo(12);
+    }
+
+    @Test
+    @DisplayName("UT deleteProcessedBatch() should delete PROCESSED events older than ttl")
+    void deleteProcessedBatch_whenEventsAreOlderThanTtl_shouldDeleteThem() {
+        // given
+        Duration ttl = Duration.ofHours(24);
+        when(repository.deleteBatchByStatusOlderThan(EventStatus.PROCESSED, ttl, 100)).thenReturn(7);
+
+        // when
+        int deleted = tested.deleteProcessedBatch(ttl, 100);
 
         // then
         assertThat(deleted).isEqualTo(7);
+    }
+
+    @Test
+    @DisplayName("UT deleteBatch() should delete the events with the given ids")
+    void deleteBatch_whenIdsAreGiven_shouldDeleteThem() {
+        // given
+        when(repository.deleteBatch(Set.of(ID_1, ID_2))).thenReturn(2);
+
+        // when
+        int deleted = tested.deleteBatch(Set.of(ID_1, ID_2));
+
+        // then
+        assertThat(deleted).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("UT deleteBatch() when ids are null should delete nothing and return zero")
+    void deleteBatch_whenIdsAreNull_shouldDeleteNothing() {
+        // when
+        int deleted = tested.deleteBatch(null);
+
+        // then
+        assertThat(deleted).isZero();
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    @DisplayName("UT deleteBatch() when ids are empty should delete nothing and return zero")
+    void deleteBatch_whenIdsAreEmpty_shouldDeleteNothing() {
+        // when
+        int deleted = tested.deleteBatch(Set.of());
+
+        // then
+        assertThat(deleted).isZero();
+        verifyNoInteractions(repository);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<OutboxEvent> writtenFailedEvents() {
+        ArgumentCaptor<List<OutboxEvent>> captor = ArgumentCaptor.forClass(List.class);
+        verify(repository).partiallyUpdateBatchByLockToken(captor.capture(), eq(LOCK_TOKEN));
+        verifyNoMoreInteractions(repository);
+        return captor.getValue();
+    }
+
+    private static OutboxEvent event(UUID id, int retryCount) {
+        return new OutboxEvent(id, EventStatus.IN_PROCESS, "type", "payloadType", "payload", retryCount,
+                NEXT_RETRY_AT, CREATED_AT, CREATED_AT);
     }
 }

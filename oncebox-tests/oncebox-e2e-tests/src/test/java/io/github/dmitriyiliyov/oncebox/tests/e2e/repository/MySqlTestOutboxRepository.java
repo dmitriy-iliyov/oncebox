@@ -29,6 +29,11 @@ public class MySqlTestOutboxRepository extends AbstractTestOutboxRepository {
     }
 
     @Override
+    protected String now() {
+        return "UTC_TIMESTAMP(6)";
+    }
+
+    @Override
     protected String minusSeconds(String column) {
         return "DATE_SUB(" + column + ", INTERVAL ? SECOND)";
     }

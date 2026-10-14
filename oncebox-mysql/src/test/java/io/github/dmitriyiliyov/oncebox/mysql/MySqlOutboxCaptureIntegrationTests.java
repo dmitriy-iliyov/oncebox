@@ -9,7 +9,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.ByteBuffer;
-import java.time.Clock;
 
 @Transactional
 class MySqlOutboxCaptureIntegrationTests extends BaseMySqlIntegrationTests {
@@ -20,14 +19,11 @@ class MySqlOutboxCaptureIntegrationTests extends BaseMySqlIntegrationTests {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    @Autowired
-    private Clock clock;
-
     private OutboxCaptureVerifier verifier;
 
     @BeforeEach
     void setUp() {
-        verifier = new OutboxCaptureVerifier(repository, jdbcTemplate, clock, id -> {
+        verifier = new OutboxCaptureVerifier(repository, jdbcTemplate, id -> {
             ByteBuffer bb = ByteBuffer.allocate(16);
             bb.putLong(id.getMostSignificantBits());
             bb.putLong(id.getLeastSignificantBits());

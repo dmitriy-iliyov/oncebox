@@ -50,18 +50,18 @@ public class PostgresSqlIntegrationTestsConfig {
     }
 
     @Bean
-    public OutboxDlqRepository postgresOutboxDlqRepository(DataSource dataSource, Clock clock) {
-        return new PostgreSqlOutboxDlqRepository(new JdbcTemplate(dataSource), new PostgreSqlUuidHelper(), new DefaultResultSetMapper(), clock);
+    public OutboxDlqRepository postgresOutboxDlqRepository(DataSource dataSource) {
+        return new PostgreSqlOutboxDlqRepository(new JdbcTemplate(dataSource), new PostgreSqlUuidHelper(), new DefaultResultSetMapper());
     }
 
     @Bean
-    public OutboxRepository postgresOutboxRepository(DataSource dataSource,  Clock clock) {
-        return new PostgreSqlOutboxRepository(new JdbcTemplate(dataSource), clock, new PostgreSqlUuidHelper(), new DefaultResultSetMapper());
+    public OutboxRepository postgresOutboxRepository(DataSource dataSource) {
+        return new PostgreSqlOutboxRepository(new JdbcTemplate(dataSource), new PostgreSqlUuidHelper(), new DefaultResultSetMapper());
     }
 
     @Bean
-    public InboxRepository postgresInboxRepository(DataSource dataSource, Clock clock) {
-        return new PostgreSqlInboxRepository(new JdbcTemplate(dataSource), clock);
+    public InboxRepository postgresInboxRepository(DataSource dataSource) {
+        return new PostgreSqlInboxRepository(new JdbcTemplate(dataSource));
     }
 
     @Bean
@@ -70,28 +70,26 @@ public class PostgresSqlIntegrationTestsConfig {
     }
 
     @Bean
-    public OutboxDlqManager postgresOutboxDlqManager(@Qualifier("postgresOutboxDlqRepository") OutboxDlqRepository repository,
-                                                     Clock clock) {
-        return new DefaultOutboxDlqManager(repository, clock);
+    public OutboxDlqManager postgresOutboxDlqManager(@Qualifier("postgresOutboxDlqRepository") OutboxDlqRepository repository) {
+        return new DefaultOutboxDlqManager(repository);
     }
 
     @Bean
-    public OutboxManager postgresOutboxManager(@Qualifier("postgresOutboxRepository") OutboxRepository repository, Clock clock) {
-        return new DefaultOutboxManager(repository, clock);
+    public OutboxManager postgresOutboxManager(@Qualifier("postgresOutboxRepository") OutboxRepository repository) {
+        return new DefaultOutboxManager(repository);
     }
 
     @Bean
     public OutboxDlqTransfer postgresOutboxDlqTransfer(
             PlatformTransactionManager transactionManager,
             @Qualifier("postgresOutboxManager") OutboxManager manager,
-            @Qualifier("postgresOutboxDlqManager") OutboxDlqManager dlqManager,
-            Clock clock
+            @Qualifier("postgresOutboxDlqManager") OutboxDlqManager dlqManager
     ) {
         return new DefaultOutboxDlqTransfer(
                 new TransactionTemplate(transactionManager),
                 manager,
                 dlqManager,
-                new DefaultOutboxDlqEventMapper(clock),
+                new DefaultOutboxDlqEventMapper(),
                 new LogOutboxDlqHandler()
         );
     }

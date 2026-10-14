@@ -1,6 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.core.outbox.dlq;
 
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxEvent;
+import io.github.dmitriyiliyov.oncebox.core.utils.ListUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,7 +14,7 @@ public class LogOutboxDlqHandler implements OutboxDlqHandler {
 
     @Override
     public void handle(List<OutboxEvent> events) {
-        if (events == null || events.isEmpty()) {
+        if (ListUtils.isEmpty(events)) {
             log.warn("DLQ handler invoked with empty event list.");
             return;
         }

@@ -14,7 +14,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.Clock;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -47,8 +46,8 @@ public class InboxAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(name = "inboxManager")
-    public InboxManager inboxManager(InboxRepository repository, Clock clock) {
-        return new DefaultInboxManager(repository, clock);
+    public InboxManager inboxManager(InboxRepository repository) {
+        return new DefaultInboxManager(repository);
     }
 
     @Bean(defaultCandidate = false)
@@ -127,15 +126,13 @@ public class InboxAutoConfiguration {
             havingValue = "true"
     )
     public OnceboxJobCreateCommand inboxCleanUpJobCreateCommand(OnceboxProperties properties,
-                                                                @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate,
-                                                                Clock clock) {
+                                                                @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate) {
         DistributedLockPropertiesResolver.LockDurations lockDurations = DistributedLockPropertiesResolver.resolve(
                 properties.getDistributedLock(),
                 inboxProperties.getCleanUp().getPolling()
         );
         return new DefaultOnceboxJobCreateCommand(
                 jdbcTemplate,
-                clock,
                 OnceboxJob.INBOX_CLEANUP.getJobName(),
                 lockDurations.atLeastFor(),
                 lockDurations.atMostFor()

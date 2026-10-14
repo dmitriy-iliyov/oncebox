@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.metrics.outbox.utils;
 
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -5,8 +5,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.time.Clock;
-
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
@@ -17,9 +15,8 @@ class MySqlOutboxDlqApiRepositoryUnitTests {
     void constructor_shouldThrowNPE_whenUuidHelperIsNull() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         BytesResultSetMapper mapper = mock(BytesResultSetMapper.class);
-        Clock clock = mock(Clock.class);
 
-        assertThatThrownBy(() -> new MySqlOutboxDlqApiRepository(jdbcTemplate, null, mapper, clock))
+        assertThatThrownBy(() -> new MySqlOutboxDlqApiRepository(jdbcTemplate, null, mapper))
                 .isInstanceOf(NullPointerException.class);
     }
 }

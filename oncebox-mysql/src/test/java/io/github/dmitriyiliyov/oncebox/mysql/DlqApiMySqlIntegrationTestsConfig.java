@@ -1,6 +1,5 @@
 package io.github.dmitriyiliyov.oncebox.mysql;
 
-import io.github.dmitriyiliyov.oncebox.core.utils.DefaultBytesResultSetMapper;
 import io.github.dmitriyiliyov.oncebox.dlq.api.OutboxDlqApiRepository;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -12,7 +11,6 @@ import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 
 import javax.sql.DataSource;
 import java.nio.charset.StandardCharsets;
-import java.time.Clock;
 
 @TestConfiguration
 @Profile("mysql-it")
@@ -34,8 +32,8 @@ public class DlqApiMySqlIntegrationTestsConfig {
     }
 
     @Bean
-    public OutboxDlqApiRepository mysqlOutboxDlqApiRepository(DataSource dataSource, Clock clock) {
-        return new MySqlOutboxDlqApiRepository(new JdbcTemplate(dataSource), new MySqlUuidHelper(), new DefaultBytesResultSetMapper(), clock);
+    public OutboxDlqApiRepository mysqlOutboxDlqApiRepository(DataSource dataSource) {
+        return new MySqlOutboxDlqApiRepository(new JdbcTemplate(dataSource), new MySqlUuidHelper(), new MySqlResultSetMapper());
     }
 
     @Bean

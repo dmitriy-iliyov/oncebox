@@ -1,11 +1,10 @@
 package io.github.dmitriyiliyov.oncebox.core.outbox;
 
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class EventStatusUnitTests {
 
@@ -55,8 +54,8 @@ class EventStatusUnitTests {
         String value = "unknown";
 
         // when + then
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> EventStatus.fromString(value));
-        assertThat(ex.getMessage()).contains("Unknown EventStatus: unknown");
+        assertThatThrownBy(() -> EventStatus.fromString(value))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unknown EventStatus: unknown");
     }
 }

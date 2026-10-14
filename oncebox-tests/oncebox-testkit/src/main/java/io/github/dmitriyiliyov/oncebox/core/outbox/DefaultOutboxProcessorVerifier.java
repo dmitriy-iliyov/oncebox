@@ -1,8 +1,5 @@
 package io.github.dmitriyiliyov.oncebox.core.outbox;
 
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.SenderResult;
 import io.github.dmitriyiliyov.oncebox.core.utils.ResultSetMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -103,9 +100,10 @@ public class DefaultOutboxProcessorVerifier {
         assertThat(event.getStatus()).isEqualTo(EventStatus.PENDING);
         assertThat(event.getRetryCount()).isEqualTo(2);
         long expectedDelayMillis = (long) (Math.pow(properties.backoffMultiplier(), failEvent.getRetryCount() + 1) * properties.backoffDelay());
-        Instant expectedTime = Instant.now().plusMillis(expectedDelayMillis);
+        // both columns are written by the database clock in one statement, so the delay is measured between them
+        Instant expectedTime = event.getUpdatedAt().plusMillis(expectedDelayMillis);
 
-        assertThat(event.getNextRetryAt()).isCloseTo(expectedTime, within(2, ChronoUnit.SECONDS));
+        assertThat(event.getNextRetryAt()).isCloseTo(expectedTime, within(1, ChronoUnit.SECONDS));
     }
 
     public void process_senderThrowsException_allEventsTreatedAsFailed() {
@@ -121,7 +119,7 @@ public class DefaultOutboxProcessorVerifier {
         List<UUID> pendingIds = queryIdsByStatus("PENDING");
         assertThat(pendingIds).containsExactlyInAnyOrder(event1.getId(), event2.getId());
 
-        io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent e = getEvent(event1.getId());
+        OutboxEvent e = getEvent(event1.getId());
         assertThat(e.getRetryCount()).isEqualTo(1);
     }
 

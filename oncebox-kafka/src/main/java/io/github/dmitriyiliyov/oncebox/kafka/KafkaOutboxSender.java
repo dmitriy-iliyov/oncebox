@@ -1,9 +1,10 @@
 package io.github.dmitriyiliyov.oncebox.kafka;
 
 import io.github.dmitriyiliyov.oncebox.core.OnceboxHeaders;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxSender;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.SenderResult;
+import io.github.dmitriyiliyov.oncebox.core.outbox.SenderResult;
+import io.github.dmitriyiliyov.oncebox.core.utils.ListUtils;
 import org.apache.kafka.common.KafkaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +44,7 @@ public class KafkaOutboxSender implements OutboxSender {
 
     @Override
     public SenderResult sendEvents(String topic, List<OutboxEvent> events) {
-        if (events == null || events.isEmpty()) {
+        if (ListUtils.isEmpty(events)) {
             return SenderResult.empty();
         }
 

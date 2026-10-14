@@ -1,40 +1,26 @@
 package io.github.dmitriyiliyov.oncebox.core.outbox.dlq;
 
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
+import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.time.Clock;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+
 
 public class DefaultOutboxDlqEventMapperUnitTests {
 
-    private static final Instant FIXED_NOW = Instant.parse("2024-01-01T12:00:00Z");
-
-    private Clock clock;
     private DefaultOutboxDlqEventMapper tested;
 
     @BeforeEach
     void setUp() {
-        clock = Clock.fixed(FIXED_NOW, ZoneId.of("UTC"));
-        tested = new DefaultOutboxDlqEventMapper(clock);
-    }
-
-    @Test
-    @DisplayName("UT constructor when clock is null should throw NullPointerException")
-    void constructor_whenClockIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new DefaultOutboxDlqEventMapper(null))
-                .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("clock cannot be null");
+        tested = new DefaultOutboxDlqEventMapper();
     }
 
     @Test
@@ -48,7 +34,7 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         OutboxDlqEvent result = tested.toDlqEvent(event);
 
         // then
-        assertEquals(id, result.getId());
+        assertThat(result.getId()).isEqualTo(id);
     }
 
     @Test
@@ -61,7 +47,7 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         OutboxDlqEvent result = tested.toDlqEvent(event);
 
         // then
-        assertEquals(EventStatus.FAILED, result.getStatus());
+        assertThat(result.getStatus()).isEqualTo(EventStatus.FAILED);
     }
 
     @Test
@@ -74,7 +60,7 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         OutboxDlqEvent result = tested.toDlqEvent(event);
 
         // then
-        assertEquals(DlqStatus.MOVED, result.getDlqStatus());
+        assertThat(result.getDlqStatus()).isEqualTo(DlqStatus.MOVED);
     }
 
     @Test
@@ -91,8 +77,8 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         OutboxDlqEvent result = tested.toDlqEvent(event);
 
         // then
-        assertEquals("OrderCreated", result.getEventType());
-        assertEquals("com.example.OrderCreatedEvent", result.getPayloadType());
+        assertThat(result.getEventType()).isEqualTo("OrderCreated");
+        assertThat(result.getPayloadType()).isEqualTo("com.example.OrderCreatedEvent");
     }
 
     @Test
@@ -109,7 +95,7 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         OutboxDlqEvent result = tested.toDlqEvent(event);
 
         // then
-        assertEquals(payload, result.getPayload());
+        assertThat(result.getPayload()).isEqualTo(payload);
     }
 
     @Test
@@ -122,7 +108,7 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         OutboxDlqEvent result = tested.toDlqEvent(event);
 
         // then
-        assertEquals(7, result.getRetryCount());
+        assertThat(result.getRetryCount()).isEqualTo(7);
     }
 
     @Test
@@ -142,14 +128,14 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         OutboxDlqEvent result = tested.toDlqEvent(event);
 
         // then
-        assertEquals(nextRetryAt, result.getNextRetryAt());
-        assertEquals(createdAt,   result.getCreatedAt());
-        assertEquals(updatedAt,   result.getUpdatedAt());
+        assertThat(result.getNextRetryAt()).isEqualTo(nextRetryAt);
+        assertThat(result.getCreatedAt()).isEqualTo(createdAt);
+        assertThat(result.getUpdatedAt()).isEqualTo(updatedAt);
     }
 
     @Test
-    @DisplayName("UT toDlqEvent() should set movedAt to clock instant")
-    void toDlqEvent_shouldSetMovedAtToClockInstant() {
+    @DisplayName("UT toDlqEvent() should leave movedAt to the database")
+    void toDlqEvent_whenMapped_shouldLeaveMovedAtToDatabase() {
         // given
         OutboxEvent event = outboxEvent(UUID.randomUUID(), 1);
 
@@ -157,7 +143,7 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         OutboxDlqEvent result = tested.toDlqEvent(event);
 
         // then
-        assertEquals(FIXED_NOW, result.getMovedAt());
+        assertThat(result.getMovedAt()).isNull();
     }
 
     @Test
@@ -173,7 +159,7 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         List<OutboxDlqEvent> result = tested.toDlqEvents(events);
 
         // then
-        assertEquals(2, result.size());
+        assertThat(result.size()).isEqualTo(2);
     }
 
     @Test
@@ -183,7 +169,7 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         List<OutboxDlqEvent> result = tested.toDlqEvents(List.of());
 
         // then
-        assertTrue(result.isEmpty());
+        assertThat(result.isEmpty()).isTrue();
     }
 
     @Test
@@ -199,8 +185,8 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         List<OutboxDlqEvent> result = tested.toDlqEvents(events);
 
         // then
-        assertEquals(id1, result.get(0).getId());
-        assertEquals(id2, result.get(1).getId());
+        assertThat(result.get(0).getId()).isEqualTo(id1);
+        assertThat(result.get(1).getId()).isEqualTo(id2);
     }
 
     @Test
@@ -214,7 +200,7 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         OutboxEvent result = tested.toOutboxEvent(dlqEvent);
 
         // then
-        assertEquals(id, result.getId());
+        assertThat(result.getId()).isEqualTo(id);
     }
 
     @Test
@@ -227,7 +213,7 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         OutboxEvent result = tested.toOutboxEvent(dlqEvent);
 
         // then
-        assertEquals(EventStatus.PENDING, result.getStatus());
+        assertThat(result.getStatus()).isEqualTo(EventStatus.PENDING);
     }
 
     @Test
@@ -240,35 +226,23 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         OutboxEvent result = tested.toOutboxEvent(dlqEvent);
 
         // then
-        assertEquals(-1, result.getRetryCount());
+        assertThat(result.getRetryCount()).isEqualTo(-1);
     }
 
     @Test
-    @DisplayName("UT toOutboxEvent() should preserve original createdAt")
-    void toOutboxEvent_shouldPreserveCreatedAt() {
+    @DisplayName("UT toOutboxEvent() should keep the creation time and leave the next retry and update times to the database")
+    void toOutboxEvent_whenMapped_shouldKeepCreatedAtAndLeaveOtherTimesToDatabase() {
         // given
-        Instant originalCreatedAt = Instant.parse("2023-06-15T09:00:00Z");
-        OutboxDlqEvent dlqEvent = dlqEvent(UUID.randomUUID(), originalCreatedAt);
+        Instant createdAt = Instant.parse("2023-06-15T09:00:00Z");
+        OutboxDlqEvent dlqEvent = dlqEvent(UUID.randomUUID(), createdAt);
 
         // when
         OutboxEvent result = tested.toOutboxEvent(dlqEvent);
 
         // then
-        assertEquals(originalCreatedAt, result.getCreatedAt());
-    }
-
-    @Test
-    @DisplayName("UT toOutboxEvent() should set nextRetryAt and updatedAt to clock instant")
-    void toOutboxEvent_shouldSetNextRetryAtAndUpdatedAtToClockInstant() {
-        // given
-        OutboxDlqEvent dlqEvent = dlqEvent(UUID.randomUUID(), Instant.now());
-
-        // when
-        OutboxEvent result = tested.toOutboxEvent(dlqEvent);
-
-        // then
-        assertEquals(FIXED_NOW, result.getNextRetryAt());
-        assertEquals(FIXED_NOW, result.getUpdatedAt());
+        assertThat(result.getCreatedAt()).isEqualTo(createdAt);
+        assertThat(result.getNextRetryAt()).isNull();
+        assertThat(result.getUpdatedAt()).isNull();
     }
 
     @Test
@@ -285,8 +259,8 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         OutboxEvent result = tested.toOutboxEvent(dlqEvent);
 
         // then
-        assertEquals("PaymentProcessed", result.getEventType());
-        assertEquals("com.example.PaymentEvent", result.getPayloadType());
+        assertThat(result.getEventType()).isEqualTo("PaymentProcessed");
+        assertThat(result.getPayloadType()).isEqualTo("com.example.PaymentEvent");
     }
 
     @Test
@@ -303,7 +277,7 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         OutboxEvent result = tested.toOutboxEvent(dlqEvent);
 
         // then
-        assertEquals(payload, result.getPayload());
+        assertThat(result.getPayload()).isEqualTo(payload);
     }
 
     @Test
@@ -319,7 +293,7 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         List<OutboxEvent> result = tested.toOutboxEvents(dlqEvents);
 
         // then
-        assertEquals(2, result.size());
+        assertThat(result.size()).isEqualTo(2);
     }
 
     @Test
@@ -329,7 +303,7 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         List<OutboxEvent> result = tested.toOutboxEvents(List.of());
 
         // then
-        assertTrue(result.isEmpty());
+        assertThat(result.isEmpty()).isTrue();
     }
 
     @Test
@@ -346,7 +320,7 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         List<OutboxEvent> result = tested.toOutboxEvents(dlqEvents);
 
         // then
-        assertTrue(result.stream().allMatch(e -> e.getStatus() == EventStatus.PENDING));
+        assertThat(result.stream().allMatch(e -> e.getStatus() == EventStatus.PENDING)).isTrue();
     }
 
     @Test
@@ -362,7 +336,7 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         List<OutboxEvent> result = tested.toOutboxEvents(dlqEvents);
 
         // then
-        assertTrue(result.stream().allMatch(e -> e.getRetryCount() == -1));
+        assertThat(result.stream().allMatch(e -> e.getRetryCount() == -1)).isTrue();
     }
 
     @Test
@@ -372,7 +346,7 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         OutboxDlqEvent result = tested.toDlqEvent(null);
 
         // then
-        assertNull(result);
+        assertThat(result).isNull();
     }
 
     @Test
@@ -382,7 +356,7 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         List<OutboxDlqEvent> result = tested.toDlqEvents(null);
 
         // then
-        assertTrue(result.isEmpty());
+        assertThat(result.isEmpty()).isTrue();
     }
 
     @Test
@@ -399,7 +373,7 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         List<OutboxDlqEvent> result = tested.toDlqEvents(events);
 
         // then
-        assertEquals(2, result.size());
+        assertThat(result.size()).isEqualTo(2);
     }
 
     @Test
@@ -409,7 +383,7 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         OutboxEvent result = tested.toOutboxEvent(null);
 
         // then
-        assertNull(result);
+        assertThat(result).isNull();
     }
 
     @Test
@@ -419,7 +393,7 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         List<OutboxEvent> result = tested.toOutboxEvents(null);
 
         // then
-        assertTrue(result.isEmpty());
+        assertThat(result.isEmpty()).isTrue();
     }
 
     @Test
@@ -436,7 +410,7 @@ public class DefaultOutboxDlqEventMapperUnitTests {
         List<OutboxEvent> result = tested.toOutboxEvents(dlqEvents);
 
         // then
-        assertEquals(2, result.size());
+        assertThat(result.size()).isEqualTo(2);
     }
 
     private OutboxEvent outboxEvent(UUID id, int retryCount) {

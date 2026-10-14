@@ -13,8 +13,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.time.Clock;
-
 @Configuration
 @ConditionalOnDatabaseType(type = DatabaseType.ORACLE)
 @ConditionalOnClass(OracleOutboxDlqApiRepository.class)
@@ -22,13 +20,11 @@ public class OracleOutboxDlqApiRepositoryConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public OutboxDlqApiRepository oracleOutboxDlqApiRepository(@Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate,
-                                                               Clock clock) {
+    public OutboxDlqApiRepository oracleOutboxDlqApiRepository(@Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate) {
         return new OracleOutboxDlqApiRepository(
                 jdbcTemplate,
                 new OracleSqlUuidHelper(),
-                new DefaultBytesResultSetMapper(),
-                clock
+                new DefaultBytesResultSetMapper()
         );
     }
 }

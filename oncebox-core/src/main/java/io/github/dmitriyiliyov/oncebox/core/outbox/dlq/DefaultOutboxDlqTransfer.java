@@ -1,8 +1,9 @@
 package io.github.dmitriyiliyov.oncebox.core.outbox.dlq;
 
+import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxManager;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
+import io.github.dmitriyiliyov.oncebox.core.utils.ListUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -38,7 +39,7 @@ public class DefaultOutboxDlqTransfer implements OutboxDlqTransfer {
         transactionTemplate.executeWithoutResult(status -> {
             try {
                 events.addAll(manager.loadBatch(EventStatus.FAILED, batchSize));
-                if (events.isEmpty()) {
+                if (ListUtils.isEmpty(events)) {
                     return;
                 }
                 dlqManager.saveBatch(eventMapper.toDlqEvents(events));
@@ -69,10 +70,10 @@ public class DefaultOutboxDlqTransfer implements OutboxDlqTransfer {
         Integer transferredCount = transactionTemplate.execute(status -> {
             try {
                 List<OutboxDlqEvent> dlqEvents = dlqManager.loadAndLockBatch(DlqStatus.TO_RETRY, batchSize);
-                if (dlqEvents == null || dlqEvents.isEmpty()) {
+                if (ListUtils.isEmpty(dlqEvents)) {
                     return 0;
                 }
-                manager.saveBatch(eventMapper.toOutboxEvents(dlqEvents));
+                manager.saveBatchWithCreatedAt(eventMapper.toOutboxEvents(dlqEvents));
                 dlqManager.deleteBatch(
                         dlqEvents.stream()
                                 .map(OutboxDlqEvent::getId)

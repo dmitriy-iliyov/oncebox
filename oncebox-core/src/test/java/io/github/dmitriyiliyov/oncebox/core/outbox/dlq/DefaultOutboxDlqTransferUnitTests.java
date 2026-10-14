@@ -1,8 +1,8 @@
 package io.github.dmitriyiliyov.oncebox.core.outbox.dlq;
 
+import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxManager;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,8 +19,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -195,7 +194,8 @@ public class DefaultOutboxDlqTransferUnitTests {
         }).when(transactionTemplate).executeWithoutResult(any());
 
         // when + then
-        assertThrows(RuntimeException.class, () -> tested.transferToDlq(batchSize));
+        assertThatThrownBy(() -> tested.transferToDlq(batchSize))
+                .isInstanceOf(RuntimeException.class);
 
         verify(manager).loadBatch(EventStatus.FAILED, batchSize);
         verify(dlqManager).saveBatch(anyList());
@@ -219,7 +219,7 @@ public class DefaultOutboxDlqTransferUnitTests {
         doThrow(new RuntimeException()).when(handler).handle(anyList());
 
         // when + then
-        assertDoesNotThrow(() -> tested.transferToDlq(batchSize));
+        assertThatCode(() -> tested.transferToDlq(batchSize)).doesNotThrowAnyException();
 
         verify(eventMapper).toDlqEvents(anyList());
         verify(dlqManager).saveBatch(anyList());
@@ -240,7 +240,7 @@ public class DefaultOutboxDlqTransferUnitTests {
         // then
         verify(dlqManager).loadAndLockBatch(DlqStatus.TO_RETRY, batchSize);
         verify(eventMapper, never()).toOutboxEvents(anyList());
-        verify(manager, never()).saveBatch(anyList());
+        verify(manager, never()).saveBatchWithCreatedAt(anyList());
         verify(dlqManager, never()).deleteBatch(anySet());
     }
 
@@ -257,7 +257,7 @@ public class DefaultOutboxDlqTransferUnitTests {
         // then
         verify(dlqManager).loadAndLockBatch(DlqStatus.TO_RETRY, batchSize);
         verify(eventMapper, never()).toOutboxEvents(anyList());
-        verify(manager, never()).saveBatch(anyList());
+        verify(manager, never()).saveBatchWithCreatedAt(anyList());
         verify(dlqManager, never()).deleteBatch(anySet());
     }
 
@@ -286,12 +286,12 @@ public class DefaultOutboxDlqTransferUnitTests {
 
         // then
         verify(eventMapper).toOutboxEvents(List.of(dlqEvent));
-        verify(manager).saveBatch(List.of(outboxEvent));
+        verify(manager).saveBatchWithCreatedAt(List.of(outboxEvent));
         verify(dlqManager).deleteBatch(Set.of(eventId));
     }
 
     @Test
-    @DisplayName("UT transferFromDlq() should pass mapped outbox events to saveBatch")
+    @DisplayName("UT transferFromDlq() should pass mapped outbox events to saveBatchWithCreatedAt")
     void transferFromDlq_shouldPassMappedOutboxEventsToSaveBatch() {
         // given
         int batchSize = 50;
@@ -313,7 +313,7 @@ public class DefaultOutboxDlqTransferUnitTests {
         tested.transferFromDlq(batchSize);
 
         // then
-        verify(manager).saveBatch(List.of(outboxEvent));
+        verify(manager).saveBatchWithCreatedAt(List.of(outboxEvent));
     }
 
     @Test
@@ -329,12 +329,13 @@ public class DefaultOutboxDlqTransferUnitTests {
 
         when(dlqManager.loadAndLockBatch(any(), anyInt())).thenReturn(List.of(dlqEvent));
         when(eventMapper.toOutboxEvents(anyList())).thenReturn(List.of());
-        doThrow(new RuntimeException()).when(manager).saveBatch(anyList());
+        doThrow(new RuntimeException()).when(manager).saveBatchWithCreatedAt(anyList());
 
         // when + then
-        assertThrows(RuntimeException.class, () -> tested.transferFromDlq(batchSize));
+        assertThatThrownBy(() -> tested.transferFromDlq(batchSize))
+                .isInstanceOf(RuntimeException.class);
 
-        verify(manager).saveBatch(anyList());
+        verify(manager).saveBatchWithCreatedAt(anyList());
         verify(dlqManager, never()).deleteBatch(anySet());
     }
 
@@ -351,7 +352,7 @@ public class DefaultOutboxDlqTransferUnitTests {
         int result = tested.transferFromDlq(50);
 
         // then
-        assertEquals(0, result);
+        assertThat(result).isEqualTo(0);
     }
 
     @Test
@@ -367,6 +368,6 @@ public class DefaultOutboxDlqTransferUnitTests {
         int result = tested.transferFromDlq(50);
 
         // then
-        assertEquals(3, result);
+        assertThat(result).isEqualTo(3);
     }
 }

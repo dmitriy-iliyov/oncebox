@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.metrics.outbox;
 
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
 import io.github.dmitriyiliyov.oncebox.metrics.outbox.utils.OutboxCache;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -10,7 +10,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -33,13 +33,15 @@ class DefaultOutboxMetricsServiceUnitTests {
     @Test
     @DisplayName("UT constructor should throw NPE when repository is null")
     void constructor_shouldThrowNPE_whenRepositoryIsNull() {
-        assertThrows(NullPointerException.class, () -> new DefaultOutboxMetricsService(null, cache));
+        assertThatThrownBy(() -> new DefaultOutboxMetricsService(null, cache))
+                .isInstanceOf(NullPointerException.class);
     }
 
     @Test
     @DisplayName("UT constructor should throw NPE when cache is null")
     void constructor_shouldThrowNPE_whenCacheIsNull() {
-        assertThrows(NullPointerException.class, () -> new DefaultOutboxMetricsService(repository, null));
+        assertThatThrownBy(() -> new DefaultOutboxMetricsService(repository, null))
+                .isInstanceOf(NullPointerException.class);
     }
 
     @Test

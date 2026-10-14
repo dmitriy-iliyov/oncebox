@@ -62,4 +62,7 @@ class OracleDefaultOutboxDlqTransferIntegrationTests extends BaseOracleIntegrati
 
     @Test @DisplayName("IT transferFromDlq() should preserve event data")
     void transferFromDlq_preservesEventData() { verifier.transferFromDlq_preservesEventData(); }
+
+    @Test @DisplayName("IT transferFromDlq() when an event is brought back should keep its creation time")
+    void transferFromDlq_whenEventIsBroughtBack_shouldKeepItsCreationTime() { verifier.transferFromDlq_whenEventIsBroughtBack_shouldKeepItsCreationTime(); }
 }

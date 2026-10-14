@@ -2,7 +2,7 @@ BEGIN
 EXECUTE IMMEDIATE '
         CREATE TABLE inbox_events (
             id RAW(16) PRIMARY KEY,
-            consumed_at TIMESTAMP NOT NULL
+            consumed_at TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL
         )';
 EXCEPTION WHEN OTHERS THEN
     IF SQLCODE != -955 THEN RAISE; END IF;

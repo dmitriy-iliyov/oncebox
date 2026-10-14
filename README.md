@@ -29,7 +29,7 @@ This approach ensures reliable event publication without relying on database log
 
 ## Supported Infrastructure
 
-- **Databases:** PostgreSQL 16+, MySQL 8+, Oracle 23+.
+- **Databases:** PostgreSQL 16+, MySQL 8.0.13+, Oracle 23+.
 - **Message Brokers:** Apache Kafka 3.7+, RabbitMQ 3.12+.
 - **Cache Storage (optional for caching):** Redis 7+.
 

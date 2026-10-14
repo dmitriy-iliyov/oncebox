@@ -3,9 +3,10 @@ package io.github.dmitriyiliyov.oncebox.rabbit;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.ConfirmListener;
 import io.github.dmitriyiliyov.oncebox.core.OnceboxHeaders;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxSender;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.SenderResult;
+import io.github.dmitriyiliyov.oncebox.core.outbox.SenderResult;
+import io.github.dmitriyiliyov.oncebox.core.utils.ListUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -31,7 +32,7 @@ public class RabbitOutboxSender implements OutboxSender {
 
     @Override
     public SenderResult sendEvents(String exchange, List<OutboxEvent> events) {
-        if (events == null || events.isEmpty()) {
+        if (ListUtils.isEmpty(events)) {
             return SenderResult.empty();
         }
         Set<UUID> processedIds = ConcurrentHashMap.newKeySet();

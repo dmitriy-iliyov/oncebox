@@ -8,10 +8,10 @@ EXECUTE IMMEDIATE '
             payload_type VARCHAR2(255) NOT NULL,
             payload CLOB NOT NULL,
             retry_count INTEGER NOT NULL,
-            next_retry_at TIMESTAMP NOT NULL,
-            created_at TIMESTAMP NOT NULL,
-            updated_at TIMESTAMP NOT NULL,
-            moved_at TIMESTAMP NOT NULL
+            next_retry_at TIMESTAMP WITH TIME ZONE NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+            moved_at TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL
         )';
 EXCEPTION WHEN OTHERS THEN
     IF SQLCODE != -955 THEN RAISE; END IF;

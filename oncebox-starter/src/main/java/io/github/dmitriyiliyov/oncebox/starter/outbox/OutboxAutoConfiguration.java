@@ -21,7 +21,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.time.Clock;
 import java.util.concurrent.ScheduledExecutorService;
 
 @Configuration
@@ -56,8 +55,8 @@ public class OutboxAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(name = "outboxManager")
-    public OutboxManager outboxManager(OutboxRepository repository, Clock clock) {
-        return new DefaultOutboxManager(repository, clock);
+    public OutboxManager outboxManager(OutboxRepository repository) {
+        return new DefaultOutboxManager(repository);
     }
 
     @Bean
@@ -69,8 +68,8 @@ public class OutboxAutoConfiguration {
     @Bean
     @ConditionalOnClass(ObjectMapper.class)
     @ConditionalOnMissingBean
-    public OutboxSerializer outboxSerializer(ObjectMapper mapper, UuidGenerator uuidGenerator, Clock clock) {
-        return new JacksonOutboxSerializer(mapper, uuidGenerator, clock);
+    public OutboxSerializer outboxSerializer(ObjectMapper mapper, UuidGenerator uuidGenerator) {
+        return new JacksonOutboxSerializer(mapper, uuidGenerator);
     }
 
     @Bean
@@ -80,8 +79,8 @@ public class OutboxAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public OutboxProcessor outboxProcessor(OutboxManager manager, OutboxSender sender, Clock clock) {
-        return new DefaultOutboxProcessor(manager, sender, clock);
+    public OutboxProcessor outboxProcessor(OutboxManager manager, OutboxSender sender) {
+        return new DefaultOutboxProcessor(manager, sender);
     }
 
     @Bean
@@ -141,15 +140,13 @@ public class OutboxAutoConfiguration {
             matchIfMissing = true
     )
     public OnceboxJobCreateCommand outboxCleanUpJobCreateCommand(OnceboxProperties properties,
-                                                                 @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate,
-                                                                 Clock clock) {
+                                                                 @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate) {
         DistributedLockPropertiesResolver.LockDurations lockDurations = DistributedLockPropertiesResolver.resolve(
                 properties.getDistributedLock(),
                 outboxProperties.getCleanUp().getPolling()
         );
         return new DefaultOnceboxJobCreateCommand(
                 jdbcTemplate,
-                clock,
                 OnceboxJob.OUTBOX_PROCESSED_CLEANUP.getJobName(),
                 lockDurations.atLeastFor(),
                 lockDurations.atMostFor()

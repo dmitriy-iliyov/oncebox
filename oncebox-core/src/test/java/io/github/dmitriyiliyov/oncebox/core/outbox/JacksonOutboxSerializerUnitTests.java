@@ -2,159 +2,127 @@ package io.github.dmitriyiliyov.oncebox.core.outbox;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.Clock;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class JacksonOutboxSerializerUnitTests {
-    @Mock
-    ObjectMapper mapper;
+class JacksonOutboxSerializerUnitTests {
+
+    private static final UUID ID_1 = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1");
+    private static final UUID ID_2 = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2");
 
     @Mock
-    UuidGenerator uuidGenerator;
+    private ObjectMapper mapper;
 
     @Mock
-    Clock clock;
+    private UuidGenerator uuidGenerator;
 
-    JacksonOutboxSerializer serializer;
-
-    @BeforeEach
-    void setup() {
-        serializer = new JacksonOutboxSerializer(mapper, uuidGenerator, clock);
-    }
+    @InjectMocks
+    private JacksonOutboxSerializer tested;
 
     @Test
     @DisplayName("UT constructor when mapper is null should throw NullPointerException")
     void constructor_whenMapperIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new JacksonOutboxSerializer(null, uuidGenerator, clock))
+        assertThatThrownBy(() -> new JacksonOutboxSerializer(null, uuidGenerator))
                 .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("mapper cannot be null");
+                .hasMessage("mapper cannot be null");
     }
 
     @Test
     @DisplayName("UT constructor when uuidGenerator is null should throw NullPointerException")
     void constructor_whenUuidGeneratorIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new JacksonOutboxSerializer(mapper, null, clock))
+        assertThatThrownBy(() -> new JacksonOutboxSerializer(mapper, null))
                 .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("uuidGenerator cannot be null");
+                .hasMessage("uuidGenerator cannot be null");
     }
 
     @Test
-    @DisplayName("UT constructor when clock is null should throw NullPointerException")
-    void constructor_whenClockIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new JacksonOutboxSerializer(mapper, uuidGenerator, null))
-                .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("clock cannot be null");
-    }
-
-    @Test
-    @DisplayName("serialize() should return OutboxEvent when serialization succeeds")
-    void serialize_whenSuccess_shouldReturnOutboxEvent() throws Exception {
+    @DisplayName("UT serialize() when the event is serialized should return a new pending event without times")
+    void serialize_whenEventIsSerialized_shouldReturnNewPendingEventWithoutTimes() throws Exception {
         // given
-        UUID id = UUID.randomUUID();
         TestEvent event = new TestEvent("test");
-        when(uuidGenerator.generate()).thenReturn(id);
+        when(uuidGenerator.generate()).thenReturn(ID_1);
         when(mapper.writeValueAsString(event)).thenReturn("{\"value\":\"test\"}");
 
         // when
-        OutboxEvent result = serializer.serialize("type", event);
+        OutboxEvent result = tested.serialize("type", event);
 
         // then
-        assertThat(result.getId()).isEqualTo(id);
+        assertThat(result.getId()).isEqualTo(ID_1);
+        assertThat(result.getStatus()).isEqualTo(EventStatus.PENDING);
         assertThat(result.getEventType()).isEqualTo("type");
-        assertThat(result.getPayload()).isEqualTo("{\"value\":\"test\"}");
         assertThat(result.getPayloadType()).isEqualTo(TestEvent.class.getName());
-        verify(uuidGenerator, times(1)).generate();
-        verify(mapper, times(1)).writeValueAsString(event);
+        assertThat(result.getPayload()).isEqualTo("{\"value\":\"test\"}");
+        assertThat(result.getCreatedAt()).isNull();
+        assertThat(result.getNextRetryAt()).isNull();
     }
 
     @Test
-    @DisplayName("serialize() should wrap JsonProcessingException into OutboxSerializationException")
-    void serialize_whenJsonProcessingException_shouldWrapToRuntime() throws Exception {
+    @DisplayName("UT serialize() when Jackson fails should throw OutboxSerializationException")
+    void serialize_whenJacksonFails_shouldThrowOutboxSerializationException() throws Exception {
         // given
         TestEvent event = new TestEvent("fail");
-        when(uuidGenerator.generate()).thenReturn(UUID.randomUUID());
+        when(uuidGenerator.generate()).thenReturn(ID_1);
         when(mapper.writeValueAsString(event)).thenThrow(JsonProcessingException.class);
 
-        // when + then
-        assertThrows(OutboxSerializationException.class, () -> serializer.serialize("type", event));
+        // when / then
+        assertThatThrownBy(() -> tested.serialize("type", event))
+                .isInstanceOf(OutboxSerializationException.class)
+                .hasCauseInstanceOf(JsonProcessingException.class);
     }
 
     @Test
-    @DisplayName("serialize() should rethrow unexpected exceptions directly")
-    void serialize_whenUnexpectedException_shouldRethrow() {
+    @DisplayName("UT serialize() when the id generator fails should let its exception through")
+    void serialize_whenUuidGeneratorFails_shouldLetExceptionThrough() {
         // given
-        TestEvent event = new TestEvent("error");
         when(uuidGenerator.generate()).thenThrow(new IllegalStateException("UUID error"));
 
-        // when + then
-        assertThrows(IllegalStateException.class, () -> serializer.serialize("type", event));
+        // when / then
+        assertThatThrownBy(() -> tested.serialize("type", new TestEvent("error")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("UUID error");
     }
 
     @Test
-    @DisplayName("serialize(List) should return list of OutboxEvents when serialization succeeds")
-    void serializeList_whenSuccess_shouldReturnOutboxEventList() throws Exception {
+    @DisplayName("UT serialize(List) should serialize every event under its own id, in order")
+    void serializeList_whenEventsAreSerialized_shouldKeepOrderAndGiveEachItsId() throws Exception {
         // given
-        UUID id1 = UUID.randomUUID();
-        UUID id2 = UUID.randomUUID();
-        java.time.Instant now = java.time.Instant.now();
         TestEvent event1 = new TestEvent("test1");
         TestEvent event2 = new TestEvent("test2");
-
-        when(uuidGenerator.generate()).thenReturn(id1, id2);
+        when(uuidGenerator.generate()).thenReturn(ID_1, ID_2);
         when(mapper.writeValueAsString(event1)).thenReturn("{\"value\":\"test1\"}");
         when(mapper.writeValueAsString(event2)).thenReturn("{\"value\":\"test2\"}");
-        when(clock.instant()).thenReturn(now);
 
         // when
-        java.util.List<OutboxEvent> result = serializer.serialize("type", java.util.List.of(event1, event2));
+        List<OutboxEvent> result = tested.serialize("type", List.of(event1, event2));
 
         // then
-        assertThat(result).hasSize(2);
-
-        assertThat(result.get(0).getId()).isEqualTo(id1);
-        assertThat(result.get(0).getEventType()).isEqualTo("type");
-        assertThat(result.get(0).getPayloadType()).isEqualTo(TestEvent.class.getName());
-        assertThat(result.get(0).getPayload()).isEqualTo("{\"value\":\"test1\"}");
-        assertThat(result.get(0).getCreatedAt()).isEqualTo(now);
-
-        assertThat(result.get(1).getId()).isEqualTo(id2);
-        assertThat(result.get(1).getEventType()).isEqualTo("type");
-        assertThat(result.get(1).getPayloadType()).isEqualTo(TestEvent.class.getName());
-        assertThat(result.get(1).getPayload()).isEqualTo("{\"value\":\"test2\"}");
-        assertThat(result.get(1).getCreatedAt()).isEqualTo(now);
-
-        verify(uuidGenerator, times(2)).generate();
-        verify(mapper, times(1)).writeValueAsString(event1);
-        verify(mapper, times(1)).writeValueAsString(event2);
-        verify(clock, times(2)).instant();
+        assertThat(result).extracting(OutboxEvent::getId).containsExactly(ID_1, ID_2);
+        assertThat(result).extracting(OutboxEvent::getPayload)
+                .containsExactly("{\"value\":\"test1\"}", "{\"value\":\"test2\"}");
     }
 
     @Test
-    @DisplayName("serialize(List) should return empty list when input list is empty")
-    void serializeList_whenEmptyList_shouldReturnEmptyList() {
-        // given
-        java.util.List<TestEvent> events = java.util.List.of();
-
+    @DisplayName("UT serialize(List) when the list is empty should return empty list without generating ids")
+    void serializeList_whenListIsEmpty_shouldReturnEmptyListWithoutGeneratingIds() {
         // when
-        java.util.List<OutboxEvent> result = serializer.serialize("type", events);
+        List<OutboxEvent> result = tested.serialize("type", List.of());
 
         // then
         assertThat(result).isEmpty();
-        verifyNoInteractions(uuidGenerator, mapper, clock);
+        verifyNoInteractions(uuidGenerator, mapper);
     }
 
     record TestEvent(String value) {}

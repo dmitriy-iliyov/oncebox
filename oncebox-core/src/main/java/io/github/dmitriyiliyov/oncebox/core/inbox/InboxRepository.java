@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.core.inbox;
 
-import java.time.Instant;
+import java.time.Duration;
 import java.util.Set;
 import java.util.UUID;
 
@@ -36,14 +36,14 @@ public interface InboxRepository {
     Set<UUID> saveIfAbsent(Set<UUID> ids);
 
     /**
-     * Deletes consumed event records with {@code consumed_at} at or before the given threshold.
+     * Deletes consumed event records consumed at least {@code age} ago by the database clock.
      * <p>
      * At most {@code batchSize} records are deleted per call.
-     * Returns 0 if no records match the threshold.
+     * Returns 0 if no records are that old.
      *
-     * @param threshold records consumed at or before this timestamp will be deleted.
+     * @param age       how long ago a record has to have been consumed to be deleted.
      * @param batchSize the maximum number of records to delete in one operation.
      * @return          the number of deleted records.
      */
-    int deleteBatchByThreshold(Instant threshold, int batchSize);
+    int deleteBatchOlderThan(Duration age, int batchSize);
 }

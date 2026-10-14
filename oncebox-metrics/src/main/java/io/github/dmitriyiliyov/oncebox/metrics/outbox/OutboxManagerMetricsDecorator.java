@@ -1,14 +1,13 @@
 package io.github.dmitriyiliyov.oncebox.metrics.outbox;
 
+import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxManager;
 import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxPropertiesHolder;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -61,6 +60,11 @@ public class OutboxManagerMetricsDecorator implements OutboxManager {
     }
 
     @Override
+    public void saveBatchWithCreatedAt(List<OutboxEvent> eventBatch) {
+        delegate.saveBatchWithCreatedAt(eventBatch);
+    }
+
+    @Override
     public List<OutboxEvent> loadBatch(String eventType, int batchSize, UUID lockToken) {
         return delegate.loadBatch(eventType, batchSize, lockToken);
     }
@@ -77,9 +81,9 @@ public class OutboxManagerMetricsDecorator implements OutboxManager {
                               Set<UUID> processedIds,
                               Set<UUID> failedIds,
                               int maxRetryCount,
-                              Function<Integer, Instant> nextRetryAtSupplier,
+                              Function<Integer, Duration> retryDelaySupplier,
                               UUID lockToken) {
-        delegate.finalizeBatch(events, processedIds, failedIds, maxRetryCount, nextRetryAtSupplier, lockToken);
+        delegate.finalizeBatch(events, processedIds, failedIds, maxRetryCount, retryDelaySupplier, lockToken);
         if (!events.isEmpty()) {
             String eventType = events.getFirst().getEventType();
             if (eventType != null) {

@@ -1,9 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.core.outbox;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.SenderResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -53,13 +50,13 @@ class OutboxPublishingComponentTests {
         when(eventProperties.backoffMultiplier()).thenReturn(2.0);
         when(eventProperties.backoffDelay()).thenReturn(10_000L);
 
-        manager = new DefaultOutboxManager(repository, clock);
+        manager = new DefaultOutboxManager(repository);
         publisher = new DefaultOutboxPublisher(
                 properties,
-                new JacksonOutboxSerializer(new ObjectMapper(), new UuidV7Generator(), clock),
+                new JacksonOutboxSerializer(new ObjectMapper(), new UuidV7Generator()),
                 manager
         );
-        processor = new DefaultOutboxProcessor(manager, sender, clock);
+        processor = new DefaultOutboxProcessor(manager, sender);
     }
 
     @Test
@@ -191,10 +188,10 @@ class OutboxPublishingComponentTests {
         clock.advance(Duration.ofMinutes(6));
         manager.recoverStuckBatch(Duration.ofMinutes(5), 100);
         List<OutboxEvent> fresh = manager.loadBatch(EVENT_TYPE, 10, SECOND_CAPTURE);
-        manager.finalizeBatch(fresh, ids(fresh), null, 0, retry -> clock.instant(), SECOND_CAPTURE);
+        manager.finalizeBatch(fresh, ids(fresh), null, 0, retry -> Duration.ZERO, SECOND_CAPTURE);
 
         // when
-        manager.finalizeBatch(stale, null, ids(stale), 0, retry -> clock.instant(), FIRST_CAPTURE);
+        manager.finalizeBatch(stale, null, ids(stale), 0, retry -> Duration.ZERO, FIRST_CAPTURE);
 
         // then
         assertThat(repository.onlyEvent().getStatus()).isEqualTo(EventStatus.PROCESSED);
@@ -210,7 +207,7 @@ class OutboxPublishingComponentTests {
         manager.recoverStuckBatch(Duration.ofMinutes(5), 100);
 
         // when
-        manager.finalizeBatch(stale, ids(stale), null, 0, retry -> clock.instant(), FIRST_CAPTURE);
+        manager.finalizeBatch(stale, ids(stale), null, 0, retry -> Duration.ZERO, FIRST_CAPTURE);
 
         // then
         assertThat(repository.onlyEvent().getStatus()).isEqualTo(EventStatus.PROCESSED);
@@ -282,8 +279,9 @@ class OutboxPublishingComponentTests {
     }
 
     /**
-     * Keeps the rows the way the dialect repositories do: a lock takes due PENDING rows oldest retry first and
-     * stamps {@code updated_at}, thresholds are strict.
+     * Keeps the rows the way the dialect repositories do, with its clock standing for the database clock: an insert
+     * stamps all three times, a lock takes due PENDING rows oldest retry first and stamps {@code updated_at}, a
+     * finalize counts {@code next_retry_at} from the retry delay, and an age is met at its bound.
      */
     static final class InMemoryOutboxRepository implements OutboxRepository {
 
@@ -306,7 +304,9 @@ class OutboxPublishingComponentTests {
 
         @Override
         public void save(OutboxEvent event) {
-            rows.put(event.getId(), event);
+            Instant now = clock.instant();
+            rows.put(event.getId(), new OutboxEvent(event.getId(), event.getStatus(), event.getEventType(),
+                    event.getPayloadType(), event.getPayload(), event.getRetryCount(), now, now, now));
         }
 
         @Override
@@ -314,6 +314,14 @@ class OutboxPublishingComponentTests {
             if (eventBatch != null) {
                 eventBatch.forEach(this::save);
             }
+        }
+
+        @Override
+        public void saveBatchWithCreatedAt(List<OutboxEvent> eventBatch) {
+            Instant now = clock.instant();
+            eventBatch.forEach(event -> rows.put(event.getId(), new OutboxEvent(event.getId(), event.getStatus(),
+                    event.getEventType(), event.getPayloadType(), event.getPayload(), event.getRetryCount(), now,
+                    Objects.requireNonNull(event.getCreatedAt(), "createdAt cannot be null"), now)));
         }
 
         @Override
@@ -361,11 +369,11 @@ class OutboxPublishingComponentTests {
         }
 
         @Override
-        public int updateBatchStatusByStatusAndThreshold(EventStatus status, Instant threshold, int batchSize,
-                                                         EventStatus newStatus) {
+        public int updateBatchStatusByStatusOlderThan(EventStatus status, Duration age, int batchSize,
+                                                      EventStatus newStatus) {
             List<OutboxEvent> matching = rows.values().stream()
                     .filter(event -> event.getStatus() == status)
-                    .filter(event -> event.getUpdatedAt().isBefore(threshold))
+                    .filter(event -> isOlderThan(event, age))
                     .limit(batchSize)
                     .toList();
             matching.forEach(event -> rows.put(event.getId(), withStatus(event, newStatus)));
@@ -380,7 +388,7 @@ class OutboxPublishingComponentTests {
             List<OutboxEvent> held = events.stream()
                     .filter(event -> rows.containsKey(event.getId()) && isHeldBy(event.getId(), lockToken))
                     .toList();
-            held.forEach(event -> rows.put(event.getId(), event));
+            held.forEach(event -> rows.put(event.getId(), withRetryState(rows.get(event.getId()), event)));
             return held.size();
         }
 
@@ -394,14 +402,25 @@ class OutboxPublishingComponentTests {
         }
 
         @Override
-        public int deleteBatchByStatusAndThreshold(EventStatus status, Instant threshold, int batchSize) {
+        public int deleteBatchByStatusOlderThan(EventStatus status, Duration age, int batchSize) {
             Set<UUID> expired = rows.values().stream()
                     .filter(event -> event.getStatus() == status)
-                    .filter(event -> event.getUpdatedAt().isBefore(threshold))
+                    .filter(event -> isOlderThan(event, age))
                     .limit(batchSize)
                     .map(OutboxEvent::getId)
                     .collect(Collectors.toSet());
             return deleteBatch(expired);
+        }
+
+        private boolean isOlderThan(OutboxEvent event, Duration age) {
+            return !event.getUpdatedAt().isAfter(clock.instant().minus(age));
+        }
+
+        private OutboxEvent withRetryState(OutboxEvent row, OutboxEvent outcome) {
+            Instant now = clock.instant();
+            Instant nextRetryAt = outcome.getRetryDelay() == null ? row.getNextRetryAt() : now.plus(outcome.getRetryDelay());
+            return new OutboxEvent(row.getId(), outcome.getStatus(), row.getEventType(), row.getPayloadType(),
+                    row.getPayload(), outcome.getRetryCount(), nextRetryAt, row.getCreatedAt(), now);
         }
 
         private boolean isHeldBy(UUID id, UUID lockToken) {

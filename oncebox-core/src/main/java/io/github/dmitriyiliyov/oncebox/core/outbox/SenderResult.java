@@ -1,4 +1,4 @@
-package io.github.dmitriyiliyov.oncebox.core.outbox.domain;
+package io.github.dmitriyiliyov.oncebox.core.outbox;
 
 import java.util.Collections;
 import java.util.Set;

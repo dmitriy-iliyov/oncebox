@@ -1,37 +1,32 @@
 package io.github.dmitriyiliyov.oncebox.oracle;
 
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.AbstractOutboxDlqRepository;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DlqStatus;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.OutboxDlqEvent;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
 import io.github.dmitriyiliyov.oncebox.core.utils.BytesResultSetMapper;
 import io.github.dmitriyiliyov.oncebox.core.utils.BytesSqlUuidHelper;
 import io.github.dmitriyiliyov.oncebox.core.utils.RepositoryUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.sql.PreparedStatement;
-import java.sql.Timestamp;
-import java.time.Clock;
-import java.time.Instant;
+import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class OracleOutboxDlqRepository extends AbstractOutboxDlqRepository {
 
     private final BytesResultSetMapper localMapper;
-    private final Clock clock;
 
-    public OracleOutboxDlqRepository(JdbcTemplate jdbcTemplate, BytesSqlUuidHelper uuidHelper, BytesResultSetMapper mapper, Clock clock) {
+    public OracleOutboxDlqRepository(JdbcTemplate jdbcTemplate, BytesSqlUuidHelper uuidHelper, BytesResultSetMapper mapper) {
         super(jdbcTemplate, uuidHelper, mapper);
         this.localMapper = Objects.requireNonNull(mapper, "mapper cannot be null");
-        this.clock = Objects.requireNonNull(clock, "clock cannot be null");
     }
 
     @Override
     public List<OutboxDlqEvent> findAndLockBatchByStatus(DlqStatus status, int batchSize, DlqStatus lockStatus) {
         String selectSql = """
-            SELECT id, status, dlq_status, event_type, payload_type, payload,
-                   retry_count, next_retry_at, created_at, updated_at, moved_at
+            SELECT *
             FROM outbox_dlq_events
             WHERE dlq_status = ?
             ORDER BY moved_at
@@ -58,15 +53,14 @@ public class OracleOutboxDlqRepository extends AbstractOutboxDlqRepository {
 
         String lockSql = """
             UPDATE outbox_dlq_events
-                SET dlq_status = ?, updated_at = ?
+                SET dlq_status = ?, updated_at = SYSTIMESTAMP
             WHERE id IN (%s)
         """.formatted(RepositoryUtils.generateIdsPlaceholders(ids));
         jdbcTemplate.update(
                 lockSql,
                 ps -> {
                     ps.setString(1, lockStatus.name());
-                    ps.setTimestamp(2, Timestamp.from(clock.instant()));
-                    uuidHelper.setToPs(ps, 3, ids);
+                    uuidHelper.setToPs(ps, 2, ids);
                 }
         );
         events.forEach(event -> event.setDlqStatus(lockStatus));
@@ -74,10 +68,10 @@ public class OracleOutboxDlqRepository extends AbstractOutboxDlqRepository {
     }
 
     @Override
-    public int deleteBatchByStatusAndThreshold(DlqStatus status, Instant threshold, int batchSize) {
+    public int deleteBatchByStatusOlderThan(DlqStatus status, Duration age, int batchSize) {
         String selectSql = """
             SELECT id FROM outbox_dlq_events
-            WHERE dlq_status = ? AND updated_at <= ?
+            WHERE dlq_status = ? AND updated_at <= SYSTIMESTAMP - NUMTODSINTERVAL(? / 1000, 'SECOND')
             ORDER BY updated_at
             FETCH FIRST ? ROWS ONLY
         """;
@@ -86,7 +80,7 @@ public class OracleOutboxDlqRepository extends AbstractOutboxDlqRepository {
                 selectSql,
                 ps -> {
                     ps.setString(1, status.name());
-                    ps.setTimestamp(2, Timestamp.from(threshold));
+                    ps.setLong(2, age.toMillis());
                     ps.setInt(3, batchSize);
                 },
                 (rs, numRow) -> localMapper.fromBytesToUuid(rs.getBytes("id"))

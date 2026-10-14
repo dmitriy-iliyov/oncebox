@@ -32,7 +32,8 @@ class OracleOutboxDlqApiRepositoryIntegrationTests extends BaseDlqApiOracleInteg
                 repository,
                 jdbcTemplate,
                 new OracleSqlUuidHelper(),
-                new DefaultBytesResultSetMapper()
+                new DefaultBytesResultSetMapper(),
+                new OracleDatabaseClock(jdbcTemplate)
         );
     }
 
@@ -188,6 +189,18 @@ class OracleOutboxDlqApiRepositoryIntegrationTests extends BaseDlqApiOracleInteg
     @DisplayName("IT updateStatus() for existing event should change status")
     void updateStatus_existingEvent_statusChanged() {
         delegate.updateStatus_existingEvent_statusChanged();
+    }
+
+    @Test
+    @DisplayName("IT updateStatus() should stamp updated_at by the database clock")
+    void updateStatus_whenStatusChanges_shouldStampUpdatedAtByDatabaseClock() {
+        delegate.updateStatus_whenStatusChanges_shouldStampUpdatedAtByDatabaseClock();
+    }
+
+    @Test
+    @DisplayName("IT updateBatchStatus() should stamp updated_at by the database clock")
+    void updateBatchStatus_whenStatusChanges_shouldStampUpdatedAtByDatabaseClock() {
+        delegate.updateBatchStatus_whenStatusChanges_shouldStampUpdatedAtByDatabaseClock();
     }
 
     @Test

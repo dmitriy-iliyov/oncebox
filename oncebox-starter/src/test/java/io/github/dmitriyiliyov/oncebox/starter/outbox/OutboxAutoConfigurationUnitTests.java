@@ -17,7 +17,6 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.time.Clock;
 import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
@@ -94,8 +93,7 @@ class OutboxAutoConfigurationUnitTests {
     @Test
     @DisplayName("UT outboxCleanUpJobCreateCommand creates DefaultOnceboxJobCreateCommand")
     void outboxCleanUpJobCreateCommand_createsCommand(@Mock OnceboxProperties outboxProperties,
-                                                      @Mock JdbcTemplate jdbcTemplate,
-                                                      @Mock Clock clock) {
+                                                      @Mock JdbcTemplate jdbcTemplate) {
         OnceboxProperties.CleanUpProperties cleanUpProperties = mock(OnceboxProperties.CleanUpProperties.class);
         when(cleanUpProperties.getPolling()).thenReturn(mock(OnceboxProperties.PollingProperties.class));
         when(props.getCleanUp()).thenReturn(cleanUpProperties);
@@ -107,7 +105,7 @@ class OutboxAutoConfigurationUnitTests {
             when(lockDurations.atMostFor()).thenReturn(Duration.ofSeconds(5).toMillis());
             resolver.when(() -> DistributedLockPropertiesResolver.resolve(any(), any())).thenReturn(lockDurations);
 
-            OnceboxJobCreateCommand command = config.outboxCleanUpJobCreateCommand(outboxProperties, jdbcTemplate, clock);
+            OnceboxJobCreateCommand command = config.outboxCleanUpJobCreateCommand(outboxProperties, jdbcTemplate);
 
             assertThat(command).isInstanceOf(DefaultOnceboxJobCreateCommand.class);
         }

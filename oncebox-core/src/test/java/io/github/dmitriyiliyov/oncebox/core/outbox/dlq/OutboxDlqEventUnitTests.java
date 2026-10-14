@@ -1,6 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.core.outbox.dlq;
 
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -8,8 +9,7 @@ import org.mockito.Mockito;
 import java.time.Instant;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class OutboxDlqEventUnitTests {
 
@@ -34,17 +34,17 @@ public class OutboxDlqEventUnitTests {
                 dlqStatus, movedAt
         );
 
-        assertEquals(id, event.getId());
-        assertEquals(status, event.getStatus());
-        assertEquals(eventType, event.getEventType());
-        assertEquals(payloadType, event.getPayloadType());
-        assertEquals(payload, event.getPayload());
-        assertEquals(retryCount, event.getRetryCount());
-        assertEquals(nextRetryAt, event.getNextRetryAt());
-        assertEquals(createdAt, event.getCreatedAt());
-        assertEquals(updatedAt, event.getUpdatedAt());
-        assertEquals(dlqStatus, event.getDlqStatus());
-        assertEquals(movedAt, event.getMovedAt());
+        assertThat(event.getId()).isEqualTo(id);
+        assertThat(event.getStatus()).isEqualTo(status);
+        assertThat(event.getEventType()).isEqualTo(eventType);
+        assertThat(event.getPayloadType()).isEqualTo(payloadType);
+        assertThat(event.getPayload()).isEqualTo(payload);
+        assertThat(event.getRetryCount()).isEqualTo(retryCount);
+        assertThat(event.getNextRetryAt()).isEqualTo(nextRetryAt);
+        assertThat(event.getCreatedAt()).isEqualTo(createdAt);
+        assertThat(event.getUpdatedAt()).isEqualTo(updatedAt);
+        assertThat(event.getDlqStatus()).isEqualTo(dlqStatus);
+        assertThat(event.getMovedAt()).isEqualTo(movedAt);
     }
 
     @Test
@@ -59,7 +59,7 @@ public class OutboxDlqEventUnitTests {
         DlqStatus newDlqStatus = Mockito.mock(DlqStatus.class);
         event.setDlqStatus(newDlqStatus);
 
-        assertEquals(newDlqStatus, event.getDlqStatus());
+        assertThat(event.getDlqStatus()).isEqualTo(newDlqStatus);
     }
 
     @Test
@@ -71,7 +71,7 @@ public class OutboxDlqEventUnitTests {
                 Mockito.mock(DlqStatus.class), Instant.now()
         );
 
-        assertEquals(event, event);
+        assertThat(event).isEqualTo(event);
     }
 
     @Test
@@ -83,8 +83,8 @@ public class OutboxDlqEventUnitTests {
                 Mockito.mock(DlqStatus.class), Instant.now()
         );
 
-        assertNotEquals(null, event);
-        assertNotEquals("StringObject", event);
+        assertThat(event).isNotEqualTo(null);
+        assertThat(event).isNotEqualTo("StringObject");
     }
 
     @Test
@@ -104,7 +104,7 @@ public class OutboxDlqEventUnitTests {
                 5, now.plusSeconds(10), now, now, statusMock, now.plusSeconds(5)
         );
 
-        assertEquals(event1, event2);
+        assertThat(event2).isEqualTo(event1);
     }
 
     @Test
@@ -123,7 +123,7 @@ public class OutboxDlqEventUnitTests {
                 0, now, now, now, statusMock, now
         );
 
-        assertNotEquals(event1, event2);
+        assertThat(event2).isNotEqualTo(event1);
     }
 
     @Test
@@ -143,6 +143,64 @@ public class OutboxDlqEventUnitTests {
                 5, now.plusSeconds(10), now, now, statusMock, now.plusSeconds(5)
         );
 
-        assertEquals(event1.hashCode(), event2.hashCode());
+        assertThat(event2.hashCode()).isEqualTo(event1.hashCode());
     }
+
+    @Test
+    @DisplayName("UT moved() should make a FAILED event in MOVED that keeps the times of the outbox event")
+    void moved_whenOutboxEventIsGiven_shouldKeepItsTimesAndLeaveMovedAtToDatabase() {
+        // given
+        Instant nextRetryAt = Instant.parse("2026-01-01T10:05:00Z");
+        Instant createdAt = Instant.parse("2026-01-01T10:00:00Z");
+        Instant updatedAt = Instant.parse("2026-01-01T10:01:00Z");
+        OutboxEvent event = new OutboxEvent(MOVED_ID, EventStatus.IN_PROCESS, "type", "payloadType", "{}", 3,
+                nextRetryAt, createdAt, updatedAt);
+
+        // when
+        OutboxDlqEvent tested = OutboxDlqEvent.moved(event);
+
+        // then
+        assertThat(tested.getId()).isEqualTo(MOVED_ID);
+        assertThat(tested.getStatus()).isEqualTo(EventStatus.FAILED);
+        assertThat(tested.getDlqStatus()).isEqualTo(DlqStatus.MOVED);
+        assertThat(tested.getRetryCount()).isEqualTo(3);
+        assertThat(tested.getNextRetryAt()).isEqualTo(nextRetryAt);
+        assertThat(tested.getCreatedAt()).isEqualTo(createdAt);
+        assertThat(tested.getUpdatedAt()).isEqualTo(updatedAt);
+        assertThat(tested.getMovedAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("UT copy() should stay a DLQ event and carry its DLQ status and movedAt")
+    void copy_whenDlqEventIsCopied_shouldStayDlqEventWithItsOwnFields() {
+        // given
+        Instant now = Instant.parse("2026-01-01T10:00:00Z");
+        OutboxDlqEvent tested = new OutboxDlqEvent(MOVED_ID, EventStatus.FAILED, "type", "payloadType", "{}", 3,
+                now, now, now, DlqStatus.TO_RETRY, now);
+
+        // when
+        OutboxDlqEvent copy = tested.copy();
+
+        // then
+        assertThat(copy).isNotSameAs(tested).usingRecursiveComparison().isEqualTo(tested);
+        assertThat(copy.getDlqStatus()).isEqualTo(DlqStatus.TO_RETRY);
+        assertThat(copy.getMovedAt()).isEqualTo(now);
+    }
+
+    @Test
+    @DisplayName("UT copy() when called through the outbox type should still give a DLQ event")
+    void copy_whenCalledThroughOutboxType_shouldStillGiveDlqEvent() {
+        // given
+        Instant now = Instant.parse("2026-01-01T10:00:00Z");
+        OutboxEvent tested = new OutboxDlqEvent(MOVED_ID, EventStatus.FAILED, "type", "payloadType", "{}", 3,
+                now, now, now, DlqStatus.MOVED, now);
+
+        // when
+        OutboxEvent copy = tested.copy();
+
+        // then
+        assertThat(copy).isInstanceOf(OutboxDlqEvent.class);
+    }
+
+    private static final UUID MOVED_ID = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1");
 }

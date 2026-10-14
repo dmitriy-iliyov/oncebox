@@ -14,22 +14,24 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpServletRequest;
 
 import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 public class OutboxDlqApiAutoConfigurationIntegrationTests {
 
-    private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
+    private final ApplicationContextRunner contextRunnerWithoutClock = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
                     DataSourceAutoConfiguration.class,
                     OutboxDlqApiAutoConfiguration.class,
                     OutboxDlqApiMetricsAutoConfiguration.class
             ))
             .withBean("onceboxJdbcTemplate", JdbcTemplate.class, () -> mock(JdbcTemplate.class))
-            .withBean(Clock.class, Clock::systemDefaultZone)
             .withBean(MeterRegistry.class, SimpleMeterRegistry::new)
             .withPropertyValues(
                     "spring.datasource.url=" + PostgresTestContainerSingleton.INSTANCE.getJdbcUrl(),
@@ -37,6 +39,47 @@ public class OutboxDlqApiAutoConfigurationIntegrationTests {
                     "spring.datasource.username=" + PostgresTestContainerSingleton.INSTANCE.getUsername(),
                     "spring.datasource.password=" + PostgresTestContainerSingleton.INSTANCE.getPassword()
             );
+
+    private static final Instant FIXED_NOW = Instant.parse("2026-01-01T10:00:00Z");
+
+    private final ApplicationContextRunner contextRunner = contextRunnerWithoutClock
+            .withBean("userClock", Clock.class, Clock::systemDefaultZone);
+
+    @Test
+    @DisplayName("IT outboxDlqControllerAdvice when the application has one Clock should stamp problems with it")
+    void outboxDlqControllerAdvice_whenApplicationHasOneClock_shouldStampProblemsWithIt() {
+        contextRunnerWithoutClock
+                .withBean("userClock", Clock.class, () -> Clock.fixed(FIXED_NOW, ZoneOffset.UTC))
+                .withPropertyValues("oncebox.outbox.dlq.enabled=true")
+                .run(context -> assertThat(stampOf(context.getBean(OutboxDlqControllerAdvice.class)))
+                        .isEqualTo(FIXED_NOW.toString()));
+    }
+
+    @Test
+    @DisplayName("IT context when the application has no Clock should start and register no Clock of its own")
+    void context_whenApplicationHasNoClock_shouldStartWithoutRegisteringClock() {
+        contextRunnerWithoutClock
+                .withPropertyValues("oncebox.outbox.dlq.enabled=true")
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).doesNotHaveBean(Clock.class);
+                    assertThat(stampOf(context.getBean(OutboxDlqControllerAdvice.class))).isNotNull();
+                });
+    }
+
+    @Test
+    @DisplayName("IT context when the application has two Clocks should start and stamp problems by the UTC clock")
+    void context_whenApplicationHasTwoClocks_shouldStartAndUseUtcClock() {
+        contextRunnerWithoutClock
+                .withBean("firstClock", Clock.class, () -> Clock.fixed(FIXED_NOW, ZoneOffset.UTC))
+                .withBean("secondClock", Clock.class, () -> Clock.fixed(FIXED_NOW, ZoneOffset.UTC))
+                .withPropertyValues("oncebox.outbox.dlq.enabled=true")
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(stampOf(context.getBean(OutboxDlqControllerAdvice.class)))
+                            .isNotEqualTo(FIXED_NOW.toString());
+                });
+    }
 
     @Test
     @DisplayName("IT should not register any beans when dlq.enabled property is missing")
@@ -150,6 +193,13 @@ public class OutboxDlqApiAutoConfigurationIntegrationTests {
                     assertThat(context.getBean(OutboxDlqControllerAdvice.class))
                             .isSameAs(context.getBean("customAdvice"));
                 });
+    }
+
+    private static String stampOf(OutboxDlqControllerAdvice advice) {
+        Object timestamp = advice.handleUnexpectedException(new IllegalStateException("boom"), new MockHttpServletRequest())
+                .getProperties()
+                .get("timestamp");
+        return String.valueOf(timestamp);
     }
 
     private void assertNoBeans(AssertableApplicationContext context) {

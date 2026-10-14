@@ -5,7 +5,11 @@ import io.github.dmitriyiliyov.oncebox.core.utils.ResultSetMapper;
 import io.github.dmitriyiliyov.oncebox.core.utils.SqlUuidHelper;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.sql.Timestamp;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -27,8 +31,8 @@ public abstract class AbstractOutboxDlqRepository implements OutboxDlqRepository
     public void saveBatch(List<OutboxDlqEvent> eventBatch) {
         String sql = """
             INSERT INTO outbox_dlq_events
-            (id, status, dlq_status, event_type, payload_type, payload, retry_count, next_retry_at, created_at, updated_at, moved_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (id, status, dlq_status, event_type, payload_type, payload, retry_count, next_retry_at, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """;
         jdbcTemplate.batchUpdate(
                 sql,
@@ -42,11 +46,18 @@ public abstract class AbstractOutboxDlqRepository implements OutboxDlqRepository
                     ps.setString(5, event.getPayloadType());
                     ps.setString(6, event.getPayload());
                     ps.setInt(7, event.getRetryCount());
-                    ps.setTimestamp(8, Timestamp.from(event.getNextRetryAt()));
-                    ps.setTimestamp(9, Timestamp.from(event.getCreatedAt()));
-                    ps.setTimestamp(10, Timestamp.from(event.getUpdatedAt()));
-                    ps.setTimestamp(11, Timestamp.from(event.getMovedAt()));
+                    setInstant(ps, 8, event.getNextRetryAt());
+                    setInstant(ps, 9, event.getCreatedAt());
+                    setInstant(ps, 10, event.getUpdatedAt());
                 });
+    }
+
+    /**
+     * Binds a moment to a time column. The default binds it as an {@link OffsetDateTime} in UTC, which suits a column
+     * that keeps its time zone; a dialect whose column keeps none overrides it.
+     */
+    protected void setInstant(PreparedStatement ps, int index, Instant instant) throws SQLException {
+        ps.setObject(index, OffsetDateTime.ofInstant(instant, ZoneOffset.UTC));
     }
 
     @Override

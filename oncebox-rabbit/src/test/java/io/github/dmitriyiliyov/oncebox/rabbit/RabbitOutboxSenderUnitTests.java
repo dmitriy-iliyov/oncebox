@@ -3,8 +3,8 @@ package io.github.dmitriyiliyov.oncebox.rabbit;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.ConfirmListener;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.SenderResult;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxEvent;
+import io.github.dmitriyiliyov.oncebox.core.outbox.SenderResult;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,7 +17,6 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -38,7 +37,6 @@ class RabbitOutboxSenderUnitTests {
 
     private static final String EXCHANGE = "test-exchange";
     private static final long TIMEOUT_MILLIS = 5_000L;
-    private static final Instant CREATED_AT = Instant.parse("2026-09-24T10:00:00Z");
     private static final OutboxEvent FIRST = event("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "type1", "payload1");
     private static final OutboxEvent SECOND = event("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", "type2", "payload2");
     private static final OutboxEvent THIRD = event("cccccccc-cccc-cccc-cccc-cccccccccccc", "type3", "payload3");
@@ -292,7 +290,7 @@ class RabbitOutboxSenderUnitTests {
     }
 
     private static OutboxEvent event(String id, String eventType, String payload) {
-        return new OutboxEvent(UUID.fromString(id), eventType, "application/json", payload, CREATED_AT);
+        return new OutboxEvent(UUID.fromString(id), eventType, "application/json", payload);
     }
 
     @FunctionalInterface

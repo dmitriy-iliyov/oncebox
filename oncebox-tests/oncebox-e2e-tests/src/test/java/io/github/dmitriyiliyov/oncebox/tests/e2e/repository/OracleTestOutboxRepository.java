@@ -29,6 +29,11 @@ public class OracleTestOutboxRepository extends AbstractTestOutboxRepository {
     }
 
     @Override
+    protected String now() {
+        return "SYSTIMESTAMP";
+    }
+
+    @Override
     protected String minusSeconds(String column) {
         return column + " - NUMTODSINTERVAL(?, 'SECOND')";
     }

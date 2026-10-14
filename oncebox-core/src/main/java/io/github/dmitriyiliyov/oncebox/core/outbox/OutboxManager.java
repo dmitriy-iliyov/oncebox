@@ -1,10 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.core.outbox;
 
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.EventStatus;
-import io.github.dmitriyiliyov.oncebox.core.outbox.domain.OutboxEvent;
-
 import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -40,6 +36,18 @@ public interface OutboxManager {
     void saveBatch(List<OutboxEvent> eventBatch);
 
     /**
+     * Saves a batch of outbox events that already have a creation time, such as events brought back from the DLQ.
+     * <p>
+     * Each event keeps its {@code created_at}; its next retry time and {@code updated_at} are set by the database
+     * clock, so it is due at once. Joins the caller's transaction if there is one. Does nothing if the list is null
+     * or empty.
+     *
+     * @param eventBatch the list of events to save.
+     * @throws NullPointerException if an event has no creation time.
+     */
+    void saveBatchWithCreatedAt(List<OutboxEvent> eventBatch);
+
+    /**
      * Loads and locks a batch of events of a specific type for processing.
      * <p>
      * Locked events have their status changed to {@link EventStatus#IN_PROCESS}
@@ -73,8 +81,9 @@ public interface OutboxManager {
      * Finalizes a batch of events after processing, marking them as processed or updating retry state.
      * <p>
      * Successfully processed events are marked as {@link EventStatus#PROCESSED}.
-     * Failed events have their retry count incremented and next retry time recalculated.
-     * Once the retry count reaches {@code maxRetryCount}, the event is marked as {@link EventStatus#FAILED}.
+     * Failed events have their retry count incremented and their next retry time set to the database time plus the
+     * delay {@code retryDelaySupplier} gives. Once the retry count reaches {@code maxRetryCount}, the event is marked
+     * as {@link EventStatus#FAILED} and keeps the next retry time it had.
      * <p>
      * If an ID appears in both {@code processedIds} and {@code failedIds}, it is treated as failed.
      * If both sets are null or empty, the method is a no-op.
@@ -85,8 +94,8 @@ public interface OutboxManager {
      * @param processedIds        the IDs of successfully processed events.
      * @param failedIds           the IDs of failed events.
      * @param maxRetryCount       the maximum number of retries allowed.
-     * @param nextRetryAtSupplier a function that calculates the next retry time from the retry count the failed
-     *                            event will have after this attempt.
+     * @param retryDelaySupplier  a function that gives the delay before the next retry from the retry count the
+     *                            failed event will have after this attempt.
      * @param lockToken           the token the batch was loaded with.
      * @throws IllegalArgumentException if {@code maxRetryCount} is negative.
      */
@@ -94,11 +103,12 @@ public interface OutboxManager {
                        Set<UUID> processedIds,
                        Set<UUID> failedIds,
                        int maxRetryCount,
-                       Function<Integer, Instant> nextRetryAtSupplier,
+                       Function<Integer, Duration> retryDelaySupplier,
                        UUID lockToken);
 
     /**
-     * Recovers events stuck in {@link EventStatus#IN_PROCESS} state for longer than the given duration.
+     * Recovers events that have been in {@link EventStatus#IN_PROCESS} for at least the given duration by the
+     * database clock.
      * <p>
      * Stuck events are moved back to {@link EventStatus#PENDING} to be retried.
      * This handles cases where a processing node crashed without completing the batch.
@@ -111,7 +121,7 @@ public interface OutboxManager {
     int recoverStuckBatch(Duration maxBatchProcessingTime, int batchSize);
 
     /**
-     * Deletes processed events whose {@code updated_at} is at or before {@code now - ttl}.
+     * Deletes processed events last updated at least {@code ttl} ago by the database clock.
      * <p>
      * At most {@code batchSize} records are deleted per call.
      *

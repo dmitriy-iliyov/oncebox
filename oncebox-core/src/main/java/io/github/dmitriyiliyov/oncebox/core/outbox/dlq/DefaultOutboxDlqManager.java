@@ -1,13 +1,13 @@
 package io.github.dmitriyiliyov.oncebox.core.outbox.dlq;
 
+import io.github.dmitriyiliyov.oncebox.core.utils.ListUtils;
+import io.github.dmitriyiliyov.oncebox.core.utils.SetUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -18,17 +18,15 @@ public class DefaultOutboxDlqManager implements OutboxDlqManager {
     private static final Logger log = LoggerFactory.getLogger(DefaultOutboxDlqManager.class);
 
     private final OutboxDlqRepository repository;
-    private final Clock clock;
 
-    public DefaultOutboxDlqManager(OutboxDlqRepository repository, Clock clock) {
+    public DefaultOutboxDlqManager(OutboxDlqRepository repository) {
         this.repository = Objects.requireNonNull(repository, "repository cannot be null");
-        this.clock = Objects.requireNonNull(clock, "clock cannot be null");
     }
 
     @Transactional
     @Override
     public void saveBatch(List<OutboxDlqEvent> events) {
-        if (events == null || events.isEmpty()) {
+        if (ListUtils.isEmpty(events)) {
             log.debug("List of submitted events is empty, so saving was rejected");
             return;
         }
@@ -44,7 +42,7 @@ public class DefaultOutboxDlqManager implements OutboxDlqManager {
     @Transactional
     @Override
     public int deleteBatch(Set<UUID> ids) {
-        if (ids == null || ids.isEmpty()) {
+        if (SetUtils.isEmpty(ids)) {
             log.debug("List of submitted ids is empty, so deleting was rejected");
             return 0;
         }
@@ -55,7 +53,6 @@ public class DefaultOutboxDlqManager implements OutboxDlqManager {
     @Override
     public int deleteResolvedBatch(Duration ttl, int batchSize) {
         Objects.requireNonNull(ttl, "ttl cannot be null");
-        Instant threshold = clock.instant().minusMillis(ttl.toMillis());
-        return repository.deleteBatchByStatusAndThreshold(DlqStatus.RESOLVED, threshold, batchSize);
+        return repository.deleteBatchByStatusOlderThan(DlqStatus.RESOLVED, ttl, batchSize);
     }
 }
