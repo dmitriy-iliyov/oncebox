@@ -145,8 +145,8 @@ class DefaultInboxCacheUnitTests {
     }
 
     @Test
-    @DisplayName("UT consume() when cache exists should put empty string in cache")
-    void consume_whenCacheExists_shouldPutEmptyStringInCache() {
+    @DisplayName("UT consume() when cache exists should put empty string under the id as a string")
+    void consume_whenCacheExists_shouldPutEmptyStringUnderIdAsString() {
         // given
         UUID id = UUID.randomUUID();
         String cacheName = "test-cache";
@@ -158,7 +158,7 @@ class DefaultInboxCacheUnitTests {
         decorator.consume(id);
 
         // then
-        Mockito.verify(cache).put(id, "");
+        Mockito.verify(cache).put(id.toString(), "");
     }
 
     @Test

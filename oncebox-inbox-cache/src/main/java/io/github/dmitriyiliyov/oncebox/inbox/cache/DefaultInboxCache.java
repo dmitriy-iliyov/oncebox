@@ -34,7 +34,7 @@ public class DefaultInboxCache implements InboxCache {
         boolean isConsumed = cache.get(id.toString(), String.class) != null;
         if (isConsumed) {
             cacheListener.onHit();
-            return isConsumed;
+            return true;
         }
         cacheListener.onMiss();
         return false;
@@ -44,7 +44,7 @@ public class DefaultInboxCache implements InboxCache {
     public void consume(UUID id) {
         Cache cache = cacheManager.getCache(cacheName);
         if (cache != null) {
-            cache.put(id, "");
+            cache.put(id.toString(), "");
         } else {
             log.warn("Cache for inbox with name '{}' not found", cacheName);
         }
