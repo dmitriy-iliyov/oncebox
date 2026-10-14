@@ -1429,7 +1429,7 @@ oncebox:
 
 ## Agent Skill
 
-An [`oncebox` skill](https://github.com/dmitriy-iliyov/java-agent-skills/blob/main/plugins/oncebox/skills/oncebox/SKILL.md)
+An [oncebox skill](https://github.com/dmitriy-iliyov/java-agent-skills/blob/main/plugins/oncebox/skills/oncebox/SKILL.md)
 gives a coding agent what it cannot know about this library: the minimal set of modules, which idempotent consumer to
 inject, and the traps - the startup failures with the errors they print, and the misconfigurations that lose or skip
 events without an error. The agent loads it when a task is about an outbox, an inbox or deduplication of redelivered
