@@ -66,6 +66,7 @@ public class InboxAutoConfiguration {
     }
 
     @Bean
+    @TransactionalConsumer
     public IdempotentConsumer inboxTransactionalIdempotentConsumer(
             @Qualifier("inboxUndecoratedTransactionalIdempotentConsumer") IdempotentConsumer consumer,
             List<IdempotentConsumerDecoratorSupplier> decoratorSuppliers
@@ -74,6 +75,7 @@ public class InboxAutoConfiguration {
     }
 
     @Bean
+    @NonTransactionalConsumer
     public IdempotentConsumer inboxNonTransactionalIdempotentConsumer(
             @Qualifier("inboxUndecoratedNonTransactionalIdempotentConsumer") IdempotentConsumer consumer,
             List<IdempotentConsumerDecoratorSupplier> decoratorSuppliers

@@ -3,9 +3,9 @@ package io.github.dmitriyiliyov.oncebox.example.consumer;
 import io.github.dmitriyiliyov.oncebox.core.OnceboxHeadersUtils;
 import io.github.dmitriyiliyov.oncebox.core.inbox.IdempotentConsumer;
 import io.github.dmitriyiliyov.oncebox.example.shared.OrderDto;
+import io.github.dmitriyiliyov.oncebox.starter.inbox.TransactionalConsumer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Profile;
 import org.springframework.messaging.Message;
 import org.springframework.stereotype.Component;
@@ -19,9 +19,7 @@ public class OrderAnalyticRabbitListener {
 
     private final IdempotentConsumer idempotentConsumer;
 
-    public OrderAnalyticRabbitListener(
-            @Qualifier("inboxTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer
-    ) {
+    public OrderAnalyticRabbitListener(@TransactionalConsumer IdempotentConsumer idempotentConsumer) {
         this.idempotentConsumer = idempotentConsumer;
     }
 

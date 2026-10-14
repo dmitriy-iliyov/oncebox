@@ -3,8 +3,8 @@ package io.github.dmitriyiliyov.oncebox.example.consumer;
 import io.github.dmitriyiliyov.oncebox.core.OnceboxHeadersUtils;
 import io.github.dmitriyiliyov.oncebox.core.inbox.IdempotentConsumer;
 import io.github.dmitriyiliyov.oncebox.example.shared.OrderDto;
+import io.github.dmitriyiliyov.oncebox.starter.inbox.TransactionalConsumer;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Profile;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.messaging.Message;
@@ -20,9 +20,7 @@ public class OrderAnalyticKafkaListener {
 
     private final IdempotentConsumer idempotentConsumer;
 
-    public OrderAnalyticKafkaListener(
-            @Qualifier("inboxTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer
-    ) {
+    public OrderAnalyticKafkaListener(@TransactionalConsumer IdempotentConsumer idempotentConsumer) {
         this.idempotentConsumer = idempotentConsumer;
     }
 

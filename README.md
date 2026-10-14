@@ -214,11 +214,12 @@ oncebox:
 
 Read more about the configuration [here](#inbox-2).
 
-8. Create a listener with an injected `IdempotentConsumer`, chosen by its bean name:
+8. Create a listener with an injected `IdempotentConsumer`, chosen by `@TransactionalConsumer` or
+   `@NonTransactionalConsumer`:
 
 > [!IMPORTANT]
-> There is no default `IdempotentConsumer`: the inbox registers two of them, and injecting one without
-> `@Qualifier` fails the context with `NoUniqueBeanDefinitionException`. Which one to take is described in
+> There is no default `IdempotentConsumer`: the inbox registers two of them, and injecting one without either
+> annotation fails the context with `NoUniqueBeanDefinitionException`. Which one to take is described in
 > [Delivery Guarantees](#delivery-guarantees).
 
 **Apache Kafka:**
@@ -229,7 +230,7 @@ public class ExampleKafkaListener {
 
     private final IdempotentConsumer idempotentConsumer;
 
-    public ExampleKafkaListener(@Qualifier("inboxTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer) {
+    public ExampleKafkaListener(@TransactionalConsumer IdempotentConsumer idempotentConsumer) {
         this.idempotentConsumer = idempotentConsumer;
     }
     
@@ -252,7 +253,7 @@ public class ExampleRabbitListener {
 
     private final IdempotentConsumer idempotentConsumer;
 
-    public ExampleRabbitListener(@Qualifier("inboxTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer) {
+    public ExampleRabbitListener(@TransactionalConsumer IdempotentConsumer idempotentConsumer) {
         this.idempotentConsumer = idempotentConsumer;
     }
 
@@ -580,18 +581,28 @@ registered, each wrapped with the cache and metrics decorators when those are en
 | `inboxTransactionalIdempotentConsumer`    | `TransactionalIdempotentConsumer`    | Effectively-once |
 | `inboxNonTransactionalIdempotentConsumer` | `NonTransactionalIdempotentConsumer` | At-most-once     |
 
-Neither of them is primary, so a listener chooses one with `@Qualifier`:
+Neither of them is primary, so a listener chooses one with `@TransactionalConsumer` or `@NonTransactionalConsumer`,
+on a constructor or method parameter, a field or a setter:
 
 ```java
-public EmailListener(@Qualifier("inboxNonTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer) {
+public EmailListener(@NonTransactionalConsumer IdempotentConsumer idempotentConsumer) {
     this.idempotentConsumer = idempotentConsumer;
 }
 ```
 
-Injecting `IdempotentConsumer` without a qualifier fails the context with `NoUniqueBeanDefinitionException`, unless
-the field or parameter is named exactly as one of the beans. Lombok's `@RequiredArgsConstructor` does not copy
-`@Qualifier` from a field to the constructor unless `lombok.config` contains
-`lombok.copyableAnnotations += org.springframework.beans.factory.annotation.Qualifier`.
+Both are qualifiers carrying the bean names, so `@Qualifier("inboxNonTransactionalIdempotentConsumer")` does the same.
+Injecting `IdempotentConsumer` without either of them fails the context with `NoUniqueBeanDefinitionException`, unless
+the field or parameter is named exactly as one of the beans.
+
+Lombok's `@RequiredArgsConstructor` does not copy these annotations from a field to the constructor unless they are
+listed in `lombok.config`:
+
+```properties
+lombok.copyableAnnotations += io.github.dmitriyiliyov.oncebox.starter.inbox.TransactionalConsumer
+lombok.copyableAnnotations += io.github.dmitriyiliyov.oncebox.starter.inbox.NonTransactionalConsumer
+```
+
+The same goes for `@Qualifier`, listed as `org.springframework.beans.factory.annotation.Qualifier`.
 
 > [!CAUTION]
 > **Within one service, an event is handled by one consumer.** The inbox records an event by its id alone, whichever
