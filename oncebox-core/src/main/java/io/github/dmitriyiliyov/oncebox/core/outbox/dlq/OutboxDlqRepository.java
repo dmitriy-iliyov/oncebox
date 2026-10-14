@@ -15,10 +15,9 @@ public interface OutboxDlqRepository {
     /**
      * Saves a batch of DLQ events to the repository, writing {@code next_retry_at}, {@code created_at} and
      * {@code updated_at} from each event; {@code moved_at} is set by the database clock.
-     * <p>
-     * Does nothing if the list is null or empty.
      *
      * @param dlqEvents the list of DLQ events to save.
+     * @throws NullPointerException if {@code dlqEvents} is null.
      */
     void saveBatch(List<OutboxDlqEvent> dlqEvents);
 
@@ -39,11 +38,12 @@ public interface OutboxDlqRepository {
     /**
      * Deletes a batch of DLQ events by their IDs.
      * <p>
-     * Does nothing and returns 0 if the set is null or empty.
+     * Does nothing and returns 0 if the set is empty.
      * IDs that do not correspond to existing events are silently ignored.
      *
      * @param ids the set of event IDs to delete.
      * @return    the number of actually deleted events.
+     * @throws NullPointerException if {@code ids} is null.
      */
     int deleteBatch(Set<UUID> ids);
 

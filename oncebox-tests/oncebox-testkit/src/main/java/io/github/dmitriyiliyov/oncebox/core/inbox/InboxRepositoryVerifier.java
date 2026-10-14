@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * The contract of {@link InboxRepository} against the real engine, shared by the dialect modules: the times of the
@@ -74,6 +75,12 @@ public class InboxRepositoryVerifier {
 
     public void saveIfAbsentBatch_whenIdsAreEmpty_shouldReturnEmptySet() {
         assertThat(repository.saveIfAbsent(Set.of())).isEmpty();
+    }
+
+    public void saveIfAbsentBatch_whenIdsAreNull_shouldThrowNullPointerException() {
+        assertThatThrownBy(() -> repository.saveIfAbsent((Set<UUID>) null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("ids cannot be null");
     }
 
     public void saveIfAbsentBatch_whenBatchIsLarge_shouldRecordEveryId() {

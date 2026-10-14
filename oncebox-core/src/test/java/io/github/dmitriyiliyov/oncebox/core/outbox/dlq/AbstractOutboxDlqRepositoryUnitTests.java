@@ -127,6 +127,15 @@ class AbstractOutboxDlqRepositoryUnitTests {
     }
 
     @Test
+    @DisplayName("UT saveBatch() when the batch is null should throw NullPointerException and write nothing")
+    void saveBatch_whenBatchIsNull_shouldThrowNullPointerExceptionAndWriteNothing() {
+        // when / then
+        assertThatThrownBy(() -> tested.saveBatch(null))
+                .isInstanceOf(NullPointerException.class);
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
     @DisplayName("UT saveBatch() should write the times the event carries as UTC moments and leave moved_at to the database")
     @SuppressWarnings("unchecked")
     void saveBatch_whenCalled_shouldWriteEventTimesAndLeaveMovedAtToDatabase() throws SQLException {

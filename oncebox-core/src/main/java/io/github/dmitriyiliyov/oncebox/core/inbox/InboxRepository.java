@@ -23,7 +23,7 @@ public interface InboxRepository {
     /**
      * Saves multiple event IDs to the repository if they do not already exist.
      * <p>
-     * Returns an empty set if {@code ids} is null or empty.
+     * Returns an empty set if {@code ids} is empty.
      * Only IDs that were not previously present are inserted and returned.
      * <p>
      * Implementations may throw {@link ConcurrentInsertException} if a race condition
@@ -32,6 +32,7 @@ public interface InboxRepository {
      * @param ids a set of UUIDs to save.
      * @return    a set of UUIDs that were successfully inserted.
      * @throws ConcurrentInsertException if a concurrent insert is detected.
+     * @throws NullPointerException      if {@code ids} is null.
      */
     Set<UUID> saveIfAbsent(Set<UUID> ids);
 

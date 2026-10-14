@@ -111,6 +111,12 @@ class OracleInboxRepositoryIntegrationTests extends BaseOracleIntegrationTests {
     }
 
     @Test
+    @DisplayName("IT saveIfAbsent(Set) when ids are null should throw NullPointerException")
+    void saveIfAbsentBatch_whenIdsAreNull_shouldThrowNullPointerException() {
+        delegate.saveIfAbsentBatch_whenIdsAreNull_shouldThrowNullPointerException();
+    }
+
+    @Test
     @DisplayName("IT saveIfAbsent(Set) when the batch is large should record every id")
     void saveIfAbsentBatch_whenBatchIsLarge_shouldRecordEveryId() {
         delegate.saveIfAbsentBatch_whenBatchIsLarge_shouldRecordEveryId();
