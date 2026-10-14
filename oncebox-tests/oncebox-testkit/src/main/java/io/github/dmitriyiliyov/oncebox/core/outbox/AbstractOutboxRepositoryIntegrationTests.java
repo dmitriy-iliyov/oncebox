@@ -130,6 +130,11 @@ public class AbstractOutboxRepositoryIntegrationTests {
         )).isEmpty();
     }
 
+    public void saveBatchWithCreatedAt_whenBatchIsEmpty_shouldNotThrow() {
+        assertThatCode(() -> repository.saveBatchWithCreatedAt(List.of()))
+                .doesNotThrowAnyException();
+    }
+
     public void findAndLockBatchByEventTypeAndStatus_whenNextRetryIsAhead_shouldSkipEvent() {
         String eventType = "retry-" + UUID.randomUUID();
         OutboxEvent due = buildEventWithType(EventStatus.PENDING, eventType);
@@ -204,6 +209,16 @@ public class AbstractOutboxRepositoryIntegrationTests {
         assertThat(repository.updateBatchStatusByLockToken(ids, LOCK_TOKEN, EventStatus.PROCESSED)).isEqualTo(2);
     }
 
+    public void updateBatchStatus_whenHeldByLockToken_shouldWriteStatusAndStampUpdatedAtByDatabaseClock() {
+        UUID id = capture(LOCK_TOKEN, 1).iterator().next();
+        clock.shift(TABLE, "updated_at", id, LONG_AGO);
+
+        repository.updateBatchStatusByLockToken(Set.of(id), LOCK_TOKEN, EventStatus.PROCESSED);
+
+        assertThat(distance(id, "updated_at")).isBetween(SLACK.negated(), SLACK);
+        assertThat(idsWithStatus(EventStatus.PROCESSED)).contains(id);
+    }
+
     public void updateBatchStatus_whenNeverCaptured_updatesNothing() {
         OutboxEvent event = buildEvent(EventStatus.IN_PROCESS);
         repository.saveBatch(List.of(event));
@@ -221,6 +236,22 @@ public class AbstractOutboxRepositoryIntegrationTests {
         );
 
         assertThat(count).isEqualTo(1);
+    }
+
+    public void partiallyUpdateBatch_whenHeldByLockToken_shouldWriteRetryStateAndStampUpdatedAtByDatabaseClock() {
+        UUID id = capture(LOCK_TOKEN, 1).iterator().next();
+        clock.shift(TABLE, "updated_at", id, LONG_AGO);
+
+        repository.partiallyUpdateBatchByLockToken(
+                List.of(buildEventWithRetry(id, EventStatus.PENDING, 2, Duration.ofMinutes(1))), LOCK_TOKEN
+        );
+
+        assertThat(distance(id, "updated_at")).isBetween(SLACK.negated(), SLACK);
+        assertThat(repository.findAndLockBatchByStatus(EventStatus.PENDING, 100, EventStatus.PENDING))
+                .filteredOn(event -> event.getId().equals(id))
+                .singleElement()
+                .extracting(OutboxEvent::getRetryCount)
+                .isEqualTo(2);
     }
 
     public void partiallyUpdateBatch_whenDelayIsGiven_shouldCountNextRetryFromDatabaseTime() {
@@ -316,6 +347,17 @@ public class AbstractOutboxRepositoryIntegrationTests {
         assertThat(updated).isEqualTo(3);
     }
 
+    public void updateBatchStatusByStatusOlderThan_whenOldEventHasAnotherStatus_shouldLeaveIt() {
+        OutboxEvent oldPending = buildEvent(EventStatus.PENDING);
+        repository.saveBatch(List.of(oldPending));
+        clock.shift(TABLE, "updated_at", oldPending.getId(), LONG_AGO);
+
+        int updated = repository.updateBatchStatusByStatusOlderThan(EventStatus.IN_PROCESS, AGE, 10, EventStatus.FAILED);
+
+        assertThat(updated).isZero();
+        assertThat(idsWithStatus(EventStatus.PENDING)).contains(oldPending.getId());
+    }
+
     public void deleteBatchByStatusOlderThan_whenSomeEventsAreOld_shouldDeleteOnlyOldOfThatStatus() {
         OutboxEvent oldProcessed = buildEvent(EventStatus.PROCESSED);
         OutboxEvent freshProcessed = buildEvent(EventStatus.PROCESSED);
@@ -393,6 +435,15 @@ public class AbstractOutboxRepositoryIntegrationTests {
         );
         assertThat(captured).hasSize(count);
         return captured.stream().map(OutboxEvent::getId).collect(Collectors.toSet());
+    }
+
+    /**
+     * The ids of the events in {@code status}, read by a capture that leaves them in it.
+     */
+    private List<UUID> idsWithStatus(EventStatus status) {
+        return repository.findAndLockBatchByStatus(status, 100, status).stream()
+                .map(OutboxEvent::getId)
+                .toList();
     }
 
     private Duration distance(UUID id, String column) {

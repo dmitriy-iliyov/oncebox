@@ -220,6 +220,12 @@ class PostgreSqlAbstractOutboxDlqApiRepositoryIntegrationTests extends BaseDlqAp
     }
 
     @Test
+    @DisplayName("IT findBatch() should return only events matching status")
+    void findBatch_returnsOnlyMatchingStatus() {
+        delegate.findBatch_byStatus_returnsOnlyMatchingStatus();
+    }
+
+    @Test
     @DisplayName("IT findBatch() by eventType should return only matching type")
     void findBatch_byEventType_returnsOnlyMatchingType() {
         delegate.findBatch_byEventType_returnsOnlyMatchingType();

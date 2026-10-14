@@ -217,4 +217,28 @@ class PostgreSqlOutboxRepositoryIntegrationTests extends BasePostgresSqlIntegrat
                 .containsOnly(orderEvent.getId())
                 .doesNotContain(paymentEvent.getId());
     }
+
+    @Test
+    @DisplayName("IT saveBatchWithCreatedAt() when the batch is empty should not throw")
+    void saveBatchWithCreatedAt_whenBatchIsEmpty_shouldNotThrow() {
+        delegate.saveBatchWithCreatedAt_whenBatchIsEmpty_shouldNotThrow();
+    }
+
+    @Test
+    @DisplayName("IT updateBatchStatusByLockToken() when held by the token should write the status and stamp updated_at by the database clock")
+    void updateBatchStatusByLockToken_whenHeldByLockToken_shouldWriteStatusAndStampUpdatedAtByDatabaseClock() {
+        delegate.updateBatchStatus_whenHeldByLockToken_shouldWriteStatusAndStampUpdatedAtByDatabaseClock();
+    }
+
+    @Test
+    @DisplayName("IT partiallyUpdateBatchByLockToken() when held by the token should write the retry state and stamp updated_at by the database clock")
+    void partiallyUpdateBatchByLockToken_whenHeldByLockToken_shouldWriteRetryStateAndStampUpdatedAtByDatabaseClock() {
+        delegate.partiallyUpdateBatch_whenHeldByLockToken_shouldWriteRetryStateAndStampUpdatedAtByDatabaseClock();
+    }
+
+    @Test
+    @DisplayName("IT updateBatchStatusByStatusOlderThan() when an old event has another status should leave it")
+    void updateBatchStatusByStatusOlderThan_whenOldEventHasAnotherStatus_shouldLeaveIt() {
+        delegate.updateBatchStatusByStatusOlderThan_whenOldEventHasAnotherStatus_shouldLeaveIt();
+    }
 }

@@ -144,4 +144,16 @@ class PostgreSqlOutboxDlqRepositoryIntegrationTests extends BasePostgresSqlInteg
     void deleteBatchByStatusOlderThan_noMatches_returnsZero() {
         delegate.deleteBatchByStatusOlderThan_noMatches_returnsZero();
     }
+
+    @Test
+    @DisplayName("IT findAndLockBatchByStatus() when some events match should lock only them in the lock status")
+    void findAndLockBatchByStatus_whenSomeEventsMatch_shouldLockOnlyThemInLockStatus() {
+        delegate.findAndLockBatchByStatus_whenSomeEventsMatch_shouldLockOnlyThemInLockStatus();
+    }
+
+    @Test
+    @DisplayName("IT findAndLockBatchByStatus() when more events match should lock at most batchSize")
+    void findAndLockBatchByStatus_whenMoreEventsMatch_shouldLockAtMostBatchSize() {
+        delegate.findAndLockBatchByStatus_whenMoreEventsMatch_shouldLockAtMostBatchSize();
+    }
 }

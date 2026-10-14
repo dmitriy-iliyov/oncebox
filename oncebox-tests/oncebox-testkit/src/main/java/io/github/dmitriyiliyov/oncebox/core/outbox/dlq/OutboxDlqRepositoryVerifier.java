@@ -102,6 +102,33 @@ public class OutboxDlqRepositoryVerifier {
         events.forEach(e -> assertThat(findById(e.getId())).isPresent());
     }
 
+    public void findAndLockBatchByStatus_whenSomeEventsMatch_shouldLockOnlyThemInLockStatus() {
+        OutboxDlqEvent toRetry = buildEvent(DlqStatus.TO_RETRY);
+        OutboxDlqEvent moved = buildEvent(DlqStatus.MOVED);
+        repository.saveBatch(List.of(toRetry, moved));
+
+        List<OutboxDlqEvent> locked = repository.findAndLockBatchByStatus(DlqStatus.TO_RETRY, 100, DlqStatus.IN_PROCESS);
+
+        assertThat(locked).extracting(OutboxEvent::getId).contains(toRetry.getId()).doesNotContain(moved.getId());
+        assertThat(locked).extracting(OutboxDlqEvent::getDlqStatus).containsOnly(DlqStatus.IN_PROCESS);
+        assertThat(findById(toRetry.getId())).get()
+                .extracting(OutboxDlqEvent::getDlqStatus).isEqualTo(DlqStatus.IN_PROCESS);
+        assertThat(findById(moved.getId())).get()
+                .extracting(OutboxDlqEvent::getDlqStatus).isEqualTo(DlqStatus.MOVED);
+    }
+
+    public void findAndLockBatchByStatus_whenMoreEventsMatch_shouldLockAtMostBatchSize() {
+        repository.saveBatch(List.of(
+                buildEvent(DlqStatus.TO_RETRY),
+                buildEvent(DlqStatus.TO_RETRY),
+                buildEvent(DlqStatus.TO_RETRY)
+        ));
+
+        List<OutboxDlqEvent> locked = repository.findAndLockBatchByStatus(DlqStatus.TO_RETRY, 2, DlqStatus.IN_PROCESS);
+
+        assertThat(locked).hasSize(2);
+    }
+
     public void deleteBatch_existingIds_deletedAndReturnsCount() {
         OutboxDlqEvent e1 = buildEvent(DlqStatus.MOVED);
         OutboxDlqEvent e2 = buildEvent(DlqStatus.MOVED);
