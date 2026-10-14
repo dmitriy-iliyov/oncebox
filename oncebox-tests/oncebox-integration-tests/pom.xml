@@ -37,7 +37,7 @@
         <dependency>
             <groupId>io.github.dmitriy-iliyov</groupId>
             <artifactId>oncebox-starter</artifactId>
-            <version>1.1.2</version>
+            <version>2.0.0</version>
             <scope>test</scope>
         </dependency>
 
@@ -45,49 +45,49 @@
         <dependency>
             <groupId>io.github.dmitriy-iliyov</groupId>
             <artifactId>oncebox-postgresql</artifactId>
-            <version>1.1.2</version>
+            <version>2.0.0</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>io.github.dmitriy-iliyov</groupId>
             <artifactId>oncebox-mysql</artifactId>
-            <version>1.1.2</version>
+            <version>2.0.0</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>io.github.dmitriy-iliyov</groupId>
             <artifactId>oncebox-oracle</artifactId>
-            <version>1.1.2</version>
+            <version>2.0.0</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>io.github.dmitriy-iliyov</groupId>
             <artifactId>oncebox-inbox-cache</artifactId>
-            <version>1.1.2</version>
+            <version>2.0.0</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>io.github.dmitriy-iliyov</groupId>
             <artifactId>oncebox-kafka</artifactId>
-            <version>1.1.2</version>
+            <version>2.0.0</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>io.github.dmitriy-iliyov</groupId>
             <artifactId>oncebox-rabbit</artifactId>
-            <version>1.1.2</version>
+            <version>2.0.0</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>io.github.dmitriy-iliyov</groupId>
             <artifactId>oncebox-dlq-api</artifactId>
-            <version>1.1.2</version>
+            <version>2.0.0</version>
             <scope>test</scope>
         </dependency>
 
@@ -100,7 +100,7 @@
         <dependency>
             <groupId>io.github.dmitriy-iliyov</groupId>
             <artifactId>oncebox-test-fixtures</artifactId>
-            <version>1.1.2</version>
+            <version>2.0.0</version>
             <scope>test</scope>
         </dependency>
 

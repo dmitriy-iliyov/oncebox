@@ -8,7 +8,7 @@
     <parent>
         <groupId>io.github.dmitriy-iliyov</groupId>
         <artifactId>oncebox-parent</artifactId>
-        <version>1.1.2</version>
+        <version>2.0.0</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
@@ -33,13 +33,13 @@
         <dependency>
             <groupId>io.github.dmitriy-iliyov</groupId>
             <artifactId>oncebox-core</artifactId>
-            <version>1.1.2</version>
+            <version>2.0.0</version>
         </dependency>
 
         <dependency>
             <groupId>io.github.dmitriy-iliyov</groupId>
             <artifactId>oncebox-dlq-api</artifactId>
-            <version>1.1.2</version>
+            <version>2.0.0</version>
         </dependency>
 
         <dependency>

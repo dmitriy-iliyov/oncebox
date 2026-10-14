@@ -47,7 +47,7 @@ This approach ensures reliable event publication without relying on database log
   <dependency>
       <groupId>io.github.dmitriy-iliyov</groupId>
       <artifactId>oncebox-starter</artifactId>
-      <version>1.1.2</version>
+      <version>2.0.0</version>
   </dependency>
 ```
 
@@ -59,7 +59,7 @@ This approach ensures reliable event publication without relying on database log
   <dependency>
       <groupId>io.github.dmitriy-iliyov</groupId>
       <artifactId>oncebox-postgresql</artifactId>
-      <version>1.1.2</version>
+      <version>2.0.0</version>
   </dependency>
 ```
 
@@ -70,7 +70,7 @@ For Apache Kafka:
   <dependency>
       <groupId>io.github.dmitriy-iliyov</groupId>
       <artifactId>oncebox-kafka</artifactId>
-      <version>1.1.2</version>
+      <version>2.0.0</version>
   </dependency>
 ```
 
@@ -79,7 +79,7 @@ For RabbitMQ:
   <dependency>
       <groupId>io.github.dmitriy-iliyov</groupId>
       <artifactId>oncebox-rabbit</artifactId>
-      <version>1.1.2</version>
+      <version>2.0.0</version>
   </dependency>
 ```
 
@@ -90,7 +90,7 @@ Optionally, you can also add:
   <dependency>
       <groupId>io.github.dmitriy-iliyov</groupId>
       <artifactId>oncebox-metrics</artifactId>
-      <version>1.1.2</version>
+      <version>2.0.0</version>
   </dependency>
 ```
 
@@ -100,7 +100,7 @@ No extra dialect dependency is needed - it reuses the one you already added abov
   <dependency>
       <groupId>io.github.dmitriy-iliyov</groupId>
       <artifactId>oncebox-dlq-api</artifactId>
-      <version>1.1.2</version>
+      <version>2.0.0</version>
   </dependency>
 ```
 
@@ -179,7 +179,7 @@ public class ExampleService {
   <dependency>
       <groupId>io.github.dmitriy-iliyov</groupId>
       <artifactId>oncebox-starter</artifactId>
-      <version>1.1.2</version>
+      <version>2.0.0</version>
   </dependency>
 ```
 
@@ -188,7 +188,7 @@ You can also add `oncebox-inbox-cache` to enable the inbox cache, read more [her
   <dependency>
       <groupId>io.github.dmitriy-iliyov</groupId>
       <artifactId>oncebox-inbox-cache</artifactId>
-      <version>1.1.2</version>
+      <version>2.0.0</version>
   </dependency>
 ```
 
