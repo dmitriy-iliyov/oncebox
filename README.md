@@ -36,7 +36,6 @@ This approach ensures reliable event publication without relying on database log
 ## Limitations
 - **Horizontal scaling** - performance degradation may occur when reaching a certain number of instances due to `SKIP LOCKED` - based concurrent polling mechanism. The optimal number of instances depends on the number of event types and database load.
 - **No ordering guarantees** - events are processed in parallel by type, with no guaranteed delivery order within or across event types.
-- **MySQL requires READ COMMITTED** - see the note below.
 
 ## Quick Start
 
