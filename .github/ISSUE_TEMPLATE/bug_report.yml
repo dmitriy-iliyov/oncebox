@@ -1,0 +1,70 @@
+name: Bug report
+description: Something does not work as documented
+labels: [ "bug" ]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Security vulnerabilities must not be reported here, see [SECURITY.md](https://github.com/dmitriy-iliyov/oncebox/blob/main/SECURITY.md).
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened, and what did you expect to happen instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: A minimal configuration, code snippet or a link to a repository that reproduces the problem.
+      placeholder: |
+        1. Configure ...
+        2. Publish ...
+        3. See ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs and stack traces
+      description: Paste relevant output. It is rendered as code, no backticks needed.
+      render: text
+
+  - type: input
+    id: oncebox-version
+    attributes:
+      label: oncebox version
+      placeholder: 2.0.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: modules
+    attributes:
+      label: Modules in use
+      multiple: true
+      options:
+        - oncebox-starter
+        - oncebox-postgresql
+        - oncebox-mysql
+        - oncebox-oracle
+        - oncebox-kafka
+        - oncebox-rabbit
+        - oncebox-inbox-cache
+        - oncebox-dlq-api
+        - oncebox-metrics
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Spring Boot, Java, database and broker versions.
+      placeholder: Spring Boot 3.5.16, Java 21, PostgreSQL 16, Kafka 3.7
+    validations:
+      required: true
