@@ -37,9 +37,9 @@ The full documentation lives **[here](https://dmitriy-iliyov.github.io/oncebox-d
 - **Atomic persistence** - stores events within the same business transaction, ensuring consistency.
 - **Adaptive polling** - dynamically adjusts the polling interval based on workload to optimize database usage.
 - **Flexible polling configuration** - allows customization of polling intervals, retry policies, and backoff strategies per event type.
-- **At-most-once processing** - optionally records an incoming event in the inbox before handling it, so a side effect such as sending an email is never repeated.
-- **At-least-once delivery** - guarantees outbox delivery with configurable retries and backoff policies.
+- **At-least-once processing** - guarantees outbox delivery with configurable retries and backoff policies.
 - **Effectively-once processing** - optionally records an incoming event in the inbox within the same transaction as its handling, so a redelivered event never changes data twice.
+- **At-most-once processing** - optionally records an incoming event in the inbox before handling it, so a side effect such as sending an email is never repeated.
 - **Dead Letter Queue** - stores events that fail after all retry attempts, with REST API support for management.
 - **Background service** - handles recovery of stuck events and cleanup of processed or consumed events automatically.
 - **Observability** - provides out-of-the-box metrics integration via Micrometer.
