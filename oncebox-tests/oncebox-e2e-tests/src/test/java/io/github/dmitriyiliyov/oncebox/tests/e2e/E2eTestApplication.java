@@ -1,6 +1,5 @@
 package io.github.dmitriyiliyov.oncebox.tests.e2e;
 
-import io.github.dmitriyiliyov.oncebox.starter.EnableOncebox;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.config.E2eTestConfig;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.config.KafkaBrokerConfig;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.config.RabbitBrokerConfig;
@@ -16,6 +15,5 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
  */
 @SpringBootApplication
 @EnableTransactionManagement
-@EnableOncebox
 @Import({E2eTestConfig.class, KafkaBrokerConfig.class, RabbitBrokerConfig.class})
 public class E2eTestApplication { }

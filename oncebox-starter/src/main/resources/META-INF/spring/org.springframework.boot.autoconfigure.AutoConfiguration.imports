@@ -1,0 +1,3 @@
+io.github.dmitriyiliyov.oncebox.starter.OnceboxAutoConfiguration
+io.github.dmitriyiliyov.oncebox.starter.outbox.OutboxAutoConfiguration
+io.github.dmitriyiliyov.oncebox.starter.inbox.InboxAutoConfiguration

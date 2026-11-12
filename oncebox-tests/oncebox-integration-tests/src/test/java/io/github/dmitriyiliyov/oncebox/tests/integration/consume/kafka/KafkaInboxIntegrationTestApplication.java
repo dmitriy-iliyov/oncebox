@@ -1,6 +1,5 @@
 package io.github.dmitriyiliyov.oncebox.tests.integration.consume.kafka;
 
-import io.github.dmitriyiliyov.oncebox.starter.EnableOncebox;
 import io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared.InboxIntegrationTestsConfig;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
@@ -18,7 +17,6 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @EntityScan(basePackages = "io.github.dmitriyiliyov.oncebox.tests.integration.domain")
 @EnableJpaRepositories(basePackages = "io.github.dmitriyiliyov.oncebox.tests.integration.consume.shared")
 @EnableTransactionManagement
-@EnableOncebox
 @Import({
         InboxIntegrationTestsConfig.class,
         KafkaIntegrationTestsConfig.class

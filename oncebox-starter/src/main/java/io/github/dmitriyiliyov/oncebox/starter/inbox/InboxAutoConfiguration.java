@@ -5,11 +5,12 @@ import io.github.dmitriyiliyov.oncebox.core.inbox.*;
 import io.github.dmitriyiliyov.oncebox.core.locks.DistributedLockRepository;
 import io.github.dmitriyiliyov.oncebox.core.locks.OnceboxJob;
 import io.github.dmitriyiliyov.oncebox.starter.*;
+import io.github.dmitriyiliyov.oncebox.starter.outbox.OutboxAutoConfiguration;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -17,7 +18,14 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 
-@Configuration
+@AutoConfiguration(
+        after = {OnceboxAutoConfiguration.class, OutboxAutoConfiguration.class},
+        afterName = {
+                "org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration",
+                "org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration",
+                "org.springframework.boot.autoconfigure.cache.CacheAutoConfiguration"
+        }
+)
 @ConditionalOnProperty(
         prefix = "oncebox.inbox",
         name = "enabled",

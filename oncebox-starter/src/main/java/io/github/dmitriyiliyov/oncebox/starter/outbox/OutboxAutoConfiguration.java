@@ -1,7 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.starter.outbox;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.dmitriyiliyov.oncebox.aop.OutboxPublishAspect;
 import io.github.dmitriyiliyov.oncebox.core.ContinuableTaskDecorator;
 import io.github.dmitriyiliyov.oncebox.core.OnceboxScheduler;
 import io.github.dmitriyiliyov.oncebox.core.locks.DistributedLockRepository;
@@ -13,17 +12,23 @@ import io.github.dmitriyiliyov.oncebox.starter.outbox.dlq.OutboxDlqAutoConfigura
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.concurrent.ScheduledExecutorService;
 
-@Configuration
+@AutoConfiguration(
+        after = OnceboxAutoConfiguration.class,
+        afterName = {
+                "org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration",
+                "org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration"
+        }
+)
 @ConditionalOnProperty(
         prefix = "oncebox.outbox",
         name = "enabled",
@@ -32,6 +37,7 @@ import java.util.concurrent.ScheduledExecutorService;
 )
 @Import({
         OutboxPollingSchedulerRegistrar.class,
+        OutboxAopConfiguration.class,
         OutboxDlqAutoConfiguration.class,
         OutboxKafkaAutoConfiguration.class,
         OutboxRabbitAutoConfiguration.class,
@@ -81,11 +87,6 @@ public class OutboxAutoConfiguration {
     @ConditionalOnMissingBean
     public OutboxProcessor outboxProcessor(OutboxManager manager, OutboxSender sender) {
         return new DefaultOutboxProcessor(manager, sender);
-    }
-
-    @Bean
-    public OutboxPublishAspect outboxPublishAspect(OutboxPublisher publisher) {
-        return new OutboxPublishAspect(publisher);
     }
 
     @Bean

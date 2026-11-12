@@ -6,11 +6,17 @@ import io.github.dmitriyiliyov.oncebox.starter.inbox.InboxProperties;
 import io.github.dmitriyiliyov.oncebox.starter.outbox.OutboxProperties;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.JdbcTemplateAutoConfiguration;
+import org.springframework.boot.autoconfigure.task.TaskSchedulingAutoConfiguration;
+import org.springframework.boot.autoconfigure.transaction.TransactionAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.init.DataSourceInitializer;
@@ -22,7 +28,14 @@ import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
-@Configuration
+@AutoConfiguration(after = {
+        DataSourceAutoConfiguration.class,
+        JdbcTemplateAutoConfiguration.class,
+        DataSourceTransactionManagerAutoConfiguration.class,
+        TransactionAutoConfiguration.class,
+        JacksonAutoConfiguration.class,
+        TaskSchedulingAutoConfiguration.class
+})
 @EnableConfigurationProperties(OnceboxProperties.class)
 @Import(OnceboxMetricsAutoConfiguration.class)
 public class OnceboxAutoConfiguration {
@@ -54,7 +67,7 @@ public class OnceboxAutoConfiguration {
         return properties.getInbox();
     }
 
-    @Bean
+    @Bean(defaultCandidate = false)
     @ConditionalOnMissingBean(name = "onceboxJdbcTemplate")
     public JdbcTemplate onceboxJdbcTemplate(DataSource dataSource) {
         return new JdbcTemplate(dataSource);
