@@ -58,7 +58,11 @@ Running the combination your change touches locally is usually enough.
 - Follow the style of the surrounding code. Code comments and javadoc are written in English.
 - Database-specific code lives in the dialect modules (`oncebox-postgresql`, `oncebox-mysql`, `oncebox-oracle`).
   A change to the SQL of one dialect usually needs the same change in the other two.
-- When you change a schema in `oncebox-starter`, sync the copy in `oncebox-tests/oncebox-test-fixtures`.
+- A schema change is a new migration, `V<n+1>__*.sql` in `oncebox-starter/src/main/resources/db/oncebox/<vendor>/<feature>/`,
+  for all three dialects; a released migration is never edited. One script runs under Flyway, Liquibase and the `DEV`
+  mode at once, so follow the rules in
+  [Writing a migration](https://dmitriy-iliyov.github.io/oncebox-docs/docs/reference/schema/#writing-a-migration),
+  and sync the copy in `oncebox-tests/oncebox-test-fixtures`.
 - Configuration properties live under the `oncebox.*` prefix. A new property needs a default and a line in the README.
 
 ## Tests

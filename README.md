@@ -19,6 +19,7 @@
 
 ## Overview
 This library provides an implementation of the [Transactional Outbox Pattern](https://microservices.io/patterns/data/transactional-outbox.html) based on polling events from a relational database and publishing them to a message broker.
+On the receiving side, an inbox implements the [Idempotent Consumer Pattern](https://microservices.io/patterns/communication-style/idempotent-consumer.html): it records the ids of consumed events, so a redelivered event is skipped.
 
 The library offers flexible configuration for processing different event types.
 Each event type is handled independently, and events are processed in parallel using a configurable thread pool, allowing predictable throughput and controlled resource usage.
@@ -32,6 +33,7 @@ The full documentation lives **[here](https://dmitriy-iliyov.github.io/oncebox-d
 - [Quickstart](https://dmitriy-iliyov.github.io/oncebox-docs/docs/quickstart/) - add the dependencies, configure an event type, publish and consume it.
 - [Delivery Guarantees](https://dmitriy-iliyov.github.io/oncebox-docs/docs/reference/guarantees/) - what is guaranteed, in which failure, and what is not.
 - [Configuration](https://dmitriy-iliyov.github.io/oncebox-docs/docs/reference/configuration/) - every property with its default.
+- [Schema Migrations](https://dmitriy-iliyov.github.io/oncebox-docs/docs/reference/schema/) - creating the tables with Flyway or Liquibase.
 
 ## Key Features
 - **Atomic persistence** - stores events within the same business transaction, ensuring consistency.
@@ -43,6 +45,7 @@ The full documentation lives **[here](https://dmitriy-iliyov.github.io/oncebox-d
 - **Dead Letter Queue** - stores events that fail after all retry attempts, with REST API support for management.
 - **Background service** - handles recovery of stuck events and cleanup of processed or consumed events automatically.
 - **Observability** - provides out-of-the-box metrics integration via Micrometer.
+- **Schema migrations** - ships its tables as versioned migrations, applied with Flyway or Liquibase or plain SQL scripts.
 
 ## Supported Infrastructure
 
