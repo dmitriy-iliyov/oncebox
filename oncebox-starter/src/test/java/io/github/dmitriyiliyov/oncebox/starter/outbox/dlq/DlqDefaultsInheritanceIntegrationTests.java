@@ -67,7 +67,6 @@ public class DlqDefaultsInheritanceIntegrationTests {
                         "spring.datasource.driver-class-name=org.postgresql.Driver",
                         "spring.datasource.username=admin",
                         "spring.datasource.password=root",
-                        "oncebox.tables.auto-create=false",
                         "oncebox.outbox.sender.type=kafka",
                         "oncebox.outbox.events.my-event.topic=my.topic"
                 );

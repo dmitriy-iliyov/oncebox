@@ -1,5 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.oracle;
 
+import io.github.dmitriyiliyov.oncebox.core.OracleDatabaseClock;
 import io.github.dmitriyiliyov.oncebox.core.inbox.ConcurrentInsertException;
 import io.github.dmitriyiliyov.oncebox.core.inbox.InboxRepositoryVerifier;
 import org.junit.jupiter.api.DisplayName;

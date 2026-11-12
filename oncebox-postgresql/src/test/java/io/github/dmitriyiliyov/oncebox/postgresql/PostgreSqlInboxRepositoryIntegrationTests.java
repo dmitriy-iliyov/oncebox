@@ -1,5 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.postgresql;
 
+import io.github.dmitriyiliyov.oncebox.core.PostgreSqlDatabaseClock;
 import io.github.dmitriyiliyov.oncebox.core.inbox.InboxRepositoryVerifier;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

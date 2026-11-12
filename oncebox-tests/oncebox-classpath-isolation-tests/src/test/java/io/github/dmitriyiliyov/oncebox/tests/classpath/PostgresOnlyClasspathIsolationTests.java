@@ -49,8 +49,7 @@ class PostgresOnlyClasspathIsolationTests {
                         "spring.datasource.url=" + PostgresTestContainerSingleton.INSTANCE.getJdbcUrl(),
                         "spring.datasource.driver-class-name=org.postgresql.Driver",
                         "spring.datasource.username=" + PostgresTestContainerSingleton.INSTANCE.getUsername(),
-                        "spring.datasource.password=" + PostgresTestContainerSingleton.INSTANCE.getPassword(),
-                        "oncebox.tables.auto-create=false"
+                        "spring.datasource.password=" + PostgresTestContainerSingleton.INSTANCE.getPassword()
                 );
     }
 

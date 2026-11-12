@@ -1,0 +1,9 @@
+-- liquibase formatted sql
+
+-- changeset oncebox:inbox-1
+CREATE TABLE IF NOT EXISTS inbox_events(
+    id UUID PRIMARY KEY,
+    consumed_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
+);
+
+CREATE INDEX IF NOT EXISTS idx_inbox_by_consumed_at ON inbox_events(consumed_at);

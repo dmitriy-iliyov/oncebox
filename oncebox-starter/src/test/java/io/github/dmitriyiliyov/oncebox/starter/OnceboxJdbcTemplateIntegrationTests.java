@@ -100,7 +100,6 @@ class OnceboxJdbcTemplateIntegrationTests {
     private ApplicationContextRunner baseRunner() {
         return new ApplicationContextRunner()
                 .withPropertyValues(
-                        "oncebox.tables.auto-create=false",
                         "spring.datasource.url=jdbc:postgresql://localhost:1/oncebox",
                         "oncebox.outbox.enabled=false"
                 );

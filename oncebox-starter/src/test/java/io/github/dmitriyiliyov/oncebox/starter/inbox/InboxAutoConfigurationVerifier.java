@@ -20,7 +20,6 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.context.ApplicationContext;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -68,7 +67,6 @@ public class InboxAutoConfigurationVerifier {
                         "spring.datasource.driver-class-name=" + dbDriver,
                         "spring.datasource.username=" + dbUsername,
                         "spring.datasource.password=" + dbPassword,
-                        "oncebox.tables.auto-create=false",
                         "oncebox.inbox.enabled=true",
                         "oncebox.inbox.source.type=kafka",
                         "oncebox.inbox.mappings.test-event=io.github.dmitriyiliyov.oncebox.starter.inbox.TestEvent",
@@ -188,7 +186,6 @@ public class InboxAutoConfigurationVerifier {
                         "spring.datasource.driver-class-name=" + dbDriver,
                         "spring.datasource.username=" + dbUsername,
                         "spring.datasource.password=" + dbPassword,
-                        "oncebox.tables.auto-create=false",
                         "oncebox.inbox.enabled=false"
                 )
                 .run(ctx -> {
@@ -246,17 +243,6 @@ public class InboxAutoConfigurationVerifier {
                     assertThat(ctx).hasBean("inboxManager");
                     assertThat(ctx).hasBean(TRANSACTIONAL_CONSUMER);
                     assertThat(ctx).hasBean(NON_TRANSACTIONAL_CONSUMER);
-                });
-    }
-
-    public void shouldCreateTables_whenAutoCreateTrue() {
-        getBaseContextRunner()
-                .withPropertyValues("oncebox.tables.auto-create=true")
-                .run(ctx -> {
-                    assertThat(ctx).hasNotFailed();
-                    JdbcTemplate jdbcTemplate = ctx.getBean("onceboxJdbcTemplate", JdbcTemplate.class);
-                    jdbcTemplate.execute("SELECT 1 FROM inbox_events WHERE 1=0");
-                    jdbcTemplate.execute("SELECT 1 FROM oncebox_jobs WHERE 1=0");
                 });
     }
 
@@ -394,7 +380,7 @@ public class InboxAutoConfigurationVerifier {
 
     public void tryConsume_whenNoActiveTransaction_shouldCommitIdAtOnce() {
         getBaseContextRunner()
-                .withPropertyValues("oncebox.tables.auto-create=true")
+                .withPropertyValues("oncebox.schema.mode=DEV")
                 .run(ctx -> {
                     InboxManager manager = ctx.getBean(InboxManager.class);
                     UUID id = UUID.randomUUID();
@@ -406,7 +392,7 @@ public class InboxAutoConfigurationVerifier {
 
     public void tryConsumeAndGetDuplicates_whenNoActiveTransaction_shouldCommitIdsAtOnce() {
         getBaseContextRunner()
-                .withPropertyValues("oncebox.tables.auto-create=true")
+                .withPropertyValues("oncebox.schema.mode=DEV")
                 .run(ctx -> {
                     InboxManager manager = ctx.getBean(InboxManager.class);
                     Set<UUID> ids = Set.of(UUID.randomUUID(), UUID.randomUUID());
@@ -418,7 +404,7 @@ public class InboxAutoConfigurationVerifier {
 
     public void tryConsume_whenCallerTransactionRolledBack_shouldRollBackIds() {
         getBaseContextRunner()
-                .withPropertyValues("oncebox.tables.auto-create=true")
+                .withPropertyValues("oncebox.schema.mode=DEV")
                 .run(ctx -> {
                     InboxManager manager = ctx.getBean(InboxManager.class);
                     UUID id = UUID.randomUUID();
@@ -437,7 +423,7 @@ public class InboxAutoConfigurationVerifier {
 
     public void transactionalConsumer_whenOperationThrows_shouldProcessRedeliveryAgain() {
         getBaseContextRunner()
-                .withPropertyValues("oncebox.tables.auto-create=true")
+                .withPropertyValues("oncebox.schema.mode=DEV")
                 .run(ctx -> {
                     IdempotentConsumer consumer = ctx.getBean(TRANSACTIONAL_CONSUMER, IdempotentConsumer.class);
                     UUID id = UUID.randomUUID();
@@ -453,7 +439,7 @@ public class InboxAutoConfigurationVerifier {
 
     public void nonTransactionalConsumer_whenOperationThrows_shouldSkipRedelivery() {
         getBaseContextRunner()
-                .withPropertyValues("oncebox.tables.auto-create=true")
+                .withPropertyValues("oncebox.schema.mode=DEV")
                 .run(ctx -> {
                     IdempotentConsumer consumer = ctx.getBean(NON_TRANSACTIONAL_CONSUMER, IdempotentConsumer.class);
                     UUID id = UUID.randomUUID();
@@ -469,7 +455,7 @@ public class InboxAutoConfigurationVerifier {
 
     public void nonTransactionalConsumer_whenBatchOperationThrows_shouldSkipRedeliveredBatch() {
         getBaseContextRunner()
-                .withPropertyValues("oncebox.tables.auto-create=true")
+                .withPropertyValues("oncebox.schema.mode=DEV")
                 .run(ctx -> {
                     IdempotentConsumer consumer = ctx.getBean(NON_TRANSACTIONAL_CONSUMER, IdempotentConsumer.class);
                     Set<UUID> ids = Set.of(UUID.randomUUID(), UUID.randomUUID());
@@ -485,7 +471,7 @@ public class InboxAutoConfigurationVerifier {
 
     public void nonTransactionalConsumer_whenCallerTransactionRolledBack_shouldProcessRedeliveryAgain() {
         getBaseContextRunner()
-                .withPropertyValues("oncebox.tables.auto-create=true")
+                .withPropertyValues("oncebox.schema.mode=DEV")
                 .run(ctx -> {
                     IdempotentConsumer consumer = ctx.getBean(NON_TRANSACTIONAL_CONSUMER, IdempotentConsumer.class);
                     UUID id = UUID.randomUUID();

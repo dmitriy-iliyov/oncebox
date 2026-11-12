@@ -1,5 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.mysql;
 
+import io.github.dmitriyiliyov.oncebox.core.MySqlDatabaseClock;
 import io.github.dmitriyiliyov.oncebox.core.outbox.AbstractOutboxRepositoryIntegrationTests;
 import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
 import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxEvent;

@@ -63,24 +63,6 @@ class OracleOnceboxAutoConfigurationIntegrationTests {
     }
 
     @Test
-    @DisplayName("IT should register DataSourceInitializer by default")
-    void shouldRegisterDataSourceInitializerByDefault() {
-        verifier.shouldRegisterDataSourceInitializerByDefault();
-    }
-
-    @Test
-    @DisplayName("IT should register DataSourceInitializer when auto-create true")
-    void shouldRegisterDataSourceInitializerWhenAutoCreateTrue() {
-        verifier.shouldRegisterDataSourceInitializerWhenAutoCreateTrue();
-    }
-
-    @Test
-    @DisplayName("IT should not register DataSourceInitializer when auto-create false")
-    void shouldNotRegisterDataSourceInitializerWhenAutoCreateFalse() {
-        verifier.shouldNotRegisterDataSourceInitializerWhenAutoCreateFalse();
-    }
-
-    @Test
     @DisplayName("IT should register DistributedLockRepository when clean-up enabled")
     void shouldRegisterDistributedLockRepositoryWhenCleanUpEnabled() {
         verifier.shouldRegisterDistributedLockRepositoryWhenCleanUpEnabled();

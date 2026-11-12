@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS gap_dev_log (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    version VARCHAR(10) NOT NULL UNIQUE
+);
+
+INSERT IGNORE INTO gap_dev_log (version) VALUES ('V1');

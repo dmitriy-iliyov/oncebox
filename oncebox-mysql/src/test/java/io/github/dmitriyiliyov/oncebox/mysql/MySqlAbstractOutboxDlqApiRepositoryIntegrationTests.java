@@ -1,5 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.mysql;
 
+import io.github.dmitriyiliyov.oncebox.core.MySqlDatabaseClock;
 import io.github.dmitriyiliyov.oncebox.dlq.api.MultiDialectOutboxDlqApiRepositoryVerifier;
 import io.github.dmitriyiliyov.oncebox.dlq.api.OutboxDlqApiRepository;
 import org.junit.jupiter.api.DisplayName;

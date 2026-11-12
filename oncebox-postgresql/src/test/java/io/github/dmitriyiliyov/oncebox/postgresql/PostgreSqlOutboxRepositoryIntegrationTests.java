@@ -1,5 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.postgresql;
 
+import io.github.dmitriyiliyov.oncebox.core.PostgreSqlDatabaseClock;
 import io.github.dmitriyiliyov.oncebox.core.outbox.AbstractOutboxRepositoryIntegrationTests;
 import io.github.dmitriyiliyov.oncebox.core.outbox.EventStatus;
 import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxEvent;

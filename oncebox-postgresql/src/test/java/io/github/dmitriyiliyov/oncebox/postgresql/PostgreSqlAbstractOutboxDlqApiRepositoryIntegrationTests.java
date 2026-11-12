@@ -1,5 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.postgresql;
 
+import io.github.dmitriyiliyov.oncebox.core.PostgreSqlDatabaseClock;
 import io.github.dmitriyiliyov.oncebox.core.utils.DefaultResultSetMapper;
 import io.github.dmitriyiliyov.oncebox.dlq.api.MultiDialectOutboxDlqApiRepositoryVerifier;
 import io.github.dmitriyiliyov.oncebox.dlq.api.OutboxDlqApiRepository;

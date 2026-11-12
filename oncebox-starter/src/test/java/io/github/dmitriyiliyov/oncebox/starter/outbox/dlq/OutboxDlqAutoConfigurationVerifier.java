@@ -18,7 +18,6 @@ import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
 import org.springframework.boot.autoconfigure.transaction.TransactionAutoConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.ApplicationContext;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.IllegalTransactionStateException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -57,7 +56,6 @@ public class OutboxDlqAutoConfigurationVerifier {
                         "spring.datasource.driver-class-name=" + dbDriver,
                         "spring.datasource.username=" + dbUsername,
                         "spring.datasource.password=" + dbPassword,
-                        "oncebox.tables.auto-create=true",
                         "oncebox.outbox.enabled=true",
                         "oncebox.outbox.sender.type=kafka",
                         "oncebox.outbox.events.my-event.topic=my.topic",
@@ -172,17 +170,6 @@ public class OutboxDlqAutoConfigurationVerifier {
                 .run(ctx -> {
                     assertThat(ctx).hasSingleBean(OutboxDlqManager.class);
                     assertThat(ctx).hasBean("outboxDlqManager");
-                });
-    }
-
-    public void shouldCreateTables_whenAutoCreateTrue() {
-        getBaseContextRunner()
-                .withPropertyValues("oncebox.tables.auto-create=true")
-                .run(ctx -> {
-                    assertThat(ctx).hasNotFailed();
-                    JdbcTemplate jdbcTemplate = ctx.getBean("onceboxJdbcTemplate", JdbcTemplate.class);
-                    jdbcTemplate.execute("SELECT 1 FROM outbox_dlq_events WHERE 1=0");
-                    jdbcTemplate.execute("SELECT 1 FROM oncebox_jobs WHERE 1=0");
                 });
     }
 
@@ -316,7 +303,7 @@ public class OutboxDlqAutoConfigurationVerifier {
 
     public void loadAndLockBatch_whenInsideTransaction_shouldRun() {
         getBaseContextRunner()
-                .withPropertyValues("oncebox.tables.auto-create=true")
+                .withPropertyValues("oncebox.schema.mode=DEV")
                 .run(ctx -> {
                     OutboxDlqManager manager = ctx.getBean(OutboxDlqManager.class);
 

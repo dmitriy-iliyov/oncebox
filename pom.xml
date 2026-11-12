@@ -56,6 +56,8 @@
         <module>oncebox-rabbit</module>
         <module>oncebox-metrics</module>
         <module>oncebox-starter</module>
+        <module>oncebox-flyway</module>
+        <module>oncebox-liquibase</module>
     </modules>
 
     <properties>

@@ -95,7 +95,6 @@ public class OnceboxAutoConfigurationVerifier {
 
     public void shouldRegisterJdbcTemplate() {
         getBaseContextRunner()
-                .withPropertyValues("oncebox.tables.auto-create=false")
                 .run(ctx ->
                         assertThat(ctx).hasBean("onceboxJdbcTemplate")
                 );
@@ -103,44 +102,15 @@ public class OnceboxAutoConfigurationVerifier {
 
     public void shouldNotRegisterJdbcTemplateWhenCustomBeanProvided() {
         getBaseContextRunner()
-                .withPropertyValues("oncebox.tables.auto-create=false")
                 .withBean("onceboxJdbcTemplate", JdbcTemplate.class, () -> mock(JdbcTemplate.class))
                 .run(ctx ->
                         assertThat(ctx).hasSingleBean(JdbcTemplate.class)
                 );
     }
 
-    public void shouldRegisterDataSourceInitializerByDefault() {
-        getBaseContextRunner()
-                .run(ctx ->
-                        assertThat(ctx).hasBean("onceboxDataSourceInitializer")
-                );
-    }
-
-    public void shouldRegisterDataSourceInitializerWhenAutoCreateTrue() {
-        getBaseContextRunner()
-                .withPropertyValues("oncebox.tables.auto-create=true")
-                .run(ctx -> {
-                    assertThat(ctx).hasNotFailed();
-                    assertThat(ctx).hasBean("onceboxDataSourceInitializer");
-                    JdbcTemplate jdbcTemplate = ctx.getBean("onceboxJdbcTemplate", JdbcTemplate.class);
-                    jdbcTemplate.execute("SELECT 1 FROM outbox_events WHERE 1=0");
-                    jdbcTemplate.execute("SELECT 1 FROM oncebox_jobs WHERE 1=0");
-                });
-    }
-
-    public void shouldNotRegisterDataSourceInitializerWhenAutoCreateFalse() {
-        getBaseContextRunner()
-                .withPropertyValues("oncebox.tables.auto-create=false")
-                .run(ctx ->
-                        assertThat(ctx).doesNotHaveBean("onceboxDataSourceInitializer")
-                );
-    }
-
     public void shouldRegisterDistributedLockRepositoryWhenCleanUpEnabled() {
         getBaseContextRunner()
-                .withPropertyValues("oncebox.tables.auto-create=false",
-                        "oncebox.outbox.clean-up.enabled=true",
+                .withPropertyValues(                        "oncebox.outbox.clean-up.enabled=true",
                         "oncebox.outbox.sender.type=kafka",
                         "oncebox.outbox.events.my-event.topic=my.topic"
                 )
@@ -153,7 +123,6 @@ public class OnceboxAutoConfigurationVerifier {
     public void shouldNotRegisterDistributedLockRepositoryWhenCleanUpDisabled() {
         getBaseContextRunner()
                 .withPropertyValues(
-                        "oncebox.tables.auto-create=false",
                         "oncebox.outbox.clean-up.enabled=false",
                         "oncebox.outbox.sender.type=kafka",
                         "oncebox.outbox.events.my-event.topic=my.topic"
@@ -166,7 +135,6 @@ public class OnceboxAutoConfigurationVerifier {
     public void shouldNotRegisterDistributedLockRepositoryWhenCustomBeanProvided() {
         getBaseContextRunner()
                 .withPropertyValues(
-                        "oncebox.tables.auto-create=false",
                         "oncebox.outbox.clean-up.enabled=true",
                         "oncebox.outbox.sender.type=kafka",
                         "oncebox.outbox.events.my-event.topic=my.topic")
@@ -179,7 +147,6 @@ public class OnceboxAutoConfigurationVerifier {
 
     public void shouldRegisterNoopScheduleStrategyListenerSupplierByDefault() {
         getBaseContextRunner()
-                .withPropertyValues("oncebox.tables.auto-create=false")
                 .run(ctx -> {
                     assertThat(ctx).hasSingleBean(OnceboxScheduleStrategyListenerSupplier.class);
                     assertThat(ctx.getBean(OnceboxScheduleStrategyListenerSupplier.class))
@@ -190,7 +157,6 @@ public class OnceboxAutoConfigurationVerifier {
     public void shouldRegisterMetricsScheduleStrategyListenerSupplierWhenMetricsEnabled() {
         getBaseContextRunner()
                 .withPropertyValues(
-                        "oncebox.tables.auto-create=false",
                         "oncebox.outbox.metrics.enabled=true",
                         "oncebox.outbox.sender.type=kafka",
                         "oncebox.outbox.events.my-event.topic=my.topic"
@@ -205,7 +171,6 @@ public class OnceboxAutoConfigurationVerifier {
 
     public void shouldNotRegisterScheduleStrategyListenerSupplierWhenCustomBeanProvided() {
         getBaseContextRunner()
-                .withPropertyValues("oncebox.tables.auto-create=false")
                 .withBean("customScheduleStrategyListenerSupplier", OnceboxScheduleStrategyListenerSupplier.class, () -> mock(OnceboxScheduleStrategyListenerSupplier.class))
                 .run(ctx -> {
                     assertThat(ctx).hasSingleBean(OnceboxScheduleStrategyListenerSupplier.class);
@@ -215,7 +180,6 @@ public class OnceboxAutoConfigurationVerifier {
 
     public void shouldRegisterNoopContinuableTaskDecoratorSupplierByDefault() {
         getBaseContextRunner()
-                .withPropertyValues("oncebox.tables.auto-create=false")
                 .run(ctx -> {
                     assertThat(ctx).hasSingleBean(ContinuableTaskDecoratorSupplier.class);
                     assertThat(ctx.getBean(ContinuableTaskDecoratorSupplier.class))
@@ -226,7 +190,6 @@ public class OnceboxAutoConfigurationVerifier {
     public void shouldRegisterMetricsContinuableTaskDecoratorSupplierWhenMetricsEnabled() {
         getBaseContextRunner()
                 .withPropertyValues(
-                        "oncebox.tables.auto-create=false",
                         "oncebox.outbox.metrics.enabled=true",
                         "oncebox.outbox.sender.type=kafka",
                         "oncebox.outbox.events.my-event.topic=my.topic"
@@ -243,7 +206,6 @@ public class OnceboxAutoConfigurationVerifier {
 
     public void shouldNotRegisterContinuableTaskDecoratorSupplierWhenCustomBeanProvided() {
         getBaseContextRunner()
-                .withPropertyValues("oncebox.tables.auto-create=false")
                 .withBean("customContinuableTaskDecoratorSupplier", ContinuableTaskDecoratorSupplier.class, () -> mock(ContinuableTaskDecoratorSupplier.class))
                 .run(ctx -> {
                     assertThat(ctx).hasSingleBean(ContinuableTaskDecoratorSupplier.class);
@@ -253,7 +215,6 @@ public class OnceboxAutoConfigurationVerifier {
 
     public void shouldRegisterScheduledExecutorServiceByDefault() {
         getBaseContextRunner()
-                .withPropertyValues("oncebox.tables.auto-create=false")
                 .run(ctx ->
                         assertThat(ctx).hasSingleBean(ScheduledExecutorService.class)
                 );
@@ -261,7 +222,7 @@ public class OnceboxAutoConfigurationVerifier {
 
     public void shouldRegisterScheduledExecutorServiceWithCustomPoolSize() {
         getBaseContextRunner()
-                .withPropertyValues("oncebox.tables.auto-create=false", "oncebox.thread-pool-size=5")
+                .withPropertyValues("oncebox.thread-pool-size=5")
                 .run(ctx ->
                         assertThat(ctx).hasSingleBean(ScheduledExecutorService.class)
                 );
@@ -269,7 +230,6 @@ public class OnceboxAutoConfigurationVerifier {
 
     public void shouldRegisterApplicationRunnerForJobs() {
         getBaseContextRunner()
-                .withPropertyValues("oncebox.tables.auto-create=false")
                 .run(ctx ->
                         assertThat(ctx).hasBean("onceboxJobsInitializer")
                 );
@@ -277,7 +237,6 @@ public class OnceboxAutoConfigurationVerifier {
 
     public void shouldRegisterOnceboxInitializerWhenMissing() {
         getBaseContextRunner()
-                .withPropertyValues("oncebox.tables.auto-create=false")
                 .run(ctx ->
                         assertThat(ctx).hasSingleBean(SchedulersPostApplicationReadyOnceboxInitializer.class)
                 );

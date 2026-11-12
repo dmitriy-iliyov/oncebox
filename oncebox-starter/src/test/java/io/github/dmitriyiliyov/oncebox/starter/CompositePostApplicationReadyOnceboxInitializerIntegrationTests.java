@@ -20,7 +20,7 @@ public class CompositePostApplicationReadyOnceboxInitializerIntegrationTests {
             .withConfiguration(AutoConfigurations.of(OnceboxAutoConfiguration.class))
             .withBean(DataSource.class, () -> mock(DataSource.class))
             .withBean(DistributedLockRepository.class, () -> mock(DistributedLockRepository.class))
-            .withPropertyValues("oncebox.tables.auto-create=false", "oncebox.outbox.enabled=false");
+            .withPropertyValues("oncebox.outbox.enabled=false");
 
     @Test
     @DisplayName("IT should call init on all injected PostApplicationReadyOnceboxInitializer beans directly")

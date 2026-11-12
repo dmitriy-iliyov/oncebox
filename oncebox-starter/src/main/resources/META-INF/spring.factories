@@ -1,0 +1,2 @@
+org.springframework.boot.sql.init.dependency.DatabaseInitializerDetector=\
+  io.github.dmitriyiliyov.oncebox.starter.OnceboxSchemaMigrationDatabaseInitializerDetector

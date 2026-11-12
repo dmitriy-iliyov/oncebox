@@ -4,6 +4,8 @@ import io.github.dmitriyiliyov.oncebox.starter.inbox.InboxProperties;
 import io.github.dmitriyiliyov.oncebox.starter.outbox.OutboxProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.time.Duration;
 import java.util.List;
@@ -23,7 +25,7 @@ class OnceboxPropertiesUnitTests {
         props.setThreadPoolSize(null);
         props.setOutbox(null);
         props.setInbox(null);
-        props.setTables(null);
+        props.setSchema(null);
 
         // when
         props.applyDefaults();
@@ -34,8 +36,8 @@ class OnceboxPropertiesUnitTests {
         assertThat(props.getOutbox().isEnabled()).isFalse();
         assertThat(props.getInbox()).isNotNull();
         assertThat(props.getInbox().isEnabled()).isFalse();
-        assertThat(props.getTables()).isNotNull();
-        assertThat(props.getTables().isAutoCreate()).isTrue();
+        assertThat(props.getSchema()).isNotNull();
+        assertThat(props.getSchema().getMode()).isEqualTo(SchemaProperties.Mode.NONE);
     }
 
     @Test
@@ -136,35 +138,20 @@ class OnceboxPropertiesUnitTests {
     }
 
     @Test
-    @DisplayName("UT init() when tables provided should preserve instance")
-    void applyDefaults_whenTablesProvided_shouldPreserve() {
+    @DisplayName("UT applyDefaults() when schema provided should preserve instance and mode")
+    void applyDefaults_whenSchemaProvided_shouldPreserve() {
         // given
         OnceboxProperties props = new OnceboxProperties();
-        TablesProperties tables = new TablesProperties();
-        tables.setAutoCreate(false);
-        props.setTables(tables);
+        SchemaProperties schema = new SchemaProperties();
+        schema.setMode(SchemaProperties.Mode.FLYWAY);
+        props.setSchema(schema);
 
         // when
         props.applyDefaults();
 
         // then
-        assertThat(props.getTables()).isSameAs(tables);
-        assertThat(props.getTables().isAutoCreate()).isFalse();
-    }
-
-    @Test
-    @DisplayName("UT init() when tables not provided should set autoCreate = true")
-    void applyDefaultsAutoCreateTrue() {
-        // given
-        OnceboxProperties props = new OnceboxProperties();
-        props.setTables(null);
-
-        // when
-        props.applyDefaults();
-
-        // then
-        assertThat(props.getTables()).isNotNull();
-        assertThat(props.getTables().isAutoCreate()).isTrue();
+        assertThat(props.getSchema()).isSameAs(schema);
+        assertThat(props.getSchema().getMode()).isEqualTo(SchemaProperties.Mode.FLYWAY);
     }
 
     @Test
@@ -249,31 +236,44 @@ class OnceboxPropertiesUnitTests {
     }
 
     @Test
-    @DisplayName("UT TablesProperties applyDefaults() when autoCreate null should default true")
-    void tables_applyDefaults_whenAutoCreateNull_shouldDefaultTrue() {
+    @DisplayName("UT SchemaProperties applyDefaults() when mode null should default to NONE")
+    void schema_applyDefaults_whenModeNull_shouldDefaultToNone() {
         // given
-        TablesProperties tables = new TablesProperties();
-        tables.setAutoCreate(null);
+        SchemaProperties schema = new SchemaProperties();
+        schema.setMode(null);
 
         // when
-        tables.applyDefaults();
+        schema.applyDefaults();
 
         // then
-        assertThat(tables.isAutoCreate()).isTrue();
+        assertThat(schema.getMode()).isEqualTo(SchemaProperties.Mode.NONE);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(SchemaProperties.Mode.class)
+    @DisplayName("UT SchemaProperties applyDefaults() when mode set should preserve it")
+    void schema_applyDefaults_whenModeSet_shouldPreserve(SchemaProperties.Mode mode) {
+        // given
+        SchemaProperties schema = new SchemaProperties();
+        schema.setMode(mode);
+
+        // when
+        schema.applyDefaults();
+
+        // then
+        assertThat(schema.getMode()).isEqualTo(mode);
     }
 
     @Test
-    @DisplayName("UT TablesProperties applyDefaults() when autoCreate false should preserve false")
-    void tables_applyDefaults_whenAutoCreateFalse_shouldPreserve() {
-        // given
-        TablesProperties tables = new TablesProperties();
-        tables.setAutoCreate(false);
-
-        // when
-        tables.applyDefaults();
-
-        // then
-        assertThat(tables.isAutoCreate()).isFalse();
+    @DisplayName("UT SchemaProperties Mode should hold exactly FLYWAY, LIQUIBASE, DEV and NONE")
+    void schemaMode_shouldHoldExactlyDocumentedModes() {
+        // when / then
+        assertThat(SchemaProperties.Mode.values()).containsExactlyInAnyOrder(
+                SchemaProperties.Mode.FLYWAY,
+                SchemaProperties.Mode.LIQUIBASE,
+                SchemaProperties.Mode.DEV,
+                SchemaProperties.Mode.NONE
+        );
     }
 
     @Test

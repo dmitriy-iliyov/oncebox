@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-schema-app-orders
+      author: oncebox-integration-tests
+      changes:
+        - createTable:
+            tableName: schema_app_orders
+            columns:
+              - column:
+                  name: id
+                  type: INT
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: title
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false

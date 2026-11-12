@@ -4,6 +4,8 @@ import io.github.dmitriyiliyov.oncebox.core.OnceboxScheduler;
 import io.github.dmitriyiliyov.oncebox.core.locks.DistributedLockRepository;
 import io.github.dmitriyiliyov.oncebox.starter.inbox.InboxProperties;
 import io.github.dmitriyiliyov.oncebox.starter.outbox.OutboxProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -19,7 +21,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.init.DataSourceInitializer;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
 import javax.sql.DataSource;
@@ -37,9 +38,14 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
         TaskSchedulingAutoConfiguration.class
 })
 @EnableConfigurationProperties(OnceboxProperties.class)
-@Import(OnceboxMetricsAutoConfiguration.class)
+@Import({
+        OnceboxMetricsAutoConfiguration.class,
+        OnceboxFlywaySchemaMigratorConfiguration.class,
+        OnceboxLiquibaseSchemaMigratorConfiguration.class
+})
 public class OnceboxAutoConfiguration {
 
+    private static final Logger log = LoggerFactory.getLogger(OnceboxAutoConfiguration.class);
     private final OnceboxProperties properties;
 
     public OnceboxAutoConfiguration(OnceboxProperties properties) {
@@ -101,18 +107,35 @@ public class OnceboxAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnProperty(
-            prefix = "oncebox.tables",
-            name = "auto-create",
-            havingValue = "true",
-            matchIfMissing = true
-    )
-    public DataSourceInitializer onceboxDataSourceInitializer(DataSource dataSource) {
-        DataSourceInitializer dataSourceInitializer = new DataSourceInitializer();
-        dataSourceInitializer.setEnabled(true);
-        dataSourceInitializer.setDataSource(dataSource);
-        dataSourceInitializer.setDatabasePopulator(OnceboxDatabasePopulatorFactory.create(properties, dataSource));
-        return dataSourceInitializer;
+    @ConditionalOnMissingBean(name = "devOnceboxSchemaMigratorSupplier")
+    public OnceboxSchemaMigratorSupplier devOnceboxSchemaMigratorSupplier(DataSource dataSource) {
+        return new DevOnceboxSchemaMigratorSupplier(dataSource);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(name = "onceboxSchemaMigrator")
+    public OnceboxSchemaMigrationInitializer onceboxSchemaMigrator(List<OnceboxSchemaMigratorSupplier> suppliers,
+                                                                   DataSource dataSource) {
+        OnceboxProperties.SchemaProperties.Mode mode = properties.getSchema().getMode();
+        if (OnceboxProperties.SchemaProperties.Mode.NONE.equals(mode)) {
+            log.warn("'schema.mode' is {}, oncebox does not create its tables, the application has to create them",
+                    OnceboxProperties.SchemaProperties.Mode.NONE);
+            return new OnceboxSchemaMigrationInitializer(() -> {});
+        }
+
+        for (OnceboxSchemaMigratorSupplier supplier : suppliers) {
+            if (mode.equals(supplier.getMode())) {
+                log.info("oncebox tables are migrated with 'schema.mode' {}", mode);
+                return new OnceboxSchemaMigrationInitializer(
+                        () -> OnceboxDatabaseMigrationOrchestrator.migrate(
+                                supplier.supply(DatabaseType.fromDataSource(dataSource)),
+                                properties
+                        )
+                );
+            }
+        }
+
+        throw new IllegalStateException("OnceboxSchemaMigratorSupplier not found for mode=%s".formatted(mode));
     }
 
     @Bean

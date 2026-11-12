@@ -50,7 +50,7 @@ public class OnceboxJobsInitializerIntegrationVerifier {
                         "spring.datasource.driver-class-name=" + dbDriver,
                         "spring.datasource.username=" + dbUsername,
                         "spring.datasource.password=" + dbPassword,
-                        "oncebox.tables.auto-create=true",
+                        "oncebox.schema.mode=DEV",
                         "oncebox.outbox.sender.type=kafka",
                         "oncebox.inbox.mappings.test-event=io.github.dmitriyiliyov.oncebox.starter.inbox.TestEvent",
                         "oncebox.outbox.events.my-event.topic=my.topic"
@@ -71,7 +71,7 @@ public class OnceboxJobsInitializerIntegrationVerifier {
                             "SELECT COUNT(*) FROM oncebox_jobs WHERE job_name = '%s'".formatted(OnceboxJob.OUTBOX_PROCESSED_CLEANUP.getJobName()),
                             Integer.class
                     );
-                    jdbcTemplate.execute("DROP TABLE oncebox_jobs");
+                    assertThat(count).isEqualTo(1);
                 });
     }
 

@@ -63,12 +63,6 @@ class PostgreSqlInboxAutoConfigurationIntegrationTests {
     }
 
     @Test
-    @DisplayName("IT should create inbox_events table when auto-create is true")
-    void shouldCreateTables_whenAutoCreateTrue() {
-        verifier.shouldCreateTables_whenAutoCreateTrue();
-    }
-
-    @Test
     @DisplayName("IT should register InboxCleanUpScheduler when clean-up enabled")
     void shouldRegisterCleanUpScheduler_whenEnabled() {
         verifier.shouldNotRegisterCleanUpScheduler_whenEnabled();

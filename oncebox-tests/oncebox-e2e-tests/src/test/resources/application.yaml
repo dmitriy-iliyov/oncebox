@@ -7,8 +7,8 @@ logging:
 # Broker-specific settings (sender/consumer type, connection) live in application-{kafka,rabbit}.yaml.
 oncebox:
   thread-pool-size: 9
-  tables:
-    auto-create: true
+  schema:
+    mode: dev
 
   outbox:
     sender:

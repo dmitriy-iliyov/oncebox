@@ -61,7 +61,6 @@ public class OutboxAutoConfigurationVerifier {
                         "spring.datasource.driver-class-name=" + dbDriver,
                         "spring.datasource.username=" + dbUsername,
                         "spring.datasource.password=" + dbPassword,
-                        "oncebox.tables.auto-create=false",
                         "oncebox.outbox.sender.type=kafka",
                         "oncebox.outbox.sender.bean-name=kafkaTemplate",
                         "oncebox.outbox.events.my-event.topic=my.topic"
@@ -460,7 +459,7 @@ public class OutboxAutoConfigurationVerifier {
 
     public void loadBatchByStatus_whenInsideTransaction_shouldRun() {
         getBaseContextRunner()
-                .withPropertyValues("oncebox.tables.auto-create=true")
+                .withPropertyValues("oncebox.schema.mode=DEV")
                 .run(ctx -> {
                     OutboxManager manager = ctx.getBean(OutboxManager.class);
 

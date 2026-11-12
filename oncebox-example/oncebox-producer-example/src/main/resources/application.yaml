@@ -27,8 +27,8 @@ logging:
     io.github.dmitriyiliyov.oncebox: info
 oncebox:
   thread-pool-size: 7
-  tables:
-    auto-create: true
+  schema:
+    mode: flyway
   distributed-lock:
     resolve-by-polling-properties: true
   outbox:

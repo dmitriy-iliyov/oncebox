@@ -1,5 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.oracle;
 
+import io.github.dmitriyiliyov.oncebox.core.OracleDatabaseClock;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.DlqStatus;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.OutboxDlqEvent;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.OutboxDlqRepository;

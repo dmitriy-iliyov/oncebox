@@ -1,4 +1,9 @@
 spring:
+  # Flyway and Liquibase are on the classpath for the schema group; these groups create the tables in DEV mode
+  flyway:
+    enabled: false
+  liquibase:
+    enabled: false
   jpa:
     properties:
       hibernate:
@@ -14,6 +19,8 @@ logging:
   level:
     io.github.dmitriyiliyov.oncebox: DEBUG
 oncebox:
+  schema:
+    mode: dev
   thread-pool-size: 2
   outbox:
     sender:

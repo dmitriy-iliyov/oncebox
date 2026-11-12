@@ -148,6 +148,32 @@
         </dependency>
 
         <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>io.github.dmitriy-iliyov</groupId>
+            <artifactId>oncebox-flyway</artifactId>
+            <version>2.0.0</version>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.liquibase</groupId>
+            <artifactId>liquibase-core</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>io.github.dmitriy-iliyov</groupId>
+            <artifactId>oncebox-liquibase</artifactId>
+            <version>2.0.0</version>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
@@ -157,6 +183,32 @@
             <groupId>io.github.dmitriy-iliyov</groupId>
             <artifactId>oncebox-test-fixtures</artifactId>
             <version>2.0.0</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- the repository verifiers, run on the schema each schema migrator creates -->
+        <dependency>
+            <groupId>io.github.dmitriy-iliyov</groupId>
+            <artifactId>oncebox-testkit</artifactId>
+            <version>2.0.0</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-oracle</artifactId>
             <scope>test</scope>
         </dependency>
 

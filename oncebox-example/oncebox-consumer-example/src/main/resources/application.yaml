@@ -5,6 +5,9 @@ spring:
     redis:
       port: 6379
       host: oncebox-consumer-redis
+  # the application has no migrations of its own, only oncebox runs Flyway
+  flyway:
+    enabled: false
 server:
   port: 8080
 logging:
@@ -12,6 +15,8 @@ logging:
     io.github.dmitriyiliyov.oncebox: debug
 oncebox:
   thread-pool-size: 2
+  schema:
+    mode: flyway
   outbox:
     enabled: false
   inbox:

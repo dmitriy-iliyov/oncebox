@@ -27,7 +27,7 @@ public class OnceboxProperties implements OnceboxPropertiesHolder {
     @NestedConfigurationProperty
     private InboxProperties inbox;
     @NestedConfigurationProperty
-    private OnceboxProperties.TablesProperties tables;
+    private SchemaProperties schema;
     @NestedConfigurationProperty
     private DistributedLockProperties distributedLock;
 
@@ -49,11 +49,11 @@ public class OnceboxProperties implements OnceboxPropertiesHolder {
         }
         inbox.applyDefaults();
 
-        if (tables == null) {
-            tables = new TablesProperties();
-            tables.setAutoCreate(true);
+        if (schema == null) {
+            schema = new SchemaProperties();
+            schema.setMode(SchemaProperties.DEFAULT_MODE);
         }
-        tables.applyDefaults();
+        schema.applyDefaults();
 
         if (distributedLock == null) {
             distributedLock = new DistributedLockProperties();
@@ -89,12 +89,12 @@ public class OnceboxProperties implements OnceboxPropertiesHolder {
         this.inbox = inbox;
     }
 
-    public TablesProperties getTables() {
-        return tables;
+    public SchemaProperties getSchema() {
+        return schema;
     }
 
-    public void setTables(TablesProperties tables) {
-        this.tables = tables;
+    public void setSchema(SchemaProperties schema) {
+        this.schema = schema;
     }
 
     public DistributedLockProperties getDistributedLock() {
@@ -109,7 +109,7 @@ public class OnceboxProperties implements OnceboxPropertiesHolder {
         return "OnceboxProperties{" +
                 "workerId=" + workerId +
                 ", threadPoolSize=" + threadPoolSize +
-                ", tables=" + tables +
+                ", schema=" + schema +
                 ", distributedLock=" + distributedLock +
                 ", outbox=" + outbox +
                 '}';
@@ -119,7 +119,7 @@ public class OnceboxProperties implements OnceboxPropertiesHolder {
         return "OnceboxProperties{" +
                 "workerId=" + workerId +
                 ", threadPoolSize=" + threadPoolSize +
-                ", tables=" + tables +
+                ", schema=" + schema +
                 ", distributedLock=" + distributedLock +
                 ", inbox=" + inbox +
                 '}';
@@ -130,7 +130,7 @@ public class OnceboxProperties implements OnceboxPropertiesHolder {
         return "OnceboxProperties{" +
                 "workerId=" + workerId +
                 ", threadPoolSize=" + threadPoolSize +
-                ", tables=" + tables +
+                ", schema=" + schema +
                 ", distributedLock=" + distributedLock +
                 ", outbox=" + outbox +
                 ", inbox=" + inbox +
@@ -240,27 +240,35 @@ public class OnceboxProperties implements OnceboxPropertiesHolder {
         }
     }
 
-    public static final class TablesProperties {
+    public static final class SchemaProperties {
 
-        private Boolean autoCreate;
+        static final Mode DEFAULT_MODE = Mode.NONE;
+        private Mode mode;
 
         public void applyDefaults() {
-            autoCreate = autoCreate == null || autoCreate;
+            this.mode = mode == null ? DEFAULT_MODE : mode;
         }
 
-        public Boolean isAutoCreate() {
-            return autoCreate;
+        public Mode getMode() {
+            return mode;
         }
 
-        public void setAutoCreate(Boolean autoCreate) {
-            this.autoCreate = autoCreate;
+        public void setMode(Mode mode) {
+            this.mode = mode;
         }
 
         @Override
         public String toString() {
-            return "TablesProperties{" +
-                    "autoCreate=" + autoCreate +
+            return "SchemaProperties{" +
+                    "mode=" + mode +
                     '}';
+        }
+
+        /**
+         * How oncebox creates its tables at startup, set by {@code oncebox.schema.mode}.
+         */
+        public enum Mode {
+            FLYWAY, LIQUIBASE, DEV, NONE
         }
     }
 

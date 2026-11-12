@@ -58,6 +58,33 @@
             <version>2.0.0</version>
         </dependency>
 
+        <!-- oncebox creates its inbox table through its own Flyway, oncebox.schema.mode flyway -->
+        <dependency>
+            <groupId>io.github.dmitriy-iliyov</groupId>
+            <artifactId>oncebox-flyway</artifactId>
+            <version>2.0.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-oracle</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+        </dependency>
+
         <!-- database dialect chosen at runtime via SPRING_PROFILES_ACTIVE (postgres/mysql/oracle) -->
         <dependency>
             <groupId>io.github.dmitriy-iliyov</groupId>

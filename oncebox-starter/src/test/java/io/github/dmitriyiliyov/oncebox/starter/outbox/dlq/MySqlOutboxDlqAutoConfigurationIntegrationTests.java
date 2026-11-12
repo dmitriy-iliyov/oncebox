@@ -99,12 +99,6 @@ class MySqlOutboxDlqAutoConfigurationIntegrationTests {
     }
 
     @Test
-    @DisplayName("IT should create tables when auto-create is true")
-    void shouldCreateTables_whenAutoCreateTrue() {
-        verifier.shouldCreateTables_whenAutoCreateTrue();
-    }
-
-    @Test
     @DisplayName("IT should not register duplicate OutboxDlqTransfer when custom bean provided")
     void shouldNotRegisterDuplicateDlqTransfer_whenCustomBeanProvided() {
         verifier.shouldNotRegisterDuplicateDlqTransfer_whenCustomBeanProvided();
