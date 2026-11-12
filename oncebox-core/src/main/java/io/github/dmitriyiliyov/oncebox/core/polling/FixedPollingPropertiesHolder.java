@@ -2,6 +2,10 @@ package io.github.dmitriyiliyov.oncebox.core.polling;
 
 import java.time.Duration;
 
+/**
+ * Settings of {@link FixedOnceboxScheduleStrategy}: runs follow each other at the same delay, whatever they
+ * found.
+ */
 public interface FixedPollingPropertiesHolder {
 
     /**

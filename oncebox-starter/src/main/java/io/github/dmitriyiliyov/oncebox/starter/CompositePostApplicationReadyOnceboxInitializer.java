@@ -6,6 +6,7 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 
 import java.util.List;
+import java.util.Objects;
 
 public class CompositePostApplicationReadyOnceboxInitializer implements PostApplicationReadyOnceboxInitializer {
 
@@ -16,8 +17,8 @@ public class CompositePostApplicationReadyOnceboxInitializer implements PostAppl
 
     public CompositePostApplicationReadyOnceboxInitializer(OnceboxProperties properties,
                                                           List<PostApplicationReadyOnceboxInitializer> initializers) {
-        this.properties = properties;
-        this.initializers = initializers;
+        this.properties = Objects.requireNonNull(properties, "properties cannot be null");
+        this.initializers = Objects.requireNonNull(initializers, "initializers cannot be null");
     }
 
     @EventListener(ApplicationReadyEvent.class)

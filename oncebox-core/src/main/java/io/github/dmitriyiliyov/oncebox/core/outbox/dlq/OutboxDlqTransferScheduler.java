@@ -10,8 +10,12 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
+/**
+ * Moves outbox events between the outbox and the DLQ, one batch per run, in the direction its transfer function
+ * gives - {@link OutboxDlqTransfer#transferToDlq(int)} or {@link OutboxDlqTransfer#transferFromDlq(int)}. It runs on
+ * every instance without a job lock.
+ */
 public final class OutboxDlqTransferScheduler implements OnceboxScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(OutboxDlqTransferScheduler.class);
@@ -22,13 +26,12 @@ public final class OutboxDlqTransferScheduler implements OnceboxScheduler {
     private final ContinuableTaskDecorator taskDecorator;
     private final LogMessage logMessage;
 
-    public OutboxDlqTransferScheduler(Supplier<OutboxPropertiesHolder.DlqPropertiesHolder.TransferPropertiesHolder> propertiesSupplier,
+    public OutboxDlqTransferScheduler(OutboxPropertiesHolder.DlqPropertiesHolder.TransferPropertiesHolder properties,
                                       OnceboxScheduleStrategy strategy,
                                       Function<Integer, Integer> transferApplier,
                                       ContinuableTaskDecorator taskDecorator,
                                       LogMessage logMessage) {
-        Objects.requireNonNull(propertiesSupplier, "propertiesSupplier cannot be null");
-        this.properties = Objects.requireNonNull(propertiesSupplier.get(), "properties cannot be null");
+        this.properties = Objects.requireNonNull(properties, "properties cannot be null");
         this.scheduleStrategy = Objects.requireNonNull(strategy, "scheduleStrategy cannot be null");
         this.transferApplier = Objects.requireNonNull(transferApplier, "transferApplier cannot be null");
         this.taskDecorator = Objects.requireNonNull(taskDecorator, "taskDecorator cannot be null");

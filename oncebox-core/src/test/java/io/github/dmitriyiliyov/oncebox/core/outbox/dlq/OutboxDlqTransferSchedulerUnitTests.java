@@ -39,7 +39,7 @@ class OutboxDlqTransferSchedulerUnitTests {
     @BeforeEach
     void setUp() {
         tested = new OutboxDlqTransferScheduler(
-                () -> transferProperties,
+                transferProperties,
                 strategy,
                 transferApplier,
                 ContinuableTaskDecorator.identity(),
@@ -48,17 +48,9 @@ class OutboxDlqTransferSchedulerUnitTests {
     }
 
     @Test
-    @DisplayName("UT constructor when propertiesSupplier is null should throw NullPointerException")
-    void constructor_whenPropertiesSupplierIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new OutboxDlqTransferScheduler(null, strategy, transferApplier, decorator, OutboxDlqTransferScheduler.LogMessage.transferTo()))
-                .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("propertiesSupplier cannot be null");
-    }
-
-    @Test
     @DisplayName("UT constructor when properties is null should throw NullPointerException")
     void constructor_whenPropertiesIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new OutboxDlqTransferScheduler(() -> null, strategy, transferApplier, decorator, OutboxDlqTransferScheduler.LogMessage.transferTo()))
+        assertThatThrownBy(() -> new OutboxDlqTransferScheduler(null, strategy, transferApplier, decorator, OutboxDlqTransferScheduler.LogMessage.transferTo()))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("properties cannot be null");
     }
@@ -66,7 +58,7 @@ class OutboxDlqTransferSchedulerUnitTests {
     @Test
     @DisplayName("UT constructor when strategy is null should throw NullPointerException")
     void constructor_whenStrategyIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new OutboxDlqTransferScheduler(() -> transferProperties, null, transferApplier, decorator, OutboxDlqTransferScheduler.LogMessage.transferTo()))
+        assertThatThrownBy(() -> new OutboxDlqTransferScheduler(transferProperties, null, transferApplier, decorator, OutboxDlqTransferScheduler.LogMessage.transferTo()))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("scheduleStrategy cannot be null");
     }
@@ -74,7 +66,7 @@ class OutboxDlqTransferSchedulerUnitTests {
     @Test
     @DisplayName("UT constructor when transferApplier is null should throw NullPointerException")
     void constructor_whenTransferApplierIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new OutboxDlqTransferScheduler(() -> transferProperties, strategy, null, decorator, OutboxDlqTransferScheduler.LogMessage.transferTo()))
+        assertThatThrownBy(() -> new OutboxDlqTransferScheduler(transferProperties, strategy, null, decorator, OutboxDlqTransferScheduler.LogMessage.transferTo()))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("transferApplier cannot be null");
     }
@@ -82,7 +74,7 @@ class OutboxDlqTransferSchedulerUnitTests {
     @Test
     @DisplayName("UT constructor when continuableTaskDecorator is null should throw NullPointerException")
     void constructor_whenContinuableTaskDecoratorIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new OutboxDlqTransferScheduler(() -> transferProperties, strategy, transferApplier, null, OutboxDlqTransferScheduler.LogMessage.transferTo()))
+        assertThatThrownBy(() -> new OutboxDlqTransferScheduler(transferProperties, strategy, transferApplier, null, OutboxDlqTransferScheduler.LogMessage.transferTo()))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("taskDecorator cannot be null");
     }
@@ -90,7 +82,7 @@ class OutboxDlqTransferSchedulerUnitTests {
     @Test
     @DisplayName("UT constructor when logMessage is null should throw NullPointerException")
     void constructor_whenLogMessageIsNull_shouldThrowNullPointerException() {
-        assertThatThrownBy(() -> new OutboxDlqTransferScheduler(() -> transferProperties, strategy, transferApplier, decorator, null))
+        assertThatThrownBy(() -> new OutboxDlqTransferScheduler(transferProperties, strategy, transferApplier, decorator, null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("logMessage cannot be null");
     }
@@ -187,7 +179,7 @@ class OutboxDlqTransferSchedulerUnitTests {
     @DisplayName("UT schedule() should apply decorator to task before passing to strategy")
     void schedule_shouldApplyDecoratorToTask() {
         tested = new OutboxDlqTransferScheduler(
-                () -> transferProperties,
+                transferProperties,
                 strategy,
                 transferApplier,
                 decorator,

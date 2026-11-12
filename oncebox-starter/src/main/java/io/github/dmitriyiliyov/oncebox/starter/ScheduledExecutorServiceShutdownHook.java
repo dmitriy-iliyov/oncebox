@@ -1,7 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.starter;
 
 /**
- * Shutdown hook for the outbox ScheduledExecutorService.
+ * Stops the {@code ScheduledExecutorService} that every oncebox job runs on, when the application context closes.
  */
 public interface ScheduledExecutorServiceShutdownHook {
     void shutdown();

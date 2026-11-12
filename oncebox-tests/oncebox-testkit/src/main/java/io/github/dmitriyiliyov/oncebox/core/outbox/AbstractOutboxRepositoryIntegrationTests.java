@@ -4,10 +4,7 @@ import io.github.dmitriyiliyov.oncebox.core.TestDatabaseClock;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
-import java.util.Set;
-import java.util.TimeZone;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -27,8 +24,8 @@ public class AbstractOutboxRepositoryIntegrationTests {
     private final TestDatabaseClock clock;
 
     public AbstractOutboxRepositoryIntegrationTests(OutboxRepository repository, TestDatabaseClock clock) {
-        this.repository = repository;
-        this.clock = clock;
+        this.repository = Objects.requireNonNull(repository, "repository cannot be null");
+        this.clock = Objects.requireNonNull(clock, "clock cannot be null");
     }
 
     public void save_singleEvent_persistedCorrectly() {

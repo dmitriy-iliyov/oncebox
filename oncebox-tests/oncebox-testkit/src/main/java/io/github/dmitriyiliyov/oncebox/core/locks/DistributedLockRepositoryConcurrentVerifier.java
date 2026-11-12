@@ -4,6 +4,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -28,11 +29,11 @@ public class DistributedLockRepositoryConcurrentVerifier {
             DistributedLockRepositoryVerifier.IdPreparer idPreparer,
             SetupJobScript setupJobScript
     ) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.repository = repository;
-        this.idExtractor = idExtractor;
-        this.idPreparer = idPreparer;
-        this.setupJobScript = setupJobScript;
+        this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate, "jdbcTemplate cannot be null");
+        this.repository = Objects.requireNonNull(repository, "repository cannot be null");
+        this.idExtractor = Objects.requireNonNull(idExtractor, "idExtractor cannot be null");
+        this.idPreparer = Objects.requireNonNull(idPreparer, "idPreparer cannot be null");
+        this.setupJobScript = Objects.requireNonNull(setupJobScript, "setupJobScript cannot be null");
     }
 
     public void concurrent_multipleTryLock_onlyOneSucceeds() throws Exception {

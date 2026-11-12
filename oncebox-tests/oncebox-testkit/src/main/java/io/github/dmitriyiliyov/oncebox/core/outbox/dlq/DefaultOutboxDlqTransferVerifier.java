@@ -7,10 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -26,6 +23,9 @@ public class DefaultOutboxDlqTransferVerifier {
     private final DefaultOutboxDlqTransfer transfer;
     private final IdExtractor idExtractor;
 
+    /**
+     * Reads a {@link UUID} back from the value the dialect's JDBC driver returns for an id column.
+     */
     @FunctionalInterface
     public interface IdExtractor {
         UUID extract(Object raw);
@@ -38,11 +38,11 @@ public class DefaultOutboxDlqTransferVerifier {
             DefaultOutboxDlqTransfer transfer,
             IdExtractor idExtractor
     ) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.outboxRepository = outboxRepository;
-        this.dlqRepository = dlqRepository;
-        this.idExtractor = idExtractor;
-        this.transfer = transfer;
+        this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate, "jdbcTemplate cannot be null");
+        this.outboxRepository = Objects.requireNonNull(outboxRepository, "outboxRepository cannot be null");
+        this.dlqRepository = Objects.requireNonNull(dlqRepository, "dlqRepository cannot be null");
+        this.idExtractor = Objects.requireNonNull(idExtractor, "idExtractor cannot be null");
+        this.transfer = Objects.requireNonNull(transfer, "transfer cannot be null");
     }
 
     public void transferToDlq_failedEvents_movedToDlqAndDeletedFromOutbox() {

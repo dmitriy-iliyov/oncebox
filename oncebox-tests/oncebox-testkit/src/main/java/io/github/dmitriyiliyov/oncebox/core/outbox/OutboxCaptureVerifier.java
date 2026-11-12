@@ -3,10 +3,7 @@ package io.github.dmitriyiliyov.oncebox.core.outbox;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.Duration;
-import java.util.List;
-import java.util.Set;
-import java.util.TimeZone;
-import java.util.UUID;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -30,9 +27,9 @@ public class OutboxCaptureVerifier {
     public OutboxCaptureVerifier(OutboxRepository repository,
                                  JdbcTemplate jdbcTemplate,
                                  DefaultOutboxProcessorVerifier.IdPreparer idPreparer) {
-        this.repository = repository;
-        this.jdbcTemplate = jdbcTemplate;
-        this.idPreparer = idPreparer;
+        this.repository = Objects.requireNonNull(repository, "repository cannot be null");
+        this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate, "jdbcTemplate cannot be null");
+        this.idPreparer = Objects.requireNonNull(idPreparer, "idPreparer cannot be null");
     }
 
     /**

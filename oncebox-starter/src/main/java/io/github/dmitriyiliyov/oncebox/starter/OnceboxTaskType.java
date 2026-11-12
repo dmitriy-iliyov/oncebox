@@ -1,5 +1,9 @@
 package io.github.dmitriyiliyov.oncebox.starter;
 
+/**
+ * Background tasks of oncebox. The value names the task in its logs and tags the timing of its runs in the
+ * metrics.
+ */
 public enum OnceboxTaskType {
     OUTBOX_PROCESSED_CLEANUP("outbox-processed-cleanup"),
     INBOX_CLEANUP("inbox-cleanup"),

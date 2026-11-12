@@ -30,11 +30,11 @@ public class OutboxDlqRepositoryVerifier {
                                        SqlUuidHelper sqlUuidHelper,
                                        ResultSetMapper mapper,
                                        TestDatabaseClock clock) {
-        this.repository = repository;
-        this.jdbcTemplate = jdbcTemplate;
-        this.sqlUuidHelper = sqlUuidHelper;
-        this.mapper = mapper;
-        this.clock = clock;
+        this.repository = Objects.requireNonNull(repository, "repository cannot be null");
+        this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate, "jdbcTemplate cannot be null");
+        this.sqlUuidHelper = Objects.requireNonNull(sqlUuidHelper, "sqlUuidHelper cannot be null");
+        this.mapper = Objects.requireNonNull(mapper, "mapper cannot be null");
+        this.clock = Objects.requireNonNull(clock, "clock cannot be null");
     }
 
     public void saveBatch_whenEventIsMoved_shouldKeepItsTimesAndStampMovedAtByDatabaseClock() {

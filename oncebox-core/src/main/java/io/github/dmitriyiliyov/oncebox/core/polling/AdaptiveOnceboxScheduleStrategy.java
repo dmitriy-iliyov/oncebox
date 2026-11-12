@@ -11,6 +11,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * Runs the task at a delay that adapts to the load: a run that returned {@code true} brings the next one at the
+ * minimum delay, any other run - including one that threw - multiplies the delay, up to the maximum.
+ * <p>
+ * Each run schedules the next one after it finishes, so at most one run of the task is pending or in progress at a
+ * time; a repeated {@link #scheduleExecution(ContinuableTask)} meanwhile is skipped and reported to the listener.
+ *
+ * @see AdaptivePollingPropertiesHolder
+ */
 public class AdaptiveOnceboxScheduleStrategy implements OnceboxScheduleStrategy {
 
     private static final Logger log = LoggerFactory.getLogger(AdaptiveOnceboxScheduleStrategy.class);

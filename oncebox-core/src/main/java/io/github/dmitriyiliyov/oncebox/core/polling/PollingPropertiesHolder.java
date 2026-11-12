@@ -1,6 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.core.polling;
 
 /**
- * Marker interface to combine contracts of {@link AdaptivePollingPropertiesHolder} and {@link FixedPollingPropertiesHolder}.
+ * The settings of both strategies in one type, so that one configuration object feeds whichever strategy is chosen.
  */
 public interface PollingPropertiesHolder extends AdaptivePollingPropertiesHolder, FixedPollingPropertiesHolder { }

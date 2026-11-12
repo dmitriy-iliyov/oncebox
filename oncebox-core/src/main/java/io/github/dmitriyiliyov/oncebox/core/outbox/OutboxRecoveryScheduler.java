@@ -10,6 +10,13 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
+/**
+ * Returns outbox events stuck in processing longer than {@code max-batch-processing-time} to pending, one batch per
+ * run, so that events of an instance that died mid-send are sent again. It runs on every instance without a job
+ * lock.
+ *
+ * @see OutboxManager#recoverStuckBatch(java.time.Duration, int)
+ */
 public final class OutboxRecoveryScheduler implements OnceboxScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(OutboxRecoveryScheduler.class);

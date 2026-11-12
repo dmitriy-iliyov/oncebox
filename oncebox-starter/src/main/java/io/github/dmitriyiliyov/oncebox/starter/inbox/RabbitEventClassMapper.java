@@ -5,6 +5,7 @@ import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.support.converter.ClassMapper;
 
 import java.util.Map;
+import java.util.Objects;
 
 public class RabbitEventClassMapper implements ClassMapper {
 
@@ -12,7 +13,7 @@ public class RabbitEventClassMapper implements ClassMapper {
     private final Map<String, Class<?>> mappings;
 
     public RabbitEventClassMapper(Map<String, Class<?>> mappings) {
-        this.mappings = mappings;
+        this.mappings = Objects.requireNonNull(mappings, "mappings cannot be null");
     }
 
     @Override

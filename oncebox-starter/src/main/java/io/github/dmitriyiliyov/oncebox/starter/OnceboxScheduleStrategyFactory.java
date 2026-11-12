@@ -9,10 +9,7 @@ import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
 
 /**
- * A factory for creating {@link OnceboxScheduleStrategy} instances based on the polling configuration.
- * <p>
- * Implementations should support scheduling strategies based on {@link PollingType}, such as
- * {@link PollingType#FIXED} and {@link PollingType#ADAPTIVE}.
+ * Builds the {@link OnceboxScheduleStrategy} that the {@link PollingType} of the polling settings names.
  */
 public final class OnceboxScheduleStrategyFactory {
 

@@ -5,7 +5,6 @@ import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxPollingScheduler;
 import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxProcessor;
 import io.github.dmitriyiliyov.oncebox.core.polling.OnceboxScheduleStrategy;
 import io.github.dmitriyiliyov.oncebox.starter.*;
-import org.jspecify.annotations.NonNull;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
@@ -27,17 +26,17 @@ public class OutboxPollingSchedulerRegistrar implements ImportBeanDefinitionRegi
     private BeanFactory beanFactory;
 
     @Override
-    public void setEnvironment(@NonNull Environment environment) {
+    public void setEnvironment(Environment environment) {
         this.environment = environment;
     }
 
     @Override
-    public void setBeanFactory(@NonNull BeanFactory beanFactory) throws BeansException {
+    public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
         this.beanFactory = beanFactory;
     }
 
     @Override
-    public void registerBeanDefinitions(@NonNull AnnotationMetadata importingClassMetadata, @NonNull BeanDefinitionRegistry registry) {
+    public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
 
         Binder binder = Binder.get(environment);
         OutboxProperties properties = binder.bind(

@@ -7,13 +7,15 @@ import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.OutboxDlqRepository;
 import io.github.dmitriyiliyov.oncebox.mysql.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.util.Objects;
+
 
 public class MySqlOnceboxRepositoryFactory implements OnceboxRepositoryFactory {
 
     private final JdbcTemplate jdbcTemplate;
 
     public MySqlOnceboxRepositoryFactory(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate, "jdbcTemplate cannot be null");
     }
 
     @Override

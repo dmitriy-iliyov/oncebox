@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Objects;
 
 public class MetricsPostApplicationReadyOnceboxInitializer implements PostApplicationReadyOnceboxInitializer {
 
@@ -13,7 +14,7 @@ public class MetricsPostApplicationReadyOnceboxInitializer implements PostApplic
     private final Map<String, OutboxMetrics> metrics;
 
     public MetricsPostApplicationReadyOnceboxInitializer(Map<String, OutboxMetrics> metrics) {
-        this.metrics = metrics;
+        this.metrics = Objects.requireNonNull(metrics, "metrics cannot be null");
     }
 
     @Override

@@ -23,11 +23,17 @@ public class DefaultOutboxProcessorVerifier {
     private final IdPreparer idPreparer;
     private final ResultSetMapper mapper;
 
+    /**
+     * Reads a {@link UUID} back from the value the dialect's JDBC driver returns for an id column.
+     */
     @FunctionalInterface
     public interface IdExtractor {
         UUID extract(Object raw);
     }
 
+    /**
+     * Converts a {@link UUID} into the value the dialect's JDBC driver binds to an id column.
+     */
     @FunctionalInterface
     public interface IdPreparer {
         Object prepare(UUID id);
@@ -40,13 +46,13 @@ public class DefaultOutboxProcessorVerifier {
             OutboxSender outboxSenderMock,
             IdExtractor idExtractor, IdPreparer idPreparer, ResultSetMapper mapper
     ) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.outboxRepository = outboxRepository;
-        this.processor = processor;
-        this.outboxSenderMock = outboxSenderMock;
-        this.idExtractor = idExtractor;
-        this.idPreparer = idPreparer;
-        this.mapper = mapper;
+        this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate, "jdbcTemplate cannot be null");
+        this.outboxRepository = Objects.requireNonNull(outboxRepository, "outboxRepository cannot be null");
+        this.processor = Objects.requireNonNull(processor, "processor cannot be null");
+        this.outboxSenderMock = Objects.requireNonNull(outboxSenderMock, "outboxSenderMock cannot be null");
+        this.idExtractor = Objects.requireNonNull(idExtractor, "idExtractor cannot be null");
+        this.idPreparer = Objects.requireNonNull(idPreparer, "idPreparer cannot be null");
+        this.mapper = Objects.requireNonNull(mapper, "mapper cannot be null");
     }
 
     public void process_nullProperties_throwsNullPointerException() {

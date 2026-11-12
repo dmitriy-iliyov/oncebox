@@ -87,7 +87,7 @@ public class OutboxDlqAutoConfiguration {
                 scheduleStrategyListenerSupplier
         );
         return new OutboxDlqTransferScheduler(
-                () -> outboxProperties.getDlq().getTransferTo(),
+                dlqProperties.getTransferTo(),
                 scheduleStrategy,
                 transfer::transferToDlq,
                 continuableTaskDecoratorSupplier.supply(OnceboxTaskType.OUTBOX_DLQ_TRANSFER_TO.getValue()),
@@ -109,7 +109,7 @@ public class OutboxDlqAutoConfiguration {
                 scheduleStrategyListenerSupplier
         );
         return new OutboxDlqTransferScheduler(
-                () -> outboxProperties.getDlq().getTransferFrom(),
+                dlqProperties.getTransferFrom(),
                 scheduleStrategy,
                 transfer::transferFromDlq,
                 continuableTaskDecoratorSupplier.supply(OnceboxTaskType.OUTBOX_DLQ_TRANSFER_FROM.getValue()),

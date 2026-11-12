@@ -4,12 +4,14 @@ import io.github.dmitriyiliyov.oncebox.core.polling.OnceboxScheduleStrategyListe
 import io.github.dmitriyiliyov.oncebox.metrics.MetricsOnceboxScheduleStrategyListener;
 import io.micrometer.core.instrument.MeterRegistry;
 
+import java.util.Objects;
+
 public class MetricsOnceboxScheduleStrategyListenerSupplier implements OnceboxScheduleStrategyListenerSupplier {
 
     private final MeterRegistry registry;
 
     public MetricsOnceboxScheduleStrategyListenerSupplier(MeterRegistry registry) {
-        this.registry = registry;
+        this.registry = Objects.requireNonNull(registry, "registry cannot be null");
     }
 
     @Override

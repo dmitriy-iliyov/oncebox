@@ -14,6 +14,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.IntStream;
@@ -35,11 +36,11 @@ public class MultiDialectOutboxDlqApiRepositoryVerifier {
             ResultSetMapper mapper,
             TestDatabaseClock clock
     ) {
-        this.repository = repository;
-        this.jdbcTemplate = jdbcTemplate;
-        this.uuidHelper = uuidHelper;
-        this.mapper = mapper;
-        this.clock = clock;
+        this.repository = Objects.requireNonNull(repository, "repository cannot be null");
+        this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate, "jdbcTemplate cannot be null");
+        this.uuidHelper = Objects.requireNonNull(uuidHelper, "uuidHelper cannot be null");
+        this.mapper = Objects.requireNonNull(mapper, "mapper cannot be null");
+        this.clock = Objects.requireNonNull(clock, "clock cannot be null");
     }
 
     public void findById_notExisting_returnsEmpty() {

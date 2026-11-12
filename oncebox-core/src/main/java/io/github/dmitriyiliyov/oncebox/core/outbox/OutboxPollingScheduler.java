@@ -9,6 +9,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
+/**
+ * Polls the outbox for one event type: every run hands a batch to the {@link OutboxProcessor}. There is one
+ * scheduler per configured event type, and it runs on every instance without a job lock.
+ */
 public final class OutboxPollingScheduler implements OnceboxScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(OutboxPollingScheduler.class);

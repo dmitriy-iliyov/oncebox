@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Objects;
 
 public class SchedulersPostApplicationReadyOnceboxInitializer implements PostApplicationReadyOnceboxInitializer {
 
@@ -13,7 +14,7 @@ public class SchedulersPostApplicationReadyOnceboxInitializer implements PostApp
     private final Map<String, OnceboxScheduler> schedulers;
 
     public SchedulersPostApplicationReadyOnceboxInitializer(Map<String, OnceboxScheduler> schedulers) {
-        this.schedulers = schedulers;
+        this.schedulers = Objects.requireNonNull(schedulers, "schedulers cannot be null");
     }
 
     @Override

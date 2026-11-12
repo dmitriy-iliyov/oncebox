@@ -100,10 +100,10 @@ public class RabbitOutboxSender implements OutboxSender {
         private final Set<Long> processedTags = ConcurrentHashMap.newKeySet();
 
         private OutboxConfirmListener(Set<UUID> processedIds, Set<UUID> failedIds, Map<Long, UUID> deliveryTagToEventId, CountDownLatch latch) {
-            this.processedIds = processedIds;
-            this.failedIds = failedIds;
-            this.deliveryTagToEventId = deliveryTagToEventId;
-            this.latch = latch;
+            this.processedIds = Objects.requireNonNull(processedIds, "processedIds cannot be null");
+            this.failedIds = Objects.requireNonNull(failedIds, "failedIds cannot be null");
+            this.deliveryTagToEventId = Objects.requireNonNull(deliveryTagToEventId, "deliveryTagToEventId cannot be null");
+            this.latch = Objects.requireNonNull(latch, "latch cannot be null");
         }
 
         @Override

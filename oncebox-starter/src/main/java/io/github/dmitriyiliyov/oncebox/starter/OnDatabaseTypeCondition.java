@@ -35,8 +35,7 @@ public class OnDatabaseTypeCondition extends SpringBootCondition {
                     return ConditionOutcome.match();
                 }
             }
-
-            return ConditionOutcome.noMatch("unknown databaseDriver from annotation not matched with databaseType from context");
+            return ConditionOutcome.noMatch("databaseType from annotation not matched with databaseDriver from context");
         } else {
             throw new IllegalStateException("annotation hasn't any attributes");
         }

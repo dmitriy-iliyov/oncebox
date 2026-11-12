@@ -8,13 +8,15 @@ import io.github.dmitriyiliyov.oncebox.core.utils.DefaultBytesResultSetMapper;
 import io.github.dmitriyiliyov.oncebox.oracle.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.util.Objects;
+
 
 public class OracleOnceboxRepositoryFactory implements OnceboxRepositoryFactory {
 
     private final JdbcTemplate jdbcTemplate;
 
     public OracleOnceboxRepositoryFactory(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate, "jdbcTemplate cannot be null");
     }
 
     @Override

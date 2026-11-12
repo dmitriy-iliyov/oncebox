@@ -3,6 +3,7 @@ package io.github.dmitriyiliyov.oncebox.core.inbox;
 import io.github.dmitriyiliyov.oncebox.core.TestDatabaseClock;
 
 import java.time.Duration;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.UUID;
@@ -31,8 +32,8 @@ public class InboxRepositoryVerifier {
     private final TestDatabaseClock clock;
 
     public InboxRepositoryVerifier(InboxRepository repository, TestDatabaseClock clock) {
-        this.repository = repository;
-        this.clock = clock;
+        this.repository = Objects.requireNonNull(repository, "repository cannot be null");
+        this.clock = Objects.requireNonNull(clock, "clock cannot be null");
     }
 
     public void saveIfAbsent_whenIdIsNew_shouldReturnOneAndStampConsumedAtByDatabaseClock() {

@@ -11,7 +11,8 @@ public interface OnceboxScheduleStrategyListener {
     void onExecutionStarted();
 
     /**
-     * Called when exists task in process.
+     * Called when a run is not scheduled because the executor is shut down or the task is already scheduled or
+     * running. Only {@link AdaptiveOnceboxScheduleStrategy} reports it.
      */
     void onExecutionSkipped();
 
@@ -26,9 +27,10 @@ public interface OnceboxScheduleStrategyListener {
     void onExecutionFailed();
 
     /**
-     * Called when the scheduling delay for the next execution is changed (e.g., during adaptive polling).
+     * Reports the delay before the next run: {@link FixedOnceboxScheduleStrategy} once, when the task is scheduled,
+     * {@link AdaptiveOnceboxScheduleStrategy} after every run, whether or not the delay changed.
      *
-     * @param delay the new delay before the next execution, in milliseconds.
+     * @param delay the delay before the next run, in milliseconds
      */
     void onDelayChanged(long delay);
 

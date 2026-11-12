@@ -8,13 +8,15 @@ import io.github.dmitriyiliyov.oncebox.core.utils.DefaultResultSetMapper;
 import io.github.dmitriyiliyov.oncebox.postgresql.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.util.Objects;
+
 
 public class PostgreSqlOnceboxRepositoryFactory implements OnceboxRepositoryFactory {
 
     private final JdbcTemplate jdbcTemplate;
 
     public PostgreSqlOnceboxRepositoryFactory(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate, "jdbcTemplate cannot be null");
     }
 
     @Override

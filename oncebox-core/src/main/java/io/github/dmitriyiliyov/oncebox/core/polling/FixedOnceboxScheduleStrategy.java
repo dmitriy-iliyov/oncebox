@@ -8,6 +8,10 @@ import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Runs the task at the same delay, counted from the end of one run to the start of the next, whatever the task
+ * returns. An exception thrown by a run is logged and the next run follows as usual.
+ */
 public class FixedOnceboxScheduleStrategy implements OnceboxScheduleStrategy {
 
     private static final Logger log = LoggerFactory.getLogger(FixedOnceboxScheduleStrategy.class);

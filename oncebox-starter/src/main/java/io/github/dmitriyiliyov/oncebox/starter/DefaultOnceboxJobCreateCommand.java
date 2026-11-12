@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Objects;
 
 public class DefaultOnceboxJobCreateCommand implements OnceboxJobCreateCommand {
 
@@ -21,10 +22,10 @@ public class DefaultOnceboxJobCreateCommand implements OnceboxJobCreateCommand {
     private final Long lockAtMostFor;
 
     public DefaultOnceboxJobCreateCommand(JdbcTemplate jdbcTemplate, String jobName, Long lockAtLeastFor, Long lockAtMostFor) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.jobName = jobName;
-        this.lockAtLeastFor = lockAtLeastFor;
-        this.lockAtMostFor = lockAtMostFor;
+        this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate, "jdbcTemplate cannot be null");
+        this.jobName = Objects.requireNonNull(jobName, "jobName cannot be null");
+        this.lockAtLeastFor = Objects.requireNonNull(lockAtLeastFor, "lockAtLeastFor cannot be null");
+        this.lockAtMostFor = Objects.requireNonNull(lockAtMostFor, "lockAtMostFor cannot be null");
     }
 
     @Override

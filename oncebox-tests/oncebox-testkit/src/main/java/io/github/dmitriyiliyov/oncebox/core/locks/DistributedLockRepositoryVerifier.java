@@ -2,6 +2,7 @@ package io.github.dmitriyiliyov.oncebox.core.locks;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.util.Objects;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -14,11 +15,17 @@ public class DistributedLockRepositoryVerifier {
     private final IdPreparer idPreparer;
     private final SetupJobScript setupJobScript;
 
+    /**
+     * Reads a {@link UUID} back from the value the dialect's JDBC driver returns for an id column.
+     */
     @FunctionalInterface
     public interface IdExtractor {
         UUID extract(Object raw);
     }
 
+    /**
+     * Converts a {@link UUID} into the value the dialect's JDBC driver binds to an id column.
+     */
     @FunctionalInterface
     public interface IdPreparer {
         Object prepare(UUID id);
@@ -30,11 +37,11 @@ public class DistributedLockRepositoryVerifier {
             IdExtractor idExtractor,
             IdPreparer idPreparer, SetupJobScript setupJobScript
     ) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.repository = repository;
-        this.idExtractor = idExtractor;
-        this.idPreparer = idPreparer;
-        this.setupJobScript = setupJobScript;
+        this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate, "jdbcTemplate cannot be null");
+        this.repository = Objects.requireNonNull(repository, "repository cannot be null");
+        this.idExtractor = Objects.requireNonNull(idExtractor, "idExtractor cannot be null");
+        this.idPreparer = Objects.requireNonNull(idPreparer, "idPreparer cannot be null");
+        this.setupJobScript = Objects.requireNonNull(setupJobScript, "setupJobScript cannot be null");
     }
 
     public void tryLock_jobAvailable_locksSuccessfully() {

@@ -7,6 +7,10 @@ import org.mapstruct.MappingConstants;
 
 import java.util.List;
 
+/**
+ * Maps orders between the request and response DTOs and the JPA entity; the implementation is generated
+ * by MapStruct.
+ */
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface OrderMapper {
 

@@ -13,6 +13,11 @@ import org.slf4j.LoggerFactory;
 import java.util.Objects;
 import java.util.UUID;
 
+/**
+ * Deletes resolved DLQ events past their {@code ttl}, one batch per run. A run holds the cluster-wide lock of
+ * {@link OnceboxJob#OUTBOX_DLQ_CLEANUP}, so only one instance cleans at a time; an instance that does not get the
+ * lock skips the run and reports it as one that did not fill its batch.
+ */
 public final class OutboxDlqCleanUpScheduler implements OnceboxScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(OutboxDlqCleanUpScheduler.class);
