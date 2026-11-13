@@ -164,4 +164,34 @@ public class OracleInboxAutoConfigurationIntegrationTests {
     void nonTransactionalConsumer_whenCallerTransactionRolledBack_shouldProcessRedeliveryAgain() {
         verifier.nonTransactionalConsumer_whenCallerTransactionRolledBack_shouldProcessRedeliveryAgain();
     }
+
+    @Test
+    @DisplayName("IT transactional consumer when the caller's transaction is rolled back should process the redelivered event again")
+    void transactionalConsumer_whenCallerTransactionRolledBack_shouldProcessRedeliveryAgain() {
+        verifier.transactionalConsumer_whenCallerTransactionRolledBack_shouldProcessRedeliveryAgain();
+    }
+
+    @Test
+    @DisplayName("IT transactional consumer with cache when the caller's transaction is rolled back should process the redelivery again")
+    void transactionalConsumer_whenCacheEnabledAndCallerTransactionRolledBack_shouldProcessRedeliveryAgain() {
+        verifier.transactionalConsumer_whenCacheEnabledAndCallerTransactionRolledBack_shouldProcessRedeliveryAgain();
+    }
+
+    @Test
+    @DisplayName("IT transactional consumer with cache when the caller's transaction is rolled back should process the redelivered message again")
+    void transactionalConsumer_whenCacheEnabledAndCallerTransactionRolledBack_shouldProcessRedeliveredMessageAgain() {
+        verifier.transactionalConsumer_whenCacheEnabledAndCallerTransactionRolledBack_shouldProcessRedeliveredMessageAgain();
+    }
+
+    @Test
+    @DisplayName("IT non-transactional consumer with cache when the caller's transaction is rolled back should process the redelivery again")
+    void nonTransactionalConsumer_whenCacheEnabledAndCallerTransactionRolledBack_shouldProcessRedeliveryAgain() {
+        verifier.nonTransactionalConsumer_whenCacheEnabledAndCallerTransactionRolledBack_shouldProcessRedeliveryAgain();
+    }
+
+    @Test
+    @DisplayName("IT transactional consumer with cache when the caller's transaction is committed should skip the redelivery from cache")
+    void transactionalConsumer_whenCacheEnabledAndCallerTransactionCommitted_shouldSkipRedeliveryFromCache() {
+        verifier.transactionalConsumer_whenCacheEnabledAndCallerTransactionCommitted_shouldSkipRedeliveryFromCache();
+    }
 }

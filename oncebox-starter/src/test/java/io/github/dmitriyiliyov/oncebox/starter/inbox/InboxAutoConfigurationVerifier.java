@@ -487,6 +487,98 @@ public class InboxAutoConfigurationVerifier {
                 });
     }
 
+    public void transactionalConsumer_whenCallerTransactionRolledBack_shouldProcessRedeliveryAgain() {
+        getBaseContextRunner()
+                .withPropertyValues("oncebox.schema.mode=DEV")
+                .run(ctx -> {
+                    IdempotentConsumer consumer = ctx.getBean(TRANSACTIONAL_CONSUMER, IdempotentConsumer.class);
+                    UUID id = UUID.randomUUID();
+                    AtomicInteger runs = new AtomicInteger();
+
+                    transactionTemplate(ctx).executeWithoutResult(status -> {
+                        consumer.consume(id, runs::incrementAndGet);
+                        status.setRollbackOnly();
+                    });
+                    consumer.consume(id, runs::incrementAndGet);
+
+                    assertThat(runs).hasValue(2);
+                });
+    }
+
+    public void transactionalConsumer_whenCacheEnabledAndCallerTransactionRolledBack_shouldProcessRedeliveryAgain() {
+        getBaseContextRunner()
+                .withPropertyValues("oncebox.schema.mode=DEV", "oncebox.inbox.cache.enabled=true")
+                .run(ctx -> {
+                    IdempotentConsumer consumer = ctx.getBean(TRANSACTIONAL_CONSUMER, IdempotentConsumer.class);
+                    UUID id = UUID.randomUUID();
+                    AtomicInteger runs = new AtomicInteger();
+
+                    transactionTemplate(ctx).executeWithoutResult(status -> {
+                        consumer.consume(id, runs::incrementAndGet);
+                        status.setRollbackOnly();
+                    });
+                    consumer.consume(id, runs::incrementAndGet);
+
+                    assertThat(runs).as("operation runs, the first one rolled back").hasValue(2);
+                });
+    }
+
+    public void transactionalConsumer_whenCacheEnabledAndCallerTransactionRolledBack_shouldProcessRedeliveredMessageAgain() {
+        getBaseContextRunner()
+                .withPropertyValues("oncebox.schema.mode=DEV", "oncebox.inbox.cache.enabled=true")
+                .run(ctx -> {
+                    IdempotentConsumer consumer = ctx.getBean(TRANSACTIONAL_CONSUMER, IdempotentConsumer.class);
+                    UUID id = UUID.randomUUID();
+                    AtomicInteger runs = new AtomicInteger();
+
+                    // the message is the id itself, so the extractor needs no broker type
+                    transactionTemplate(ctx).executeWithoutResult(status -> {
+                        consumer.consume(id, message -> message, message -> runs.incrementAndGet());
+                        status.setRollbackOnly();
+                    });
+                    consumer.consume(id, message -> message, message -> runs.incrementAndGet());
+
+                    assertThat(runs).as("operation runs, the first one rolled back").hasValue(2);
+                });
+    }
+
+    public void nonTransactionalConsumer_whenCacheEnabledAndCallerTransactionRolledBack_shouldProcessRedeliveryAgain() {
+        getBaseContextRunner()
+                .withPropertyValues("oncebox.schema.mode=DEV", "oncebox.inbox.cache.enabled=true")
+                .run(ctx -> {
+                    IdempotentConsumer consumer = ctx.getBean(NON_TRANSACTIONAL_CONSUMER, IdempotentConsumer.class);
+                    UUID id = UUID.randomUUID();
+                    AtomicInteger runs = new AtomicInteger();
+
+                    transactionTemplate(ctx).executeWithoutResult(status -> {
+                        consumer.consume(id, runs::incrementAndGet);
+                        status.setRollbackOnly();
+                    });
+                    consumer.consume(id, runs::incrementAndGet);
+
+                    assertThat(runs).as("operation runs, the first one rolled back").hasValue(2);
+                });
+    }
+
+    public void transactionalConsumer_whenCacheEnabledAndCallerTransactionCommitted_shouldSkipRedeliveryFromCache() {
+        getBaseContextRunner()
+                .withPropertyValues("oncebox.schema.mode=DEV", "oncebox.inbox.cache.enabled=true")
+                .run(ctx -> {
+                    IdempotentConsumer consumer = ctx.getBean(TRANSACTIONAL_CONSUMER, IdempotentConsumer.class);
+                    UUID id = UUID.randomUUID();
+                    AtomicInteger runs = new AtomicInteger();
+
+                    transactionTemplate(ctx).executeWithoutResult(status -> consumer.consume(id, runs::incrementAndGet));
+                    consumer.consume(id, runs::incrementAndGet);
+
+                    assertThat(runs).as("operation runs").hasValue(1);
+                    // the inbox table would skip the redelivery as well, only the cache entry shows the cache did it
+                    assertThat(ctx.getBean(CacheManager.class).getCache("oncebox").get(id.toString()))
+                            .as("cache entry of the committed id")
+                            .isNotNull();
+                });
+    }
+
     private static TransactionTemplate transactionTemplate(ApplicationContext ctx) {
         return new TransactionTemplate(ctx.getBean(PlatformTransactionManager.class));
     }

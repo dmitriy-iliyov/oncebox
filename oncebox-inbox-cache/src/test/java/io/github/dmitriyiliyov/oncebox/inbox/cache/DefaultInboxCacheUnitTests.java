@@ -11,6 +11,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
+import org.springframework.cache.transaction.TransactionAwareCacheDecorator;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.UUID;
 
@@ -162,21 +164,54 @@ class DefaultInboxCacheUnitTests {
     }
 
     @Test
-    @DisplayName("UT consume() when cache is null should not throw exception")
-    void consume_whenCacheIsNull_shouldNotThrowException() {
+    @DisplayName("UT consume() when a transaction is active should put the id only after commit")
+    void consume_whenTransactionIsActive_shouldPutIdOnlyAfterCommit() {
         // given
         UUID id = UUID.randomUUID();
-        String cacheName = "test-cache";
-        when(cacheManager.getCache(cacheName)).thenReturn(cache).thenReturn(null);
-
-        decorator = new DefaultInboxCache(cacheManager, cacheName, cacheListener);
+        when(cacheManager.getCache("test-cache")).thenReturn(cache);
+        DefaultInboxCache tested = new DefaultInboxCache(cacheManager, "test-cache", cacheListener);
 
         // when
-        Assertions.assertThatCode(() -> decorator.consume(id))
-                .doesNotThrowAnyException();
+        transactionTemplate().executeWithoutResult(status -> {
+            tested.consume(id);
+            Mockito.verify(cache, Mockito.never()).put(Mockito.any(), Mockito.any());
+        });
+
+        // then
+        Mockito.verify(cache).put(id.toString(), "");
+    }
+
+    @Test
+    @DisplayName("UT consume() when the transaction is rolled back should not put the id")
+    void consume_whenTransactionIsRolledBack_shouldNotPutId() {
+        // given
+        UUID id = UUID.randomUUID();
+        when(cacheManager.getCache("test-cache")).thenReturn(cache);
+        DefaultInboxCache tested = new DefaultInboxCache(cacheManager, "test-cache", cacheListener);
+
+        // when
+        transactionTemplate().executeWithoutResult(status -> {
+            tested.consume(id);
+            status.setRollbackOnly();
+        });
 
         // then
         Mockito.verify(cache, Mockito.never()).put(Mockito.any(), Mockito.any());
+    }
+
+    @Test
+    @DisplayName("UT consume() when the cache is already transaction-aware should put the id once after commit")
+    void consume_whenCacheIsAlreadyTransactionAware_shouldPutIdOnceAfterCommit() {
+        // given
+        UUID id = UUID.randomUUID();
+        when(cacheManager.getCache("test-cache")).thenReturn(new TransactionAwareCacheDecorator(cache));
+        DefaultInboxCache tested = new DefaultInboxCache(cacheManager, "test-cache", cacheListener);
+
+        // when
+        transactionTemplate().executeWithoutResult(status -> tested.consume(id));
+
+        // then
+        Mockito.verify(cache).put(id.toString(), "");
     }
 
     @Test
@@ -193,5 +228,9 @@ class DefaultInboxCacheUnitTests {
 
         // then
         Assertions.assertThat(tested.isConsumed(id)).isTrue();
+    }
+
+    private static TransactionTemplate transactionTemplate() {
+        return new TransactionTemplate(new NoResourceTransactionManager());
     }
 }

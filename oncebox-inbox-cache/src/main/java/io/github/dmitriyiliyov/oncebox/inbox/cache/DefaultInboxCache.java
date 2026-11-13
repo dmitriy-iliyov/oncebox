@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.cache.transaction.TransactionAwareCacheDecorator;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -14,23 +15,29 @@ public class DefaultInboxCache implements InboxCache {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultInboxCache.class);
 
-    private final String cacheName;
-    private final CacheManager cacheManager;
+    private final Cache cache;
     private final InboxCacheListener cacheListener;
 
     public DefaultInboxCache(CacheManager cacheManager, String cacheName, InboxCacheListener cacheListener) {
-        this.cacheManager = Objects.requireNonNull(cacheManager, "cacheManager cannot be null");
-        this.cacheName = Objects.requireNonNull(cacheName, "cacheName cannot be null");
+        Objects.requireNonNull(cacheManager, "cacheManager cannot be null");
+        Objects.requireNonNull(cacheName, "cacheName cannot be null");
         if (cacheName.isBlank()) {
             throw new IllegalArgumentException("cacheName cannot be empty or blank");
         }
-        Objects.requireNonNull(cacheManager.getCache(cacheName), "cache with cacheName '%s' cannot be null".formatted(cacheName));
+
+        Cache uncheckedCache = Objects.requireNonNull(
+                cacheManager.getCache(cacheName),
+                "cache with cacheName '%s' cannot be null".formatted(cacheName)
+        );
+        this.cache = uncheckedCache instanceof TransactionAwareCacheDecorator
+                ? uncheckedCache
+                : new TransactionAwareCacheDecorator(uncheckedCache);
+
         this.cacheListener = Objects.requireNonNull(cacheListener, "cacheListener cannot be null");
     }
 
     @Override
     public boolean isConsumed(UUID id) {
-        Cache cache = cacheManager.getCache(cacheName);
         boolean isConsumed = cache.get(id.toString(), String.class) != null;
         if (isConsumed) {
             cacheListener.onHit();
@@ -42,11 +49,6 @@ public class DefaultInboxCache implements InboxCache {
 
     @Override
     public void consume(UUID id) {
-        Cache cache = cacheManager.getCache(cacheName);
-        if (cache != null) {
-            cache.put(id.toString(), "");
-        } else {
-            log.warn("Cache for inbox with name '{}' not found", cacheName);
-        }
+        cache.put(id.toString(), "");
     }
 }

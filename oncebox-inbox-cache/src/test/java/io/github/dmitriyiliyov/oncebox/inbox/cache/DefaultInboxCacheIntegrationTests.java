@@ -5,9 +5,14 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.data.redis.cache.RedisCacheConfiguration;
+import org.springframework.data.redis.cache.RedisCacheManager;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.UUID;
 
@@ -17,13 +22,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class DefaultInboxCacheIntegrationTests extends BaseRedisIntegrationTests {
 
     private final CacheManager cacheManager;
+    private final RedisConnectionFactory connectionFactory;
 
     private DefaultInboxCache decorator;
 
     private static final String CACHE_NAME = "oncebox:inbox";
 
-    DefaultInboxCacheIntegrationTests(@Qualifier("redisIntegrationTestsCacheManager") CacheManager cacheManager) {
+    DefaultInboxCacheIntegrationTests(@Qualifier("redisIntegrationTestsCacheManager") CacheManager cacheManager,
+                                      @Autowired RedisConnectionFactory connectionFactory) {
         this.cacheManager = cacheManager;
+        this.connectionFactory = connectionFactory;
     }
 
     @BeforeEach
@@ -124,5 +132,28 @@ class DefaultInboxCacheIntegrationTests extends BaseRedisIntegrationTests {
         Cache cache = cacheManager.getCache(CACHE_NAME);
         Assertions.assertThat(cache).isNotNull();
         Assertions.assertThat(cache.get(id, String.class)).isEqualTo("");
+    }
+
+    @Test
+    @DisplayName("IT consume() when cache manager is already transaction-aware should store the id after commit")
+    void consume_whenCacheManagerIsTransactionAware_shouldStoreIdAfterCommit() {
+        // given
+        RedisCacheManager transactionAwareManager = RedisCacheManager.builder(connectionFactory)
+                .withCacheConfiguration(CACHE_NAME, RedisCacheConfiguration.defaultCacheConfig().disableCachingNullValues())
+                .transactionAware()
+                .build();
+        transactionAwareManager.afterPropertiesSet();
+        DefaultInboxCache tested = new DefaultInboxCache(transactionAwareManager, CACHE_NAME, InboxCacheListener.NOOP);
+        TransactionTemplate transactionTemplate = new TransactionTemplate(new NoResourceTransactionManager());
+        UUID id = UUID.randomUUID();
+
+        // when
+        transactionTemplate.executeWithoutResult(status -> tested.consume(id));
+
+        // then
+        // read through the plain manager: same Redis entry, no decorator in the way
+        Assertions.assertThat(cacheManager.getCache(CACHE_NAME).get(id.toString(), String.class))
+                .as("cache entry of the id consumed in the committed transaction")
+                .isEqualTo("");
     }
 }
