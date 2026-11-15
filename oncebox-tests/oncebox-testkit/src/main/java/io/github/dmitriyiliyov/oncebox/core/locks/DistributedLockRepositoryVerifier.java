@@ -9,8 +9,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class DistributedLockRepositoryVerifier {
 
-    // a lock that must still be held when the scenario checks it: long enough that no stall of the database
-    // between two statements lets it expire, which a lock of half a second did on a loaded Oracle Free
+    // a lock that must still be held when the scenario checks it: half a second is short enough for a stall of
+    // the database between two statements to let it expire
     private static final long LOCK_HELD_THROUGH_SCENARIO_MILLIS = 60_000L;
 
     private final JdbcTemplate jdbcTemplate;

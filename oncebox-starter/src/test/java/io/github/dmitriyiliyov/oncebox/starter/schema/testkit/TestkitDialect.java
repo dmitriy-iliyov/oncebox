@@ -159,9 +159,11 @@ enum TestkitDialect {
         @Override
         SetupJobScript setupJobScript() {
             return (jdbcTemplate, idPreparer, jobName, lockAtLeastFor, lockAtMostFor) -> {
-                String now = "SYS_EXTRACT_UTC(SYSTIMESTAMP)";
+                // an hour back, not now: the TIMESTAMP(3) column rounds the microseconds of SYSTIMESTAMP and may
+                // round them up, leaving a just created job locked for the tryLock that follows at once
+                String hourAgo = "SYS_EXTRACT_UTC(SYSTIMESTAMP) - INTERVAL '1' HOUR";
                 jdbcTemplate.update(
-                        INSERT_JOB.formatted(now, now),
+                        INSERT_JOB.formatted(hourAgo, hourAgo),
                         jobName,
                         idPreparer.prepare(UUID.randomUUID()),
                         lockAtLeastFor,
