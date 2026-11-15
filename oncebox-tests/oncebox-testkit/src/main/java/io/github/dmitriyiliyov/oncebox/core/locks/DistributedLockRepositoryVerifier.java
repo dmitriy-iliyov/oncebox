@@ -9,6 +9,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class DistributedLockRepositoryVerifier {
 
+    // a lock that must still be held when the scenario checks it: long enough that no stall of the database
+    // between two statements lets it expire, which a lock of half a second did on a loaded Oracle Free
+    private static final long LOCK_HELD_THROUGH_SCENARIO_MILLIS = 60_000L;
+
     private final JdbcTemplate jdbcTemplate;
     private final DistributedLockRepository repository;
     private final IdExtractor idExtractor;
@@ -59,9 +63,9 @@ public class DistributedLockRepositoryVerifier {
         UUID worker1 = UUID.randomUUID();
         UUID worker2 = UUID.randomUUID();
         String jobName = "test-job-" + UUID.randomUUID();
-        setupJobScript.setup(jdbcTemplate, idPreparer, jobName, 100L, 500L);
+        setupJobScript.setup(jdbcTemplate, idPreparer, jobName, 100L, LOCK_HELD_THROUGH_SCENARIO_MILLIS);
 
-        repository.tryLock(jobName, worker1);
+        assertThat(repository.tryLock(jobName, worker1)).as("first worker takes the free lock").isTrue();
         boolean locked = repository.tryLock(jobName, worker2);
 
         assertThat(locked).isFalse();
@@ -74,7 +78,7 @@ public class DistributedLockRepositoryVerifier {
         String jobName = "test-job-" + UUID.randomUUID();
         setupJobScript.setup(jdbcTemplate, idPreparer, jobName, 50L, 100L);
 
-        repository.tryLock(jobName, worker1);
+        assertThat(repository.tryLock(jobName, worker1)).as("first worker takes the free lock").isTrue();
         waitForLockExpiration();
         boolean locked = repository.tryLock(jobName, worker2);
 
@@ -87,7 +91,7 @@ public class DistributedLockRepositoryVerifier {
         String jobName = "test-job-" + UUID.randomUUID();
         setupJobScript.setup(jdbcTemplate, idPreparer, jobName, 100L, 500L);
 
-        repository.tryLock(jobName, workerId);
+        assertThat(repository.tryLock(jobName, workerId)).as("worker takes the free lock").isTrue();
         repository.unlock(jobName, workerId);
 
         waitForLockExpiration();
@@ -99,9 +103,9 @@ public class DistributedLockRepositoryVerifier {
         UUID worker1 = UUID.randomUUID();
         UUID worker2 = UUID.randomUUID();
         String jobName = "test-job-" + UUID.randomUUID();
-        setupJobScript.setup(jdbcTemplate, idPreparer, jobName, 100L, 500L);
+        setupJobScript.setup(jdbcTemplate, idPreparer, jobName, 100L, LOCK_HELD_THROUGH_SCENARIO_MILLIS);
 
-        repository.tryLock(jobName, worker1);
+        assertThat(repository.tryLock(jobName, worker1)).as("first worker takes the free lock").isTrue();
         repository.unlock(jobName, worker2);
 
         boolean locked = repository.tryLock(jobName, worker2);
