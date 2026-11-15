@@ -126,6 +126,35 @@ class OnAnyCleanUpEnabledConditionIntegrationTests {
     }
 
     @Test
+    @DisplayName("IT should match when inbox enabled without clean-up property and outbox clean-up disabled, inbox clean-up is on by default")
+    void shouldMatch_whenInboxEnabledWithoutCleanUpPropertyAndOutboxDisabled() {
+        baseRunner()
+                .withPropertyValues(
+                        "oncebox.outbox.clean-up.enabled=false",
+                        "oncebox.inbox.enabled=true"
+                )
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).hasBean("conditionalBean");
+                });
+    }
+
+    @Test
+    @DisplayName("IT should not match when inbox enabled with clean-up disabled and outbox clean-up disabled")
+    void shouldNotMatch_whenInboxEnabledWithCleanUpDisabledAndOutboxDisabled() {
+        baseRunner()
+                .withPropertyValues(
+                        "oncebox.outbox.clean-up.enabled=false",
+                        "oncebox.inbox.enabled=true",
+                        "oncebox.inbox.clean-up.enabled=false"
+                )
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).doesNotHaveBean("conditionalBean");
+                });
+    }
+
+    @Test
     @DisplayName("IT should not match when inbox absent and outbox explicitly disabled")
     void shouldNotMatch_whenInboxAbsentAndOutboxDisabled() {
         baseRunner()

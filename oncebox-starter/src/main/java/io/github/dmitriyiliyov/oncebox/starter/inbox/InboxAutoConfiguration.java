@@ -104,7 +104,8 @@ public class InboxAutoConfiguration {
     @ConditionalOnProperty(
             prefix = "oncebox.inbox.clean-up",
             name = "enabled",
-            havingValue = "true"
+            havingValue = "true",
+            matchIfMissing = true
     )
     public OnceboxScheduler inboxCleanUpScheduler(
             OnceboxProperties properties,
@@ -133,7 +134,8 @@ public class InboxAutoConfiguration {
     @ConditionalOnProperty(
             prefix = "oncebox.inbox.clean-up",
             name = "enabled",
-            havingValue = "true"
+            havingValue = "true",
+            matchIfMissing = true
     )
     public OnceboxJobCreateCommand inboxCleanUpJobCreateCommand(OnceboxProperties properties,
                                                                 @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate) {

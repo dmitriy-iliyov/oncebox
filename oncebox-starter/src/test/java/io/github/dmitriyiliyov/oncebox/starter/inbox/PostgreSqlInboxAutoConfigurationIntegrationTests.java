@@ -63,6 +63,18 @@ class PostgreSqlInboxAutoConfigurationIntegrationTests {
     }
 
     @Test
+    @DisplayName("IT inbox clean-up when only ttl is set should register scheduler and job")
+    void cleanUp_whenOnlyTtlIsSet_shouldRegisterSchedulerAndJob() {
+        verifier.cleanUp_whenOnlyTtlIsSet_shouldRegisterSchedulerAndJob();
+    }
+
+    @Test
+    @DisplayName("IT inbox clean-up when not set and outbox clean-up disabled should register scheduler, job and lock")
+    void cleanUp_whenNotSetAndOutboxCleanUpDisabled_shouldRegisterSchedulerJobAndLock() {
+        verifier.cleanUp_whenNotSetAndOutboxCleanUpDisabled_shouldRegisterSchedulerJobAndLock();
+    }
+
+    @Test
     @DisplayName("IT should register InboxCleanUpScheduler when clean-up enabled")
     void shouldRegisterCleanUpScheduler_whenEnabled() {
         verifier.shouldNotRegisterCleanUpScheduler_whenEnabled();

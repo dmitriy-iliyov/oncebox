@@ -3,6 +3,7 @@ package io.github.dmitriyiliyov.oncebox.starter.inbox;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.dmitriyiliyov.oncebox.core.inbox.*;
 import io.github.dmitriyiliyov.oncebox.core.inbox.cache.IdempotentConsumerCacheDecorator;
+import io.github.dmitriyiliyov.oncebox.core.locks.DistributedLockRepository;
 import io.github.dmitriyiliyov.oncebox.metrics.inbox.IdempotentConsumerMetricsDecorator;
 import io.github.dmitriyiliyov.oncebox.metrics.inbox.InboxManagerMetricsDecorator;
 import io.github.dmitriyiliyov.oncebox.metrics.inbox.MetricsInboxCacheListener;
@@ -167,7 +168,8 @@ public class InboxAutoConfigurationVerifier {
                     assertThat(ctx).doesNotHaveBean(IdempotentConsumerMetricsDecoratorSupplier.class);
                     assertThat(ctx).doesNotHaveBean(InboxManagerMetricsDecorator.class);
                     assertThat(ctx).doesNotHaveBean(IdempotentConsumerMetricsDecorator.class);
-                    assertThat(ctx).doesNotHaveBean("inboxCleanUpScheduler");
+                    assertThat(ctx).hasBean("inboxCleanUpScheduler");
+                    assertThat(ctx).hasBean("inboxCleanUpJobCreateCommand");
                 });
     }
 
@@ -219,6 +221,29 @@ public class InboxAutoConfigurationVerifier {
                 .run(ctx -> {
                     assertThat(ctx).doesNotHaveBean("inboxCleanUpScheduler");
                     assertThat(ctx).doesNotHaveBean("inboxCleanUpJobCreateCommand");
+                });
+    }
+
+    public void cleanUp_whenOnlyTtlIsSet_shouldRegisterSchedulerAndJob() {
+        getBaseContextRunner()
+                .withPropertyValues("oncebox.inbox.clean-up.ttl=PT1H")
+                .run(ctx -> {
+                    assertThat(ctx).hasNotFailed();
+                    assertThat(ctx).hasBean("inboxCleanUpScheduler");
+                    assertThat(ctx).hasBean("inboxCleanUpJobCreateCommand");
+                });
+    }
+
+    // the lock repository was registered only for an explicit inbox clean-up, so without it the default clean-up
+    // of an inbox next to a disabled outbox clean-up had no lock to run under
+    public void cleanUp_whenNotSetAndOutboxCleanUpDisabled_shouldRegisterSchedulerJobAndLock() {
+        getBaseContextRunner()
+                .withPropertyValues("oncebox.outbox.clean-up.enabled=false")
+                .run(ctx -> {
+                    assertThat(ctx).hasNotFailed();
+                    assertThat(ctx).hasBean("inboxCleanUpScheduler");
+                    assertThat(ctx).hasBean("inboxCleanUpJobCreateCommand");
+                    assertThat(ctx).hasSingleBean(DistributedLockRepository.class);
                 });
     }
 
