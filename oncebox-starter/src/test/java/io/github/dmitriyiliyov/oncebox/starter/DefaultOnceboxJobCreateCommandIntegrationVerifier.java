@@ -1,21 +1,27 @@
 package io.github.dmitriyiliyov.oncebox.starter;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class DefaultOnceboxJobCreateCommandIntegrationVerifier {
+// Built per test instance, so the pool it opens is closed by the test class after every test
+public class DefaultOnceboxJobCreateCommandIntegrationVerifier implements AutoCloseable {
 
+    private final HikariDataSource dataSource;
     private final JdbcTemplate jdbcTemplate;
     private final DefaultOnceboxJobCreateCommand command;
 
     public DefaultOnceboxJobCreateCommandIntegrationVerifier(String dbUrl, String dbDriver, String dbUsername, String dbPassword) {
-        DriverManagerDataSource dataSource = new DriverManagerDataSource();
-        dataSource.setDriverClassName(dbDriver);
-        dataSource.setUrl(dbUrl);
-        dataSource.setUsername(dbUsername);
-        dataSource.setPassword(dbPassword);
+        HikariConfig config = new HikariConfig();
+        config.setDriverClassName(dbDriver);
+        config.setJdbcUrl(dbUrl);
+        config.setUsername(dbUsername);
+        config.setPassword(dbPassword);
+        config.setMinimumIdle(1);
+        config.setMaximumPoolSize(2);
+        this.dataSource = new HikariDataSource(config);
         this.jdbcTemplate = new JdbcTemplate(dataSource);
 
         this.command = new DefaultOnceboxJobCreateCommand(this.jdbcTemplate, "integration_job", 1000L, 5000L);
@@ -58,5 +64,10 @@ public class DefaultOnceboxJobCreateCommandIntegrationVerifier {
         );
 
         assertThat(count).isEqualTo(1);
+    }
+
+    @Override
+    public void close() {
+        dataSource.close();
     }
 }

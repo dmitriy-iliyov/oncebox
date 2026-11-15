@@ -1,6 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.starter;
 
 import io.github.dmitriyiliyov.oncebox.tests.fixtures.OracleTestContainerSingleton;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,11 @@ class OracleDefaultOnceboxJobCreateCommandIntegrationTests {
     @BeforeEach
     void setUp() {
         verifier.setUpSchema();
+    }
+
+    @AfterEach
+    void tearDown() {
+        verifier.close();
     }
 
     @Test

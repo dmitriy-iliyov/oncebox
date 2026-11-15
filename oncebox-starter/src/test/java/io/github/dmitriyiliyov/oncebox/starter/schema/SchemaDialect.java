@@ -1,5 +1,7 @@
 package io.github.dmitriyiliyov.oncebox.starter.schema;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import io.github.dmitriyiliyov.oncebox.starter.MySqlOnceboxRepositoryFactory;
 import io.github.dmitriyiliyov.oncebox.starter.OnceboxRepositoryFactory;
 import io.github.dmitriyiliyov.oncebox.starter.OracleOnceboxRepositoryFactory;
@@ -8,7 +10,6 @@ import io.github.dmitriyiliyov.oncebox.tests.fixtures.MySqlTestContainerSingleto
 import io.github.dmitriyiliyov.oncebox.tests.fixtures.OracleTestContainerSingleton;
 import io.github.dmitriyiliyov.oncebox.tests.fixtures.PostgresTestContainerSingleton;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 
 import javax.sql.DataSource;
@@ -113,13 +114,21 @@ enum SchemaDialect {
         return scriptSeparator;
     }
 
-    DataSource dataSource() {
-        DriverManagerDataSource dataSource = new DriverManagerDataSource(
-                container().getJdbcUrl(),
-                container().getUsername(),
-                container().getPassword()
-        );
-        dataSource.setDriverClassName(driver);
+    // one small pool per container, kept for the whole run like the container itself: a data source without a pool
+    // opens a database session per call, and a few hundred of them in seconds exhaust the sessions of Oracle Free
+    private HikariDataSource dataSource;
+
+    synchronized DataSource dataSource() {
+        if (dataSource == null) {
+            HikariConfig config = new HikariConfig();
+            config.setJdbcUrl(container().getJdbcUrl());
+            config.setUsername(container().getUsername());
+            config.setPassword(container().getPassword());
+            config.setDriverClassName(driver);
+            config.setMinimumIdle(1);
+            config.setMaximumPoolSize(4);
+            dataSource = new HikariDataSource(config);
+        }
         return dataSource;
     }
 
