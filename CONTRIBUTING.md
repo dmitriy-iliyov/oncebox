@@ -1,6 +1,31 @@
 # Contributing to oncebox
 
-Thanks for taking the time to contribute. Bug reports, documentation fixes and code changes are all welcome.
+Thanks for taking the time to contribute. Bug reports, documentation fixes and code changes are all welcome,
+and so are first-time contributors: if something in this guide is unclear, that is a bug in the guide.
+
+## Your first contribution
+
+1. Find an issue labelled `good first issue` and comment that you are taking it.
+2. Fork the repository and create a branch from `main`.
+3. Build once before changing anything, so you know it works on your machine: `./mvnw clean install -Dgpg.skip=true`
+   for the library, or `docker compose build` in `oncebox-example` for a change to the example
+   (see [Prerequisites](#prerequisites) and [Building and testing](#building-and-testing)).
+4. Make the change. Every issue says what is in scope and how to check the result; look at the neighbouring
+   code or docs and follow them.
+5. Build again and open a pull request with `Fixes #<issue number>` in the description.
+
+Stuck? Ask in the issue. A question there is always better than a pull request that went in the wrong direction,
+and nobody expects you to know the codebase.
+
+## Taking an issue
+
+- **Comment on the issue and it is yours.** No plan or approval is needed; the maintainer assigns it to you.
+- **Issues are labelled by difficulty.** `good first issue` is small and self-contained; `help wanted` needs more
+  context and sometimes a short design note in the issue.
+- **Keep it moving.** If there is no pull request or update for two weeks, the issue goes back to the pool so that
+  someone else can pick it up. Need more time? Just say so in a comment.
+- **Stay in scope.** What an issue lists under "Out of scope" is left out of the pull request; it is usually an
+  issue of its own.
 
 ## Before you start
 
