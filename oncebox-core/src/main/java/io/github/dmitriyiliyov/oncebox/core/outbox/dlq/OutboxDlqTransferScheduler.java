@@ -42,12 +42,13 @@ public final class OutboxDlqTransferScheduler implements OnceboxScheduler {
     public void schedule() {
         ContinuableTask task = () -> {
             int batchSize = properties.getBatchSize();
-            int transferredCount = 0;
+            int transferredCount;
             try {
                 log.debug(logMessage.onStart());
                 transferredCount = transferApplier.apply(batchSize);
             } catch (Exception e) {
                 log.error(logMessage.onException(), e);
+                throw e;
             }
             return transferredCount == batchSize;
         };

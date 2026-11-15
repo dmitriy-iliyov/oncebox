@@ -163,16 +163,19 @@ class OutboxDlqTransferSchedulerUnitTests {
     }
 
     @Test
-    @DisplayName("UT schedule() when transferApplier throws, task should return false and not rethrow")
-    void schedule_whenApplierThrows_taskShouldReturnFalseAndNotRethrow() {
+    @DisplayName("UT schedule() when transferApplier throws should rethrow from the task, so the strategy counts a failed run")
+    void schedule_whenApplierThrows_taskShouldRethrow() {
+        // given
         int batchSize = 50;
+        RuntimeException failure = new RuntimeException("DB error");
         when(transferProperties.getBatchSize()).thenReturn(batchSize);
-        when(transferApplier.apply(batchSize)).thenThrow(new RuntimeException("DB error"));
+        when(transferApplier.apply(batchSize)).thenThrow(failure);
 
+        // when
         tested.schedule();
-        boolean result = assertDoesNotThrow(() -> captureTask().run());
 
-        assertFalse(result);
+        // then
+        assertThatThrownBy(() -> captureTask().run()).isSameAs(failure);
     }
 
     @Test

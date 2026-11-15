@@ -46,6 +46,7 @@ public final class OutboxRecoveryScheduler implements OnceboxScheduler {
                 recoveredCount = manager.recoverStuckBatch(properties.getMaxBatchProcessingTime(), batchSize);
             } catch (Exception e) {
                 log.error("Error process recover stuck outbox events", e);
+                throw e;
             }
             return recoveredCount == batchSize;
         };

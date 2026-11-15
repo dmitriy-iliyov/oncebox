@@ -42,6 +42,7 @@ public final class OutboxPollingScheduler implements OnceboxScheduler {
                 processedCount = processor.process(properties);
             } catch (Exception e) {
                 log.error("Error process outbox events, eventType={}", properties.getEventType(), e);
+                throw e;
             }
             return processedCount == batchSize;
         };

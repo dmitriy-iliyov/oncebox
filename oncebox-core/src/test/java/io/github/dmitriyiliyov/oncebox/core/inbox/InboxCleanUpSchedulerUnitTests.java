@@ -18,7 +18,8 @@ import java.time.Duration;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.AdditionalAnswers.returnsFirstArg;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -221,23 +222,23 @@ public class InboxCleanUpSchedulerUnitTests {
     }
 
     @Test
-    @DisplayName("UT schedule() when manager throws exception, should return false, not rethrow and ALWAYS unlock")
-    void schedule_whenManagerThrows_shouldReturnFalseAndNotRethrowAndUnlock() {
+    @DisplayName("UT schedule() when manager throws should rethrow from the task, so the strategy counts a failed run, and unlock")
+    void schedule_whenManagerThrows_taskShouldRethrowAndUnlock() {
         // given
         int batchSize = 50;
         Duration ttl = Duration.ofDays(7);
+        RuntimeException failure = new RuntimeException("DB error");
         when(decorator.decorate(any(ContinuableTask.class))).then(returnsFirstArg());
         when(lock.tryLock(jobName, workerId)).thenReturn(true);
         when(properties.getBatchSize()).thenReturn(batchSize);
         when(properties.getTtl()).thenReturn(ttl);
-        when(manager.cleanBatchByTtl(ttl, batchSize)).thenThrow(new RuntimeException("DB error"));
+        when(manager.cleanBatchByTtl(ttl, batchSize)).thenThrow(failure);
 
         // when
         tested.schedule();
-        boolean result = assertDoesNotThrow(this::captureAndRun);
 
         // then
-        assertFalse(result);
+        assertThatThrownBy(this::captureAndRun).isSameAs(failure);
         verify(lock).unlock(jobName, workerId);
     }
 }

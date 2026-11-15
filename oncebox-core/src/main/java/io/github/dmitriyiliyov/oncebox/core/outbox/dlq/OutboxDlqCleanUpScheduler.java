@@ -59,7 +59,7 @@ public final class OutboxDlqCleanUpScheduler implements OnceboxScheduler {
                 return batchSize == deletedCount;
             } catch (Exception e) {
                 log.error("Error when cleaning up resolved DLQ events, workerId={}", workerId, e);
-                return false;
+                throw e;
             } finally {
                 lock.unlock(JOB.getJobName(), workerId);
             }

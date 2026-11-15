@@ -14,7 +14,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.AdditionalAnswers.returnsFirstArg;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -166,22 +167,21 @@ public class OutboxRecoverySchedulerUnitTests {
     }
 
     @Test
-    @DisplayName("UT schedule() when manager throws exception, continuable should return false and not rethrow")
-    void schedule_whenManagerThrows_continuableShouldReturnFalseAndNotRethrow() {
+    @DisplayName("UT schedule() when manager throws should rethrow from the task, so the strategy counts a failed run")
+    void schedule_whenManagerThrows_taskShouldRethrow() {
         // given
         int batchSize = 50;
         Duration maxProcessingTime = Duration.ofMinutes(5);
+        RuntimeException failure = new RuntimeException("DB error");
         when(properties.getBatchSize()).thenReturn(batchSize);
         when(properties.getMaxBatchProcessingTime()).thenReturn(maxProcessingTime);
-        when(manager.recoverStuckBatch(maxProcessingTime, batchSize))
-                .thenThrow(new RuntimeException("DB error"));
+        when(manager.recoverStuckBatch(maxProcessingTime, batchSize)).thenThrow(failure);
         when(decorator.decorate(any(ContinuableTask.class))).then(returnsFirstArg());
 
         // when
         tested.schedule();
-        boolean result = assertDoesNotThrow(this::captureAndRun);
 
         // then
-        assertFalse(result);
+        assertThatThrownBy(this::captureAndRun).isSameAs(failure);
     }
 }

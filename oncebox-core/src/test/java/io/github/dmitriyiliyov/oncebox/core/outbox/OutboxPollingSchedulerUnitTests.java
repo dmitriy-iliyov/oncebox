@@ -12,7 +12,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.AdditionalAnswers.returnsFirstArg;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -152,18 +153,18 @@ public class OutboxPollingSchedulerUnitTests {
     }
 
     @Test
-    @DisplayName("UT schedule() when processor throws exception, continuable should return false and not rethrow")
-    void schedule_whenProcessorThrows_continuableShouldReturnFalseAndNotRethrow() {
+    @DisplayName("UT schedule() when processor throws should rethrow from the task, so the strategy counts a failed run")
+    void schedule_whenProcessorThrows_taskShouldRethrow() {
         // given
+        RuntimeException failure = new RuntimeException("DB error");
         when(properties.getBatchSize()).thenReturn(50);
-        when(processor.process(properties)).thenThrow(new RuntimeException("DB error"));
+        when(processor.process(properties)).thenThrow(failure);
         when(decorator.decorate(any(ContinuableTask.class))).then(returnsFirstArg());
 
         // when
         tested.schedule();
-        boolean result = assertDoesNotThrow(this::captureAndRun);
 
         // then
-        assertFalse(result);
+        assertThatThrownBy(this::captureAndRun).isSameAs(failure);
     }
 }

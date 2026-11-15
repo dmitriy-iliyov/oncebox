@@ -87,6 +87,7 @@ public class AdaptiveOnceboxScheduleStrategy implements OnceboxScheduleStrategy 
             shouldContinue = task.run();
             listener.onExecutionSucceeded();
         } catch (Throwable t) {
+            shouldContinue = false;
             log.error("Exception while executing task '{}'", taskType, t);
             listener.onExecutionFailed();
         } finally {

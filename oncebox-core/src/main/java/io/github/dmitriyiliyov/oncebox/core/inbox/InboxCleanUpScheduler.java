@@ -59,7 +59,7 @@ public final class InboxCleanUpScheduler implements OnceboxScheduler {
                 return cleanedCount == batchSize;
             } catch (Exception e) {
                 log.error("Error when cleaning up inbox events, workerId={}", workerId, e);
-                return false;
+                throw e;
             } finally {
                 lock.unlock(JOB.getJobName(), workerId);
             }

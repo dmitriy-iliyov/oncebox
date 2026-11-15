@@ -59,7 +59,7 @@ public final class OutboxCleanUpScheduler implements OnceboxScheduler {
                 return deletedCount == batchSize;
             } catch (Exception e) {
                 log.error("Error when cleaning up processed outbox events, workerId={}", workerId, e);
-                return false;
+                throw e;
             } finally {
                 lock.unlock(JOB.getJobName(), workerId);
             }
