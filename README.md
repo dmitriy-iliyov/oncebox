@@ -50,5 +50,6 @@ The full documentation lives **[here](https://dmitriy-iliyov.github.io/oncebox-d
 ## Supported Infrastructure
 
 - **Databases:** PostgreSQL 16+, MySQL 8.0.13+, Oracle 23+.
+- **Schema Migrations:** Flyway, Liquidbase
 - **Message Brokers:** Apache Kafka 3.7+, RabbitMQ 3.12+.
 - **Cache Storage (optional for caching):** Redis 7+.

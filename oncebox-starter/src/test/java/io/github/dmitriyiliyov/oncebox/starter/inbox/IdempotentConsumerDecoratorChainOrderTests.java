@@ -175,7 +175,10 @@ class IdempotentConsumerDecoratorChainOrderTests {
                 .withBean(TransactionTemplate.class, () -> mock(TransactionTemplate.class))
                 .withBean(OnceboxRepositoryFactory.class, () -> repositoryFactory)
                 .withBean(MeterRegistry.class, SimpleMeterRegistry::new)
-                .withPropertyValues("oncebox.inbox.enabled=true");
+                .withPropertyValues(
+                        "oncebox.inbox.enabled=true",
+                        "oncebox.inbox.clean-up.enabled=false"
+                );
     }
 
     private static IdempotentConsumer delegateOf(IdempotentConsumer decorator) {

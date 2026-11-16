@@ -195,7 +195,8 @@ class IdempotentConsumerInjectionIntegrationTests {
                 .withBean(MeterRegistry.class, SimpleMeterRegistry::new)
                 .withPropertyValues(
                         "oncebox.inbox.enabled=true",
-                        "oncebox.inbox.metrics.enabled=true"
+                        "oncebox.inbox.metrics.enabled=true",
+                        "oncebox.inbox.clean-up.enabled=false"
                 );
     }
 

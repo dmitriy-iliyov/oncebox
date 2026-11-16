@@ -238,7 +238,10 @@ public class InboxAutoConfigurationVerifier {
     // of an inbox next to a disabled outbox clean-up had no lock to run under
     public void cleanUp_whenNotSetAndOutboxCleanUpDisabled_shouldRegisterSchedulerJobAndLock() {
         getBaseContextRunner()
-                .withPropertyValues("oncebox.outbox.clean-up.enabled=false")
+                .withPropertyValues(
+                        "oncebox.outbox.enabled=false",
+                        "oncebox.outbox.clean-up.enabled=false"
+                )
                 .run(ctx -> {
                     assertThat(ctx).hasNotFailed();
                     assertThat(ctx).hasBean("inboxCleanUpScheduler");

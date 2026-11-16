@@ -129,7 +129,8 @@ class IdempotentConsumerQualifierAnnotationsIntegrationTests {
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
         TestPropertyValues.of(
                 "oncebox.inbox.enabled=true",
-                "oncebox.inbox.metrics.enabled=true"
+                "oncebox.inbox.metrics.enabled=true",
+                "oncebox.inbox.clean-up.enabled=false"
         ).applyTo(context);
         context.registerBean(InboxProperties.class, () -> mock(InboxProperties.class));
         context.registerBean(TransactionTemplate.class, () -> mock(TransactionTemplate.class));
