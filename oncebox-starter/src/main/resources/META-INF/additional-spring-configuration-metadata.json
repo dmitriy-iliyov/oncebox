@@ -1,0 +1,452 @@
+{
+  "properties": [
+    {
+      "name": "oncebox.thread-pool-size",
+      "description": "Number of threads running the oncebox schedulers. Defaults to the number of available processors, at most 5."
+    },
+    {
+      "name": "oncebox.schema.mode",
+      "description": "How oncebox creates its tables at startup: 'flyway' or 'liquibase' run the bundled migrations, 'dev' runs the plain scripts, 'none' leaves the schema to the application.",
+      "defaultValue": "none"
+    },
+    {
+      "name": "oncebox.distributed-lock.lock-at-least-for",
+      "description": "Minimum time a scheduler keeps its job lock after a run. Ignored while 'resolve-by-polling-properties' is on.",
+      "defaultValue": "1s"
+    },
+    {
+      "name": "oncebox.distributed-lock.lock-at-most-for",
+      "description": "Maximum time a job lock is held before another instance may take it over. Ignored while 'resolve-by-polling-properties' is on.",
+      "defaultValue": "1m"
+    },
+    {
+      "name": "oncebox.distributed-lock.resolve-by-polling-properties",
+      "description": "Whether the lock durations of each job are derived from its polling properties instead of 'lock-at-least-for' and 'lock-at-most-for'.",
+      "defaultValue": true
+    },
+    {
+      "name": "oncebox.outbox.enabled",
+      "description": "Whether the outbox is enabled. Any 'oncebox.outbox' property turns it on unless this is set to false, and then 'sender' and 'events' are required."
+    },
+    {
+      "name": "oncebox.outbox.sender.type",
+      "description": "Broker the outbox publishes to. Required when the outbox is enabled."
+    },
+    {
+      "name": "oncebox.outbox.sender.bean-name",
+      "description": "Name of the KafkaTemplate or RabbitTemplate bean the outbox publishes through. When not set, the single template bean of that type is used."
+    },
+    {
+      "name": "oncebox.outbox.sender.emergency-timeout",
+      "description": "How long the outbox waits for a batch to be sent before giving up on it. Must be shorter than 'stuck-recovery.max-batch-processing-time'.",
+      "defaultValue": "120s"
+    },
+    {
+      "name": "oncebox.outbox.events",
+      "description": "Outbox event types keyed by event type, each with a required 'topic' and optional 'batch-size', 'max-retries', 'polling' and 'backoff' that override 'defaults'."
+    },
+    {
+      "name": "oncebox.outbox.defaults.batch-size",
+      "description": "Number of events an event type publishes in one run, unless the event type sets its own.",
+      "defaultValue": 200
+    },
+    {
+      "name": "oncebox.outbox.defaults.max-retries",
+      "description": "Number of failed sends after which an event is marked as failed, unless the event type sets its own.",
+      "defaultValue": 3
+    },
+    {
+      "name": "oncebox.outbox.defaults.polling.type",
+      "description": "How the outbox publishing of an event type is scheduled: 'fixed' waits 'fixed-delay' between runs, 'adaptive' moves the delay between 'min-fixed-delay' and 'max-fixed-delay' by 'multiplier' as runs find work or not.",
+      "defaultValue": "adaptive"
+    },
+    {
+      "name": "oncebox.outbox.defaults.polling.initial-delay",
+      "description": "Delay before the first run of the outbox publishing of an event type.",
+      "defaultValue": "5m"
+    },
+    {
+      "name": "oncebox.outbox.defaults.polling.fixed-delay",
+      "description": "Delay between runs of the outbox publishing of an event type, used only by the 'fixed' type."
+    },
+    {
+      "name": "oncebox.outbox.defaults.polling.min-fixed-delay",
+      "description": "Shortest delay between runs of the outbox publishing of an event type, used only by the 'adaptive' type.",
+      "defaultValue": "250ms"
+    },
+    {
+      "name": "oncebox.outbox.defaults.polling.max-fixed-delay",
+      "description": "Longest delay between runs of the outbox publishing of an event type, used only by the 'adaptive' type. Cannot be shorter than 'min-fixed-delay'.",
+      "defaultValue": "1m"
+    },
+    {
+      "name": "oncebox.outbox.defaults.polling.multiplier",
+      "description": "Factor the 'adaptive' delay of the outbox publishing of an event type grows by after a run that found no work. Must be greater than 0.",
+      "defaultValue": 1.5
+    },
+    {
+      "name": "oncebox.outbox.defaults.backoff.enabled",
+      "description": "Whether a failed send is retried after a growing delay rather than on the next run.",
+      "defaultValue": true
+    },
+    {
+      "name": "oncebox.outbox.defaults.backoff.delay",
+      "description": "Delay before the first retry of a failed send.",
+      "defaultValue": "10s"
+    },
+    {
+      "name": "oncebox.outbox.defaults.backoff.multiplier",
+      "description": "Factor the retry delay grows by after each failed send. Values below 1 fall back to the default.",
+      "defaultValue": 3.0
+    },
+    {
+      "name": "oncebox.outbox.stuck-recovery.batch-size",
+      "description": "Maximum number of stuck events returned to pending in one run.",
+      "defaultValue": 500
+    },
+    {
+      "name": "oncebox.outbox.stuck-recovery.max-batch-processing-time",
+      "description": "How long an event may stay in progress before it is treated as stuck and returned to pending. Must be longer than 'sender.emergency-timeout'.",
+      "defaultValue": "5m"
+    },
+    {
+      "name": "oncebox.outbox.stuck-recovery.polling.type",
+      "description": "How the stuck event recovery is scheduled: 'fixed' waits 'fixed-delay' between runs, 'adaptive' moves the delay between 'min-fixed-delay' and 'max-fixed-delay' by 'multiplier' as runs find work or not.",
+      "defaultValue": "adaptive"
+    },
+    {
+      "name": "oncebox.outbox.stuck-recovery.polling.initial-delay",
+      "description": "Delay before the first run of the stuck event recovery.",
+      "defaultValue": "5m"
+    },
+    {
+      "name": "oncebox.outbox.stuck-recovery.polling.fixed-delay",
+      "description": "Delay between runs of the stuck event recovery, used only by the 'fixed' type."
+    },
+    {
+      "name": "oncebox.outbox.stuck-recovery.polling.min-fixed-delay",
+      "description": "Shortest delay between runs of the stuck event recovery, used only by the 'adaptive' type.",
+      "defaultValue": "1s"
+    },
+    {
+      "name": "oncebox.outbox.stuck-recovery.polling.max-fixed-delay",
+      "description": "Longest delay between runs of the stuck event recovery, used only by the 'adaptive' type. Cannot be shorter than 'min-fixed-delay'.",
+      "defaultValue": "1m"
+    },
+    {
+      "name": "oncebox.outbox.stuck-recovery.polling.multiplier",
+      "description": "Factor the 'adaptive' delay of the stuck event recovery grows by after a run that found no work. Must be greater than 0.",
+      "defaultValue": 4.0
+    },
+    {
+      "name": "oncebox.outbox.clean-up.enabled",
+      "description": "Whether outbox clean-up deletes its expired rows on a schedule. On by default once the outbox is enabled; when off, the table grows without limit.",
+      "defaultValue": true
+    },
+    {
+      "name": "oncebox.outbox.clean-up.batch-size",
+      "description": "Maximum number of rows outbox clean-up deletes in one run.",
+      "defaultValue": 500
+    },
+    {
+      "name": "oncebox.outbox.clean-up.ttl",
+      "description": "How long a row is kept before outbox clean-up deletes it.",
+      "defaultValue": "24h"
+    },
+    {
+      "name": "oncebox.outbox.clean-up.polling.type",
+      "description": "How the outbox clean-up is scheduled: 'fixed' waits 'fixed-delay' between runs, 'adaptive' moves the delay between 'min-fixed-delay' and 'max-fixed-delay' by 'multiplier' as runs find work or not.",
+      "defaultValue": "adaptive"
+    },
+    {
+      "name": "oncebox.outbox.clean-up.polling.initial-delay",
+      "description": "Delay before the first run of the outbox clean-up.",
+      "defaultValue": "5m"
+    },
+    {
+      "name": "oncebox.outbox.clean-up.polling.fixed-delay",
+      "description": "Delay between runs of the outbox clean-up, used only by the 'fixed' type."
+    },
+    {
+      "name": "oncebox.outbox.clean-up.polling.min-fixed-delay",
+      "description": "Shortest delay between runs of the outbox clean-up, used only by the 'adaptive' type.",
+      "defaultValue": "5s"
+    },
+    {
+      "name": "oncebox.outbox.clean-up.polling.max-fixed-delay",
+      "description": "Longest delay between runs of the outbox clean-up, used only by the 'adaptive' type. Cannot be shorter than 'min-fixed-delay'.",
+      "defaultValue": "1m"
+    },
+    {
+      "name": "oncebox.outbox.clean-up.polling.multiplier",
+      "description": "Factor the 'adaptive' delay of the outbox clean-up grows by after a run that found no work. Must be greater than 0.",
+      "defaultValue": 2.0
+    },
+    {
+      "name": "oncebox.outbox.dlq.enabled",
+      "description": "Whether failed outbox events are moved to the dead letter queue.",
+      "defaultValue": false
+    },
+    {
+      "name": "oncebox.outbox.dlq.batch-size",
+      "description": "Number of events moved in one run, unless 'transfer-to' or 'transfer-from' sets its own.",
+      "defaultValue": 500
+    },
+    {
+      "name": "oncebox.outbox.dlq.polling.type",
+      "description": "How the dead letter queue transfers is scheduled: 'fixed' waits 'fixed-delay' between runs, 'adaptive' moves the delay between 'min-fixed-delay' and 'max-fixed-delay' by 'multiplier' as runs find work or not.",
+      "defaultValue": "adaptive"
+    },
+    {
+      "name": "oncebox.outbox.dlq.polling.initial-delay",
+      "description": "Delay before the first run of the dead letter queue transfers.",
+      "defaultValue": "5m"
+    },
+    {
+      "name": "oncebox.outbox.dlq.polling.fixed-delay",
+      "description": "Delay between runs of the dead letter queue transfers, used only by the 'fixed' type."
+    },
+    {
+      "name": "oncebox.outbox.dlq.polling.min-fixed-delay",
+      "description": "Shortest delay between runs of the dead letter queue transfers, used only by the 'adaptive' type.",
+      "defaultValue": "1s"
+    },
+    {
+      "name": "oncebox.outbox.dlq.polling.max-fixed-delay",
+      "description": "Longest delay between runs of the dead letter queue transfers, used only by the 'adaptive' type. Cannot be shorter than 'min-fixed-delay'.",
+      "defaultValue": "2m"
+    },
+    {
+      "name": "oncebox.outbox.dlq.polling.multiplier",
+      "description": "Factor the 'adaptive' delay of the dead letter queue transfers grows by after a run that found no work. Must be greater than 0.",
+      "defaultValue": 10.0
+    },
+    {
+      "name": "oncebox.outbox.dlq.transfer-to.batch-size",
+      "description": "Number of failed events moved to the dead letter queue in one run. Defaults to 'dlq.batch-size'."
+    },
+    {
+      "name": "oncebox.outbox.dlq.transfer-from.batch-size",
+      "description": "Number of events moved back from the dead letter queue to the outbox in one run. Defaults to 'dlq.batch-size'."
+    },
+    {
+      "name": "oncebox.outbox.dlq.transfer-to.polling.type",
+      "description": "Polling 'type' of the transfer-to job. Defaults to 'dlq.polling.type'."
+    },
+    {
+      "name": "oncebox.outbox.dlq.transfer-to.polling.initial-delay",
+      "description": "Polling 'initial-delay' of the transfer-to job. Defaults to 'dlq.polling.initial-delay'."
+    },
+    {
+      "name": "oncebox.outbox.dlq.transfer-to.polling.fixed-delay",
+      "description": "Polling 'fixed-delay' of the transfer-to job. Defaults to 'dlq.polling.fixed-delay'."
+    },
+    {
+      "name": "oncebox.outbox.dlq.transfer-to.polling.min-fixed-delay",
+      "description": "Polling 'min-fixed-delay' of the transfer-to job. Defaults to 'dlq.polling.min-fixed-delay'."
+    },
+    {
+      "name": "oncebox.outbox.dlq.transfer-to.polling.max-fixed-delay",
+      "description": "Polling 'max-fixed-delay' of the transfer-to job. Defaults to 'dlq.polling.max-fixed-delay'."
+    },
+    {
+      "name": "oncebox.outbox.dlq.transfer-to.polling.multiplier",
+      "description": "Polling 'multiplier' of the transfer-to job. Defaults to 'dlq.polling.multiplier'."
+    },
+    {
+      "name": "oncebox.outbox.dlq.transfer-from.polling.type",
+      "description": "Polling 'type' of the transfer-from job. Defaults to 'dlq.polling.type'."
+    },
+    {
+      "name": "oncebox.outbox.dlq.transfer-from.polling.initial-delay",
+      "description": "Polling 'initial-delay' of the transfer-from job. Defaults to 'dlq.polling.initial-delay'."
+    },
+    {
+      "name": "oncebox.outbox.dlq.transfer-from.polling.fixed-delay",
+      "description": "Polling 'fixed-delay' of the transfer-from job. Defaults to 'dlq.polling.fixed-delay'."
+    },
+    {
+      "name": "oncebox.outbox.dlq.transfer-from.polling.min-fixed-delay",
+      "description": "Polling 'min-fixed-delay' of the transfer-from job. Defaults to 'dlq.polling.min-fixed-delay'."
+    },
+    {
+      "name": "oncebox.outbox.dlq.transfer-from.polling.max-fixed-delay",
+      "description": "Polling 'max-fixed-delay' of the transfer-from job. Defaults to 'dlq.polling.max-fixed-delay'."
+    },
+    {
+      "name": "oncebox.outbox.dlq.transfer-from.polling.multiplier",
+      "description": "Polling 'multiplier' of the transfer-from job. Defaults to 'dlq.polling.multiplier'."
+    },
+    {
+      "name": "oncebox.outbox.dlq.clean-up.enabled",
+      "description": "Whether dead letter queue clean-up deletes its expired rows on a schedule. On by default once the dead letter queue is enabled; when off, the table grows without limit.",
+      "defaultValue": true
+    },
+    {
+      "name": "oncebox.outbox.dlq.clean-up.batch-size",
+      "description": "Maximum number of rows dead letter queue clean-up deletes in one run.",
+      "defaultValue": 500
+    },
+    {
+      "name": "oncebox.outbox.dlq.clean-up.ttl",
+      "description": "How long a row is kept before dead letter queue clean-up deletes it.",
+      "defaultValue": "24h"
+    },
+    {
+      "name": "oncebox.outbox.dlq.clean-up.polling.type",
+      "description": "How the dead letter queue clean-up is scheduled: 'fixed' waits 'fixed-delay' between runs, 'adaptive' moves the delay between 'min-fixed-delay' and 'max-fixed-delay' by 'multiplier' as runs find work or not.",
+      "defaultValue": "adaptive"
+    },
+    {
+      "name": "oncebox.outbox.dlq.clean-up.polling.initial-delay",
+      "description": "Delay before the first run of the dead letter queue clean-up.",
+      "defaultValue": "5m"
+    },
+    {
+      "name": "oncebox.outbox.dlq.clean-up.polling.fixed-delay",
+      "description": "Delay between runs of the dead letter queue clean-up, used only by the 'fixed' type."
+    },
+    {
+      "name": "oncebox.outbox.dlq.clean-up.polling.min-fixed-delay",
+      "description": "Shortest delay between runs of the dead letter queue clean-up, used only by the 'adaptive' type.",
+      "defaultValue": "5s"
+    },
+    {
+      "name": "oncebox.outbox.dlq.clean-up.polling.max-fixed-delay",
+      "description": "Longest delay between runs of the dead letter queue clean-up, used only by the 'adaptive' type. Cannot be shorter than 'min-fixed-delay'.",
+      "defaultValue": "1m"
+    },
+    {
+      "name": "oncebox.outbox.dlq.clean-up.polling.multiplier",
+      "description": "Factor the 'adaptive' delay of the dead letter queue clean-up grows by after a run that found no work. Must be greater than 0.",
+      "defaultValue": 2.0
+    },
+    {
+      "name": "oncebox.outbox.metrics.enabled",
+      "description": "Whether the outbox registers its Micrometer metrics.",
+      "defaultValue": false
+    },
+    {
+      "name": "oncebox.outbox.metrics.gauge.enabled",
+      "description": "Whether the outbox registers gauges that count stored rows, which query the database. Requires 'metrics.enabled'.",
+      "defaultValue": false
+    },
+    {
+      "name": "oncebox.outbox.metrics.gauge.cache.enabled",
+      "description": "Whether the the outbox gauges cache their counts instead of querying the database on every scrape.",
+      "defaultValue": true
+    },
+    {
+      "name": "oncebox.outbox.metrics.gauge.cache.ttls",
+      "description": "Exactly three cache TTLs, for the total count, the count by status and the count by event type and status. Any other number of values falls back to the default.",
+      "defaultValue": [
+        "60s",
+        "60s",
+        "60s"
+      ]
+    },
+    {
+      "name": "oncebox.inbox.enabled",
+      "description": "Whether the inbox that deduplicates consumed events is enabled.",
+      "defaultValue": false
+    },
+    {
+      "name": "oncebox.inbox.source.type",
+      "description": "Broker the inbox consumes from. Required when the inbox is enabled."
+    },
+    {
+      "name": "oncebox.inbox.mappings",
+      "description": "Classes of the consumed event payloads, keyed by event type."
+    },
+    {
+      "name": "oncebox.inbox.clean-up.enabled",
+      "description": "Whether inbox clean-up deletes its expired rows on a schedule. On by default once the inbox is enabled; when off, the table grows without limit.",
+      "defaultValue": true
+    },
+    {
+      "name": "oncebox.inbox.clean-up.batch-size",
+      "description": "Maximum number of rows inbox clean-up deletes in one run.",
+      "defaultValue": 500
+    },
+    {
+      "name": "oncebox.inbox.clean-up.ttl",
+      "description": "How long a row is kept before inbox clean-up deletes it.",
+      "defaultValue": "24h"
+    },
+    {
+      "name": "oncebox.inbox.clean-up.polling.type",
+      "description": "How the inbox clean-up is scheduled: 'fixed' waits 'fixed-delay' between runs, 'adaptive' moves the delay between 'min-fixed-delay' and 'max-fixed-delay' by 'multiplier' as runs find work or not.",
+      "defaultValue": "adaptive"
+    },
+    {
+      "name": "oncebox.inbox.clean-up.polling.initial-delay",
+      "description": "Delay before the first run of the inbox clean-up.",
+      "defaultValue": "5m"
+    },
+    {
+      "name": "oncebox.inbox.clean-up.polling.fixed-delay",
+      "description": "Delay between runs of the inbox clean-up, used only by the 'fixed' type."
+    },
+    {
+      "name": "oncebox.inbox.clean-up.polling.min-fixed-delay",
+      "description": "Shortest delay between runs of the inbox clean-up, used only by the 'adaptive' type.",
+      "defaultValue": "5s"
+    },
+    {
+      "name": "oncebox.inbox.clean-up.polling.max-fixed-delay",
+      "description": "Longest delay between runs of the inbox clean-up, used only by the 'adaptive' type. Cannot be shorter than 'min-fixed-delay'.",
+      "defaultValue": "1m"
+    },
+    {
+      "name": "oncebox.inbox.clean-up.polling.multiplier",
+      "description": "Factor the 'adaptive' delay of the inbox clean-up grows by after a run that found no work. Must be greater than 0.",
+      "defaultValue": 2.0
+    },
+    {
+      "name": "oncebox.inbox.cache.enabled",
+      "description": "Whether ids of consumed events are cached to skip a database lookup on a repeat. Off when the 'cache' section is absent, on once any of its properties is set.",
+      "defaultValue": false
+    },
+    {
+      "name": "oncebox.inbox.cache.cache-name",
+      "description": "Name of the Spring cache holding consumed event ids. Required when the cache is enabled."
+    },
+    {
+      "name": "oncebox.inbox.metrics.enabled",
+      "description": "Whether the inbox registers its Micrometer metrics.",
+      "defaultValue": false
+    },
+    {
+      "name": "oncebox.inbox.metrics.gauge.enabled",
+      "description": "Whether the inbox registers gauges that count stored rows, which query the database. Requires 'metrics.enabled'.",
+      "defaultValue": false
+    },
+    {
+      "name": "oncebox.inbox.metrics.gauge.cache.enabled",
+      "description": "Whether the the inbox gauges cache their counts instead of querying the database on every scrape.",
+      "defaultValue": true
+    },
+    {
+      "name": "oncebox.inbox.metrics.gauge.cache.ttls",
+      "description": "Exactly three cache TTLs, for the total count, the count by status and the count by event type and status. Any other number of values falls back to the default.",
+      "defaultValue": [
+        "60s",
+        "60s",
+        "60s"
+      ]
+    }
+  ],
+  "ignored": {
+    "properties": [
+      {
+        "name": "oncebox.outbox.event-holders"
+      },
+      {
+        "name": "oncebox.outbox.defaults.backoff-defaults.delay"
+      },
+      {
+        "name": "oncebox.outbox.defaults.backoff-defaults.multiplier"
+      }
+    ]
+  }
+}
