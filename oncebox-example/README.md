@@ -86,8 +86,8 @@ Components:
 2. Producer:
 - persists business data 
 - writes domain events to the outbox table
-4. A background publisher sends events to Kafka/Rabbit
-5. Consumer processes events idempotently
+3. A background publisher sends events to Kafka/Rabbit
+4. Consumer processes events idempotently
 
 ## Run
 From the `oncebox-example` directory (the build context is the repository root, so the library
