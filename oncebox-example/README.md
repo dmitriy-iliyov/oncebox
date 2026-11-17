@@ -20,19 +20,53 @@ The project demonstrates:
 
 ## Architecture Overview
 
-The system consists of three main components:
-1. Producer Service
-- handles HTTP requests for orders: create, update, delete 
-- persists business data in PostgreSQL 
-- stores domain events in the outbox table within the same transaction 
-- publishes events asynchronously to Kafka
-2. Consumer Service
-- subscribes to Kafka topics for order events 
-- processes events idempotently 
-- supports single and batch consumption 
-- maintains internal state
-3. Traffic Generator 
-- Gatling scenario
+The diagram shows every service started by the `kafka,postgres,test` profile combination. With the `rabbit` profile, RabbitMQ replaces Kafka; with `mysql` or `oracle`, those databases replace PostgreSQL.
+
+```mermaid
+%%{init: {"themeVariables": {"fontSize": "20px"}, "flowchart": {"nodeSpacing": 60, "rankSpacing": 70, "padding": 25, "subGraphTitleMargin": {"top": 10, "bottom": 20}}}}%%
+flowchart TB
+    TG["oncebox-traffic-generator-app<br/>Gatling scenario"]
+
+    subgraph PROD["oncebox-producer-app"]
+        API["Order API<br/>create / update / delete"]
+        POLL["Oncebox poller<br/>background publisher"]
+    end
+
+    PDB[("oncebox-producer-postgresql<br/>orders + outbox table")]
+    KAFKA{{"oncebox-kafka<br/>topics: orders, orders.created"}}
+
+    subgraph CONS["oncebox-consumer-app"]
+        LST["Kafka listeners<br/>idempotent consumer"]
+    end
+
+    REDIS[("oncebox-consumer-redis<br/>inbox cache")]
+    CDB[("oncebox-consumer-postgresql<br/>inbox table")]
+
+    PROM["oncebox-prometheus"]
+    GRAF["oncebox-grafana"]
+
+    TG -->|"HTTP requests"| API
+    API -->|"order + outbox event<br/>in one transaction"| PDB
+    POLL -->|"polls pending events"| PDB
+    POLL -->|"publishes"| KAFKA
+    KAFKA -->|"consumes"| LST
+    LST -->|"1. check event id"| REDIS
+    REDIS -->|"2. on cache miss"| CDB
+    PROM -.->|"scrapes metrics"| API
+    PROM -.->|"scrapes metrics"| LST
+    GRAF -->|"reads metrics"| PROM
+```
+
+Components:
+- **oncebox-traffic-generator-app**: a Gatling scenario that sends order requests to the producer to generate load.
+- **oncebox-producer-app**: serves the order API (create, update, delete) and saves each order together with its outbox event in one transaction. Its oncebox poller publishes pending events to the broker.
+- **oncebox-producer-postgresql**: the producer's own database, holding the orders and the outbox table.
+- **oncebox-kafka**: the message broker, carrying the `orders` and `orders.created` topics (RabbitMQ queues with the `rabbit` profile).
+- **oncebox-consumer-app**: listens to both topics, handles single and batch messages, and skips events it has already processed. Its handlers only log the events.
+- **oncebox-consumer-redis**: caches the ids of consumed events, checked before the database.
+- **oncebox-consumer-postgresql**: the consumer's own database, holding the inbox table of processed event ids.
+- **oncebox-prometheus**: scrapes metrics from the producer and consumer apps.
+- **oncebox-grafana**: shows dashboards built from the Prometheus data.
 
 ## Ports 
 
@@ -53,8 +87,8 @@ The system consists of three main components:
 2. Producer:
 - persists business data 
 - writes domain events to the outbox table
-4. A background publisher sends events to Kafka/Rabbit
-5. Consumer processes events idempotently
+3. A background publisher sends events to Kafka/Rabbit
+4. Consumer processes events idempotently
 
 ## Run
 From the `oncebox-example` directory (the build context is the repository root, so the library
