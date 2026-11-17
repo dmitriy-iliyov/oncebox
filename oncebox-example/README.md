@@ -23,7 +23,8 @@ The project demonstrates:
 The diagram shows every service started by the `kafka,postgres,test` profile combination. With the `rabbit` profile, RabbitMQ replaces Kafka; with `mysql` or `oracle`, those databases replace PostgreSQL.
 
 ```mermaid
-flowchart LR
+%%{init: {"themeVariables": {"fontSize": "20px"}, "flowchart": {"nodeSpacing": 60, "rankSpacing": 70, "padding": 25, "subGraphTitleMargin": {"top": 10, "bottom": 20}}}}%%
+flowchart TB
     TG["oncebox-traffic-generator-app<br/>Gatling scenario"]
 
     subgraph PROD["oncebox-producer-app"]
@@ -51,8 +52,8 @@ flowchart LR
     KAFKA -->|"consumes"| LST
     LST -->|"1. check event id"| REDIS
     REDIS -->|"2. on cache miss"| CDB
-    PROM -.->|"scrapes /actuator/prometheus"| PROD
-    PROM -.->|"scrapes /actuator/prometheus"| CONS
+    PROM -.->|"scrapes metrics"| API
+    PROM -.->|"scrapes metrics"| LST
     GRAF -->|"reads metrics"| PROM
 ```
 
