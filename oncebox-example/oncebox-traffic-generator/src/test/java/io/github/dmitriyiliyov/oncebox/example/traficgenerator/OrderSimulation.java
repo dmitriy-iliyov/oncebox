@@ -1,4 +1,4 @@
-package io.github.dmitriyiliyov.oncebox.example.traficgenerator;
+package io.github.dmitriyiliyov.oncebox.example.trafficgenerator;
 
 import io.gatling.javaapi.core.ScenarioBuilder;
 import io.gatling.javaapi.core.Simulation;
