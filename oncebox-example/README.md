@@ -73,15 +73,26 @@ Components:
 
 ## Ports 
 
-| Service           | Port |
-|-------------------|------|
-| Producer API      | 8080 |
-| Consumer API      | 8081 |
-| Traffic Generator | 8082 |
-| Apache Kafka      | 9092 |
-| RabbitMQ          | 5672 |
-| Prometheus        | 9090 |
-| Grafana           | 3000 |
+These are the host ports published by `docker-compose.yaml`. Services marked **always** have no
+Compose profile; the other services start when their listed profile is enabled.
+
+| Service                | Host port | Profile    |
+|------------------------|-----------|------------|
+| Producer API           | 8080      | always     |
+| Consumer API           | 8081      | always     |
+| Traffic Generator      | 8082      | `test`     |
+| Producer PostgreSQL    | 5432      | `postgres` |
+| Consumer PostgreSQL    | 5433      | `postgres` |
+| Producer MySQL         | 3306      | `mysql`    |
+| Consumer MySQL         | 3307      | `mysql`    |
+| Producer Oracle        | 1521      | `oracle`   |
+| Consumer Oracle        | 1522      | `oracle`   |
+| Redis (inbox cache)    | 6379      | always     |
+| Apache Kafka           | 9092      | `kafka`    |
+| RabbitMQ               | 5672      | `rabbit`   |
+| RabbitMQ management UI | 15672     | `rabbit`   |
+| Prometheus             | 9090      | `test`     |
+| Grafana                | 3000      | `test`     |
 
 
 ## Typical Flow
