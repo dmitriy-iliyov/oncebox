@@ -12,6 +12,9 @@
 
 A demo project that showcases the [oncebox](https://github.com/dmitriy-iliyov/oncebox) library usage in a microservices architecture.
 
+The `oncebox-example` project is a runnable demo with a **producer** that exposes single and batch REST endpoints 
+(`POST`, `PATCH`, `DELETE` on `/api/orders` and `/api/orders/batch`) and a **consumer** with single and batch listeners for both Kafka and RabbitMQ.
+
 The project demonstrates:
 - atomicity between business operations and event publishing
 - idempotent message consumption
