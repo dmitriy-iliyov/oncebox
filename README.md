@@ -35,6 +35,10 @@ The full documentation lives **[here](https://dmitriy-iliyov.github.io/oncebox-d
 - [Configuration](https://dmitriy-iliyov.github.io/oncebox-docs/docs/reference/configuration/) - every property with its default.
 - [Schema Migrations](https://dmitriy-iliyov.github.io/oncebox-docs/docs/reference/schema/) - creating the tables with Flyway or Liquibase.
 
+## Example
+
+The [`oncebox-example`](oncebox-example/) project is a runnable demo with a **producer** that exposes single and batch REST endpoints (`POST`, `PATCH`, `DELETE` on `/api/orders` and `/api/orders/batch`) and a **consumer** with single and batch listeners for both Kafka and RabbitMQ. See the [example README](oncebox-example/README.md) for setup instructions.
+
 ## Key Features
 - **Atomic persistence** - stores events within the same business transaction, ensuring consistency.
 - **Adaptive polling** - dynamically adjusts the polling interval based on workload to optimize database usage.
