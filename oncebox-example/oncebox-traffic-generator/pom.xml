@@ -48,7 +48,7 @@
                 <artifactId>gatling-maven-plugin</artifactId>
                 <version>${gatling-maven-plugin.version}</version>
                 <configuration>
-                    <simulationClass>io.github.dmitriyiliyov.oncebox.example.traficgenerator.OrderSimulation</simulationClass>
+                    <simulationClass>io.github.dmitriyiliyov.oncebox.example.trafficgenerator.OrderSimulation</simulationClass>
                 </configuration>
             </plugin>
         </plugins>
