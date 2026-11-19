@@ -97,12 +97,24 @@ Compose profile; the other services start when their listed profile is enabled.
 
 ## Typical Flow
 
-1. Traffic Generator sends HTTP requests to the Producer
+The happy path:
+
+1. Traffic Generator sends HTTP requests to the Producer.
 2. Producer:
-- persists business data 
-- writes domain events to the outbox table
-3. A background publisher sends events to Kafka/Rabbit
-4. Consumer processes events idempotently
+   - persists business data
+   - writes domain events to the outbox table, in the same transaction
+3. A background publisher sends the events to Kafka/Rabbit.
+4. Consumer processes the events idempotently.
+
+### When something goes wrong
+
+Each path below is a short description of what the example does. The oncebox docs explain the details and the settings.
+
+- **A send fails.** The broker rejects the event or does not confirm it in time, so the publisher counts a failed attempt and puts the event back to `PENDING` with a later `next_retry_at`. The producer allows `max-retries: 3` attempts and waits longer after each failure (backoff `delay: 1m`, `multiplier: 1.5`). See [Retries and backoff](https://dmitriy-iliyov.github.io/oncebox-docs/docs/reference/processing/#retries-and-backoff).
+- **Retries are exhausted.** The event becomes `FAILED` and, because the producer sets `oncebox.outbox.dlq.enabled: true`, a background job moves it to the dead letter queue (the `outbox_dlq_events` table), where it waits to be retried or given up on. See [Dead Letter Queue](https://dmitriy-iliyov.github.io/oncebox-docs/docs/reference/dlq/).
+- **An instance dies mid-send.** An event that a dead or hung publisher captured stays `IN_PROCESS`. The stuck-event recovery job returns it to `PENDING`, without counting an attempt, and it is sent again. See [Stuck event recovery](https://dmitriy-iliyov.github.io/oncebox-docs/docs/reference/processing/#stuck-event-recovery).
+- **The broker delivers a message twice.** Publishing is at-least-once, so a duplicate can reach the consumer. Every copy carries the same event id, and the consumer's inbox skips an id it has already recorded: it checks the Redis cache first and the inbox table on a cache miss. See [Inbox](https://dmitriy-iliyov.github.io/oncebox-docs/docs/reference/inbox/) and [Duplicates](https://dmitriy-iliyov.github.io/oncebox-docs/docs/reference/guarantees/#duplicates).
+- **Batches.** The batch endpoints (`/api/orders/batch`) change several orders and store their outbox events in the same transaction. `create-order` events go to `orders.created` (a Kafka topic, or a RabbitMQ queue with the `rabbit` profile), where the consumer's batch listener receives them as a list; `update-order` and `delete-order` events go to `orders` and are handled one message at a time. See [Publishing Events](https://dmitriy-iliyov.github.io/oncebox-docs/docs/reference/publishing/) and [Inbox](https://dmitriy-iliyov.github.io/oncebox-docs/docs/reference/inbox/).
 
 ## Run
 From the `oncebox-example` directory (the build context is the repository root, so the library
