@@ -430,9 +430,11 @@ public class OnceboxProperties implements OnceboxPropertiesHolder {
                     multiplier = Double.NaN;
                 }
                 case ADAPTIVE -> {
-                    minFixedDelay = minFixedDelay == null ? defaults.minFixedDelay() : minFixedDelay;
-                    maxFixedDelay = maxFixedDelay == null ? defaults.maxFixedDelay() : maxFixedDelay;
-                    multiplier = multiplier == null ? defaults.multiplier() : multiplier;
+                    // Fixed defaults carry placeholders for these, not settings: min-fixed-delay 0 and a NaN multiplier
+                    boolean adaptiveDefaults = defaults.type() == PollingType.ADAPTIVE;
+                    minFixedDelay = minFixedDelay == null && adaptiveDefaults ? defaults.minFixedDelay() : minFixedDelay;
+                    maxFixedDelay = maxFixedDelay == null && adaptiveDefaults ? defaults.maxFixedDelay() : maxFixedDelay;
+                    multiplier = multiplier == null && adaptiveDefaults ? defaults.multiplier() : multiplier;
                     fixedDelay = Duration.ZERO;
                 }
             }
@@ -450,12 +452,15 @@ public class OnceboxProperties implements OnceboxPropertiesHolder {
                     Objects.requireNonNull(initialDelay, "'initial-delay' cannot be null");
                     Objects.requireNonNull(minFixedDelay, "'min-fixed-delay' cannot be null");
                     Objects.requireNonNull(maxFixedDelay, "'max-fixed-delay' cannot be null");
+                    if (minFixedDelay.isNegative() || minFixedDelay.isZero()) {
+                        throw new IllegalArgumentException("'min-fixed-delay' cannot be negative or 0");
+                    }
                     if (minFixedDelay.compareTo(maxFixedDelay) > 0) {
                         throw new IllegalArgumentException("'min-fixed-delay' cannot be greater than 'max-fixed-delay'");
                     }
                     Objects.requireNonNull(multiplier, "'multiplier' cannot be null");
-                    if (multiplier <= 0) {
-                        throw new IllegalArgumentException("'multiplier' cannot be negative or 0");
+                    if (!(multiplier > 1)) {
+                        throw new IllegalArgumentException("'multiplier' must be greater than 1");
                     }
                 }
             }
@@ -554,12 +559,15 @@ public class OnceboxProperties implements OnceboxPropertiesHolder {
                 Objects.requireNonNull(initialDelay, "'initial-delay' cannot be null");
                 Objects.requireNonNull(minFixedDelay, "'min-fixed-delay' cannot be null");
                 Objects.requireNonNull(maxFixedDelay, "'max-fixed-delay' cannot be null");
+                if (minFixedDelay.isNegative() || minFixedDelay.isZero()) {
+                    throw new IllegalArgumentException("'min-fixed-delay' cannot be negative or 0");
+                }
                 if (minFixedDelay.compareTo(maxFixedDelay) > 0) {
                     throw new IllegalArgumentException("'min-fixed-delay' cannot be greater than 'max-fixed-delay'");
                 }
                 Objects.requireNonNull(multiplier, "'multiplier' cannot be null");
-                if (multiplier <= 0) {
-                    throw new IllegalArgumentException("'multiplier' cannot be negative or 0");
+                if (!(multiplier > 1)) {
+                    throw new IllegalArgumentException("'multiplier' must be greater than 1");
                 }
             }
 

@@ -216,6 +216,27 @@ class AdaptiveOnceboxScheduleStrategyUnitTests {
         verify(executor, times(3)).schedule(any(Runnable.class), anyLong(), any());
     }
 
+    @Test
+    @DisplayName("UT scheduleExecution() when the multiplier would truncate a small delay to itself should still grow it")
+    void scheduleExecution_whenMultiplierTruncatesSmallDelay_shouldStillGrowIt() {
+        // given
+        when(properties.getMinFixedDelay()).thenReturn(Duration.ofMillis(1));
+        when(properties.getMultiplier()).thenReturn(1.5);
+        AdaptiveOnceboxScheduleStrategy tested = new AdaptiveOnceboxScheduleStrategy(TASK_TYPE, properties, executor, listener);
+        doReturn(scheduledFuture).when(executor).schedule(any(Runnable.class), anyLong(), any());
+        when(task.run()).thenReturn(false);
+
+        // when
+        tested.scheduleExecution(task);
+        for (int i = 0; i < 4; i++) {
+            runCapturedTask(i);
+        }
+
+        // then - (long) (1.5 * 1) is 1, (long) (1.5 * 2) is 3
+        ArgumentCaptor<Long> delays = captureDelays(5);
+        assertThat(delays.getAllValues()).containsExactly(INITIAL_DELAY, 2L, 3L, 4L, 6L);
+    }
+
     private void runCapturedTask(int callIndex) {
         ArgumentCaptor<Runnable> captor = ArgumentCaptor.forClass(Runnable.class);
         verify(executor, atLeast(callIndex + 1)).schedule(captor.capture(), anyLong(), any());

@@ -95,7 +95,9 @@ public class AdaptiveOnceboxScheduleStrategy implements OnceboxScheduleStrategy 
                 currentDelay.set(minFixedDelay);
                 listener.onDelayChanged(minFixedDelay);
             } else {
-                long delay = currentDelay.updateAndGet(d -> Math.min((long) (multiplier * d), maxFixedDelay));
+                long delay = currentDelay.updateAndGet(
+                        d -> Math.min(Math.max(d + 1, (long) (multiplier * d)), maxFixedDelay)
+                );
                 listener.onDelayChanged(delay);
                 log.debug("Schedule strategy of task '{}' adapted, current delay is {}ms", taskType, delay);
             }

@@ -6,8 +6,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
 import java.time.Duration;
 
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.*;
 
 class OnceboxPropertiesPollingPropertiesUnitTests {
@@ -23,10 +28,12 @@ class OnceboxPropertiesPollingPropertiesUnitTests {
     @Test
     @DisplayName("UT Defaults constructor should throw when any required parameter is null")
     void defaults_constructor_throwsIfAnyParamIsNull() {
-        assertThrows(NullPointerException.class, () -> new Defaults(PollingType.ADAPTIVE, null, Duration.ZERO, Duration.ZERO, Duration.ZERO, 1.0));
-        assertThrows(NullPointerException.class, () -> new Defaults(PollingType.ADAPTIVE, Duration.ZERO, Duration.ZERO, null, Duration.ZERO, 1.0));
-        assertThrows(NullPointerException.class, () -> new Defaults(PollingType.ADAPTIVE, Duration.ZERO, Duration.ZERO, Duration.ZERO, null, 1.0));
-        assertThrows(NullPointerException.class, () -> new Defaults(PollingType.ADAPTIVE, Duration.ZERO, Duration.ZERO, Duration.ZERO, Duration.ZERO, null));
+        Duration min = Duration.ofSeconds(1);
+        Duration max = Duration.ofSeconds(2);
+        assertThrows(NullPointerException.class, () -> new Defaults(PollingType.ADAPTIVE, null, Duration.ZERO, min, max, 2.0));
+        assertThrows(NullPointerException.class, () -> new Defaults(PollingType.ADAPTIVE, Duration.ZERO, Duration.ZERO, null, max, 2.0));
+        assertThrows(NullPointerException.class, () -> new Defaults(PollingType.ADAPTIVE, Duration.ZERO, Duration.ZERO, min, null, 2.0));
+        assertThrows(NullPointerException.class, () -> new Defaults(PollingType.ADAPTIVE, Duration.ZERO, Duration.ZERO, min, max, null));
     }
 
     @Test
@@ -41,10 +48,10 @@ class OnceboxPropertiesPollingPropertiesUnitTests {
     @DisplayName("UT Defaults constructor should throw when multiplier is zero or negative")
     void defaults_constructor_throwsIfMultiplierZeroOrNegative() {
         assertThrows(IllegalArgumentException.class, () ->
-                new Defaults(PollingType.ADAPTIVE, Duration.ZERO, Duration.ZERO, Duration.ZERO, Duration.ZERO, 0.0)
+                new Defaults(PollingType.ADAPTIVE, Duration.ZERO, Duration.ZERO, Duration.ofSeconds(1), Duration.ofSeconds(2), 0.0)
         );
         assertThrows(IllegalArgumentException.class, () ->
-                new Defaults(PollingType.ADAPTIVE, Duration.ZERO, Duration.ZERO, Duration.ZERO, Duration.ZERO, -1.0)
+                new Defaults(PollingType.ADAPTIVE, Duration.ZERO, Duration.ZERO, Duration.ofSeconds(1), Duration.ofSeconds(2), -1.0)
         );
     }
 
@@ -506,6 +513,85 @@ class OnceboxPropertiesPollingPropertiesUnitTests {
             assertThrows(IllegalArgumentException.class, () ->
                     Defaults.ofAdaptive(PollingType.ADAPTIVE, Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(2), -1.5)
             );
+        }
+    }
+
+    @Nested
+    class GrowthAndDelayValidationTests {
+
+        @ParameterizedTest
+        @ValueSource(longs = {0, -1})
+        @DisplayName("UT applyDefaults() on adaptive polling when min-fixed-delay is 0 or negative should throw naming it")
+        void applyDefaults_whenMinFixedDelayIsNotPositive_shouldThrow(long millis) {
+            // given
+            PollingProperties tested = adaptive(Duration.ZERO, Duration.ofMillis(millis), 2.0);
+
+            // when / then
+            assertThatThrownBy(() -> tested.applyDefaults(ADAPTIVE_DEFAULTS))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("'min-fixed-delay' cannot be negative or 0");
+        }
+
+        @ParameterizedTest
+        @ValueSource(doubles = {1.0, 0.5, 0.0, -1.0, Double.NaN})
+        @DisplayName("UT applyDefaults() on adaptive polling when multiplier is 1 or less should throw naming it")
+        void applyDefaults_whenMultiplierIsNotAboveOne_shouldThrow(double multiplier) {
+            // given
+            PollingProperties tested = adaptive(Duration.ZERO, Duration.ofMillis(100), multiplier);
+
+            // when / then
+            assertThatThrownBy(() -> tested.applyDefaults(ADAPTIVE_DEFAULTS))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("'multiplier' must be greater than 1");
+        }
+
+        @Test
+        @DisplayName("UT applyDefaults() on adaptive polling when multiplier is just above 1 should accept it")
+        void applyDefaults_whenMultiplierIsJustAboveOne_shouldAccept() {
+            // given
+            PollingProperties tested = adaptive(Duration.ZERO, Duration.ofMillis(100), 1.01);
+
+            // when / then
+            assertThatCode(() -> tested.applyDefaults(ADAPTIVE_DEFAULTS)).doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("UT applyDefaults() when switching to adaptive polling over fixed defaults should not inherit their placeholders")
+        void applyDefaults_whenSwitchingToAdaptiveOverFixedDefaults_shouldRequireAdaptiveDelays() {
+            // given
+            PollingProperties tested = new PollingProperties();
+            tested.setType(PollingType.ADAPTIVE);
+
+            // when / then
+            assertThatThrownBy(() -> tested.applyDefaults(FIXED_DEFAULTS))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessage("'min-fixed-delay' cannot be null");
+        }
+
+        @Test
+        @DisplayName("UT Defaults.ofAdaptive() when multiplier is 1 should throw naming it")
+        void ofAdaptive_whenMultiplierIsOne_shouldThrow() {
+            assertThatThrownBy(() -> Defaults.ofAdaptive(
+                    PollingType.ADAPTIVE, Duration.ZERO, Duration.ofMillis(100), Duration.ofSeconds(1), 1.0
+            ))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("'multiplier' must be greater than 1");
+        }
+
+        private static final Defaults FIXED_DEFAULTS =
+                Defaults.ofFixed(PollingType.FIXED, Duration.ofSeconds(1), Duration.ofSeconds(5));
+        private static final Defaults ADAPTIVE_DEFAULTS = Defaults.ofAdaptive(
+                PollingType.ADAPTIVE, Duration.ofSeconds(1), Duration.ofMillis(100), Duration.ofSeconds(10), 2.0
+        );
+
+        private static PollingProperties adaptive(Duration initialDelay, Duration minFixedDelay, double multiplier) {
+            PollingProperties properties = new PollingProperties();
+            properties.setType(PollingType.ADAPTIVE);
+            properties.setInitialDelay(initialDelay);
+            properties.setMinFixedDelay(minFixedDelay);
+            properties.setMaxFixedDelay(Duration.ofSeconds(10));
+            properties.setMultiplier(multiplier);
+            return properties;
         }
     }
 }
