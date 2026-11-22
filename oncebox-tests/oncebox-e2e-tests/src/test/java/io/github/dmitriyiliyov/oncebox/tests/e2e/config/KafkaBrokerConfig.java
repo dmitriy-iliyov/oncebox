@@ -1,15 +1,16 @@
 package io.github.dmitriyiliyov.oncebox.tests.e2e.config;
 
 import io.github.dmitriyiliyov.oncebox.core.inbox.IdempotentConsumer;
+import io.github.dmitriyiliyov.oncebox.starter.inbox.NonTransactionalConsumer;
+import io.github.dmitriyiliyov.oncebox.starter.inbox.TransactionalConsumer;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.consume.KafkaConsumerBusinessService;
+import io.github.dmitriyiliyov.oncebox.tests.e2e.consume.RecordingBusinessOperation;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.domain.E2eEvents;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.publish.KafkaRawEventResender;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.publish.RawEventResender;
-import io.github.dmitriyiliyov.oncebox.tests.e2e.repository.TestOutboxRepository;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Profile;
@@ -26,6 +27,11 @@ public class KafkaBrokerConfig {
     @Bean
     public NewTopic e2eEventsTopic() {
         return TopicBuilder.name(E2eEvents.TOPIC).partitions(1).replicas(1).build();
+    }
+
+    @Bean
+    public NewTopic e2eAtMostOnceEventsTopic() {
+        return TopicBuilder.name(E2eEvents.AT_MOST_ONCE_TOPIC).partitions(1).replicas(1).build();
     }
 
     /**
@@ -49,10 +55,11 @@ public class KafkaBrokerConfig {
 
     @Bean
     public KafkaConsumerBusinessService kafkaConsumerBusinessService(
-            @Qualifier("inboxTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer,
-            TestOutboxRepository repository
+            @TransactionalConsumer IdempotentConsumer transactionalConsumer,
+            @NonTransactionalConsumer IdempotentConsumer nonTransactionalConsumer,
+            RecordingBusinessOperation operation
     ) {
-        return new KafkaConsumerBusinessService(idempotentConsumer, repository);
+        return new KafkaConsumerBusinessService(transactionalConsumer, nonTransactionalConsumer, operation);
     }
 
     @Bean

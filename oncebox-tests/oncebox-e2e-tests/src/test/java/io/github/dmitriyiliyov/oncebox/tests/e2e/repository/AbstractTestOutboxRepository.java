@@ -112,6 +112,17 @@ public abstract class AbstractTestOutboxRepository implements TestOutboxReposito
     }
 
     @Override
+    public void shiftEventTimestamps(EventStatus status, Duration shift) {
+        String sql = "UPDATE outbox_events SET "
+                + "next_retry_at = " + minusSeconds("next_retry_at") + ", "
+                + "created_at = " + minusSeconds("created_at") + ", "
+                + "updated_at = " + minusSeconds("updated_at") + " "
+                + "WHERE status = ?";
+        long secs = shift.toSeconds();
+        jdbcTemplate.update(sql, secs, secs, secs, status.name());
+    }
+
+    @Override
     public int countDlqEvents() {
         return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM outbox_dlq_events", Integer.class);
     }

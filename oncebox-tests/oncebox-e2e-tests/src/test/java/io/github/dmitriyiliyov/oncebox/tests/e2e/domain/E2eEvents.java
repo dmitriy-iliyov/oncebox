@@ -11,10 +11,15 @@ public final class E2eEvents {
     // Rabbit-only: the queue bound to the TOPIC exchange that the consumer listens on
     public static final String QUEUE = "e2e.events.queue";
 
+    // Events of AT_MOST_ONCE_EVENT travel apart from the rest, to a listener on the non-transactional consumer
+    public static final String AT_MOST_ONCE_TOPIC = "e2e.at-most-once.events";
+    public static final String AT_MOST_ONCE_QUEUE = "e2e.at-most-once.events.queue";
+
     public static final String DEFAULT_EVENT = "e2e-event";
     public static final String AOP_EVENT = "e2e-aop-event";
     public static final String RETRY_EVENT = "e2e-retry-event";
     public static final String DLQ_EVENT = "e2e-dlq-event";
+    public static final String AT_MOST_ONCE_EVENT = "e2e-at-most-once-event";
 
     private E2eEvents() {}
 }

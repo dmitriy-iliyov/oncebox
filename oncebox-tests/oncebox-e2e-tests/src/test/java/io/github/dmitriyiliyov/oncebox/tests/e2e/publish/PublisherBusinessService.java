@@ -22,7 +22,11 @@ public class PublisherBusinessService {
 
     @Transactional
     public BusinessEvent saveAndPublish(String eventType) {
-        BusinessEvent event = BusinessEvent.of();
+        return saveAndPublish(eventType, BusinessEvent.of());
+    }
+
+    @Transactional
+    public BusinessEvent saveAndPublish(String eventType, BusinessEvent event) {
         repository.saveProducedBusiness(event.verifyId());
         publisher.publish(eventType, event);
         return event;

@@ -27,6 +27,8 @@ public interface TestOutboxRepository {
 
     void shiftEventTimestamps(UUID id, Duration shift);
 
+    void shiftEventTimestamps(EventStatus status, Duration shift);
+
     int countDlqEvents();
 
     int countDlqEventsByStatus(DlqStatus status);

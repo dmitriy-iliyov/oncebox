@@ -47,6 +47,8 @@ oncebox:
         backoff:
           delay: 500ms
           multiplier: 2.0
+      e2e-at-most-once-event:
+        topic: e2e.at-most-once.events
 
     # Must stay above sender.emergency-timeout, or a batch still being sent is recovered as stuck and published
     # twice - the starter refuses to start otherwise. The stuck-event scenario inserts its row an hour in the past.
@@ -90,6 +92,7 @@ oncebox:
       e2e-aop-event: io.github.dmitriyiliyov.oncebox.tests.e2e.domain.BusinessEvent
       e2e-retry-event: io.github.dmitriyiliyov.oncebox.tests.e2e.domain.BusinessEvent
       e2e-dlq-event: io.github.dmitriyiliyov.oncebox.tests.e2e.domain.BusinessEvent
+      e2e-at-most-once-event: io.github.dmitriyiliyov.oncebox.tests.e2e.domain.BusinessEvent
     cache:
       enabled: false
     clean-up:

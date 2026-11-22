@@ -1,6 +1,8 @@
 package io.github.dmitriyiliyov.oncebox.tests.e2e;
 
 import io.github.dmitriyiliyov.oncebox.tests.e2e.config.*;
+import io.github.dmitriyiliyov.oncebox.tests.e2e.consume.RecordingBusinessOperation;
+import io.github.dmitriyiliyov.oncebox.tests.e2e.publish.CrashAfterSendOutboxSender;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.publish.PublisherBusinessService;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.repository.TestOutboxRepository;
 import org.awaitility.core.ConditionFactory;
@@ -54,11 +56,19 @@ public abstract class BaseEndToEndTests {
     @Autowired
     protected PublisherBusinessService publisherService;
 
+    @Autowired
+    protected CrashAfterSendOutboxSender crashingSender;
+
+    @Autowired
+    protected RecordingBusinessOperation operation;
+
     @BeforeEach
     void resetState() {
         // A previous test may have left the broker stopped
         BrokerFaultControl.startBroker();
+        crashingSender.reset();
         outboxRepository.truncateAll();
+        operation.clear();
     }
 
     protected static ConditionFactory awaitAtMost(Duration timeout) {

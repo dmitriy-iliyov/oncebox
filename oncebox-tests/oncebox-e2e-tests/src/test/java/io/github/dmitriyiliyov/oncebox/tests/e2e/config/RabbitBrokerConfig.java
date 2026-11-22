@@ -1,15 +1,16 @@
 package io.github.dmitriyiliyov.oncebox.tests.e2e.config;
 
 import io.github.dmitriyiliyov.oncebox.core.inbox.IdempotentConsumer;
+import io.github.dmitriyiliyov.oncebox.starter.inbox.NonTransactionalConsumer;
+import io.github.dmitriyiliyov.oncebox.starter.inbox.TransactionalConsumer;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.consume.RabbitConsumerBusinessService;
+import io.github.dmitriyiliyov.oncebox.tests.e2e.consume.RecordingBusinessOperation;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.domain.E2eEvents;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.publish.RabbitRawEventResender;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.publish.RawEventResender;
-import io.github.dmitriyiliyov.oncebox.tests.e2e.repository.TestOutboxRepository;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Profile;
@@ -34,6 +35,22 @@ public class RabbitBrokerConfig {
         return BindingBuilder.bind(e2eEventsQueue).to(e2eEventsExchange).with("#");
     }
 
+    @Bean
+    public TopicExchange e2eAtMostOnceEventsExchange() {
+        return new TopicExchange(E2eEvents.AT_MOST_ONCE_TOPIC);
+    }
+
+    @Bean
+    public Queue e2eAtMostOnceEventsQueue() {
+        return QueueBuilder.durable(E2eEvents.AT_MOST_ONCE_QUEUE).build();
+    }
+
+    @Bean
+    public Binding e2eAtMostOnceEventsBinding(Queue e2eAtMostOnceEventsQueue,
+                                              TopicExchange e2eAtMostOnceEventsExchange) {
+        return BindingBuilder.bind(e2eAtMostOnceEventsQueue).to(e2eAtMostOnceEventsExchange).with("#");
+    }
+
     /**
      * Dedicated sender template resolved by the library via {@code oncebox.outbox.sender.bean-name}.
      * {@code mandatory=true} is required for at-least-once so unroutable messages are reported back.
@@ -47,10 +64,11 @@ public class RabbitBrokerConfig {
 
     @Bean
     public RabbitConsumerBusinessService rabbitConsumerBusinessService(
-            @Qualifier("inboxTransactionalIdempotentConsumer") IdempotentConsumer idempotentConsumer,
-            TestOutboxRepository repository
+            @TransactionalConsumer IdempotentConsumer transactionalConsumer,
+            @NonTransactionalConsumer IdempotentConsumer nonTransactionalConsumer,
+            RecordingBusinessOperation operation
     ) {
-        return new RabbitConsumerBusinessService(idempotentConsumer, repository);
+        return new RabbitConsumerBusinessService(transactionalConsumer, nonTransactionalConsumer, operation);
     }
 
     @Bean

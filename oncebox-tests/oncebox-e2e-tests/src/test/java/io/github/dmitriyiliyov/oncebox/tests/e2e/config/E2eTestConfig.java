@@ -1,9 +1,13 @@
 package io.github.dmitriyiliyov.oncebox.tests.e2e.config;
 
 import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxPublisher;
+import io.github.dmitriyiliyov.oncebox.core.outbox.OutboxSender;
+import io.github.dmitriyiliyov.oncebox.tests.e2e.consume.RecordingBusinessOperation;
+import io.github.dmitriyiliyov.oncebox.tests.e2e.publish.CrashAfterSendOutboxSender;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.publish.PublisherBusinessService;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.repository.TestOnceboxRepositoryFactory;
 import io.github.dmitriyiliyov.oncebox.tests.e2e.repository.TestOutboxRepository;
+import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.ClassPathResource;
@@ -15,7 +19,8 @@ import javax.sql.DataSource;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Broker-agnostic beans shared across all runs. Broker-specific wiring (sender template, topology,
+ * Broker-agnostic beans shared across all runs, the library's sender among them wrapped into a
+ * {@link CrashAfterSendOutboxSender}, which stays transparent until a test turns crashing on. Broker-specific wiring (sender template, topology,
  * consumer, raw resender) lives in {@link KafkaBrokerConfig} / {@link RabbitBrokerConfig}, gated by profile.
  */
 @TestConfiguration
@@ -50,6 +55,22 @@ public class E2eTestConfig {
     @Bean
     public TestOutboxRepository testOutboxRepository(JdbcTemplate jdbcTemplate) {
         return TestOnceboxRepositoryFactory.generate(DATABASE_TYPE, jdbcTemplate);
+    }
+
+    @Bean
+    public RecordingBusinessOperation recordingBusinessOperation(TestOutboxRepository repository) {
+        return new RecordingBusinessOperation(repository);
+    }
+
+    // Static, so the post-processor exists before the sender is created and wraps it
+    @Bean
+    public static BeanPostProcessor crashAfterSendOutboxSenderPostProcessor() {
+        return new BeanPostProcessor() {
+            @Override
+            public Object postProcessAfterInitialization(Object bean, String beanName) {
+                return bean instanceof OutboxSender sender ? new CrashAfterSendOutboxSender(sender) : bean;
+            }
+        };
     }
 
     @Bean
