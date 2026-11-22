@@ -10,8 +10,15 @@ import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration;
 import org.springframework.boot.autoconfigure.transaction.TransactionAutoConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.BadSqlGrammarException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import javax.sql.DataSource;
+import java.sql.SQLSyntaxErrorException;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -242,11 +249,87 @@ public class OnceboxAutoConfigurationVerifier {
                 );
     }
 
+    // The test image runs Oracle 23.26, which accepts IN lists up to 65535 expressions
+    public void context_whenOracleAcceptsLongInListsAndBatchSizeAbove1000_shouldStart() {
+        getBaseContextRunner()
+                .withPropertyValues(outboxWithEventBatchSize(1001))
+                .run(ctx -> {
+                    assertThat(ctx).hasNotFailed();
+                    assertThat(ctx).hasSingleBean(OnceboxRepositoryFactory.class);
+                });
+    }
+
+    public void context_whenOracleLimitsInListsTo1000AndBatchSizeAbove1000_shouldFailNamingProperty() {
+        getBaseContextRunner()
+                .withUserConfiguration(InListLimitedOracleConfig.class)
+                .withPropertyValues(outboxWithEventBatchSize(1001))
+                .run(ctx -> {
+                    assertThat(ctx).hasFailed();
+                    assertThat(ctx.getStartupFailure())
+                            .rootCause()
+                            .isInstanceOf(IllegalArgumentException.class)
+                            .hasMessageStartingWith(
+                                    "'oncebox.outbox.events.my-event.batch-size' must not be greater than 1000 on Oracle"
+                            );
+                });
+    }
+
+    public void context_whenOracleLimitsInListsTo1000AndBatchSizeWithinLimit_shouldStart() {
+        getBaseContextRunner()
+                .withUserConfiguration(InListLimitedOracleConfig.class)
+                .withPropertyValues(outboxWithEventBatchSize(1000))
+                .run(ctx -> {
+                    assertThat(ctx).hasNotFailed();
+                    assertThat(ctx).hasSingleBean(OnceboxRepositoryFactory.class);
+                });
+    }
+
+    // Off Oracle the check must not run at all: its probe selects FROM dual, which these engines would reject
+    public void context_whenNotOracleAndBatchSizeAbove1000_shouldStart() {
+        getBaseContextRunner()
+                .withPropertyValues(outboxWithEventBatchSize(1001))
+                .run(ctx ->
+                        assertThat(ctx).hasNotFailed()
+                );
+    }
+
     public void shouldFailWhenDataSourceNotAvailable() {
         new ApplicationContextRunner()
                 .withConfiguration(AutoConfigurations.of(OnceboxAutoConfiguration.class))
                 .run(ctx ->
                         assertThat(ctx).hasFailed()
                 );
+    }
+
+    private static String[] outboxWithEventBatchSize(int batchSize) {
+        return new String[]{
+                "oncebox.outbox.enabled=true",
+                "oncebox.outbox.sender.type=kafka",
+                "oncebox.outbox.events.my-event.topic=my.topic",
+                "oncebox.outbox.events.my-event.batch-size=" + batchSize
+        };
+    }
+
+    /**
+     * Stands in for an Oracle release before 23ai: an IN list of more than 1000 expressions fails with ORA-01795,
+     * every other statement goes to the real database.
+     */
+    @Configuration(proxyBeanMethods = false)
+    static class InListLimitedOracleConfig {
+
+        @Bean
+        JdbcTemplate onceboxJdbcTemplate(DataSource dataSource) {
+            return new JdbcTemplate(dataSource) {
+                @Override
+                public List<Map<String, Object>> queryForList(String sql, Object... args) {
+                    if (args != null && args.length > 1000 && sql.contains(" IN (")) {
+                        throw new BadSqlGrammarException("query", sql, new SQLSyntaxErrorException(
+                                "ORA-01795: maximum number of expressions in a list is 1000", "42000", 1795
+                        ));
+                    }
+                    return super.queryForList(sql, args);
+                }
+            };
+        }
     }
 }

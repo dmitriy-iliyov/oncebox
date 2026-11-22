@@ -48,19 +48,21 @@ public class OracleInboxRepository implements InboxRepository {
             return Collections.emptySet();
         }
 
-        String existsIdsSql = """
-            SELECT id 
-            FROM inbox_events
-            WHERE id IN (%s)
-        """.formatted(RepositoryUtils.generateIdsPlaceholders(ids));
-        List<UUID> existsIds = jdbcTemplate.query(
-                existsIdsSql,
-                ps -> uuidHelper.setToPs(ps, 1, ids),
-                (rs, rowNum) -> mapper.fromBytesToUuid(rs.getBytes("id"))
-        );
+        Set<UUID> existsIds = new HashSet<>();
+        Set<UUID> chunk = new LinkedHashSet<>();
+        for (UUID id : ids) {
+            chunk.add(id);
+            if (chunk.size() == OracleRepositoryUtils.MAX_IN_LIST_SIZE) {
+                existsIds.addAll(findExistingIds(chunk));
+                chunk = new LinkedHashSet<>();
+            }
+        }
+        if (!chunk.isEmpty()) {
+            existsIds.addAll(findExistingIds(chunk));
+        }
 
         Set<UUID> nonExistsIds = new HashSet<>(ids);
-        nonExistsIds.removeAll(new HashSet<>(existsIds));
+        nonExistsIds.removeAll(existsIds);
 
         if (!RepositoryUtils.isIdsValid(nonExistsIds)) {
             return Collections.emptySet();
@@ -87,6 +89,19 @@ public class OracleInboxRepository implements InboxRepository {
         }
 
         return nonExistsIds;
+    }
+
+    private List<UUID> findExistingIds(Set<UUID> ids) {
+        String sql = """
+            SELECT id
+            FROM inbox_events
+            WHERE id IN (%s)
+        """.formatted(RepositoryUtils.generateIdsPlaceholders(ids));
+        return jdbcTemplate.query(
+                sql,
+                ps -> uuidHelper.setToPs(ps, 1, ids),
+                (rs, rowNum) -> mapper.fromBytesToUuid(rs.getBytes("id"))
+        );
     }
 
     @Override

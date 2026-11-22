@@ -11,10 +11,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.ParameterizedPreparedStatementSetter;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collection;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Transactional
@@ -73,6 +74,55 @@ class OracleInboxRepositoryIntegrationTests extends BaseOracleIntegrationTests {
         // when / then
         assertThatThrownBy(() -> racing.saveIfAbsent(Set.of(ID_1, ID_2)))
                 .isInstanceOf(ConcurrentInsertException.class);
+    }
+
+    @Test
+    @DisplayName("IT saveIfAbsent(Set) when the batch holds exactly 1000 ids should record every id")
+    void saveIfAbsentBatch_whenBatchIsAtOracleLimit_shouldRecordEveryId() {
+        // given
+        Set<UUID> ids = ids(1000);
+
+        // when
+        Set<UUID> inserted = tested.saveIfAbsent(ids);
+
+        // then
+        assertThat(inserted).containsExactlyInAnyOrderElementsOf(ids);
+        assertThat(countInboxRows()).isEqualTo(1000);
+    }
+
+    @Test
+    @DisplayName("IT saveIfAbsent(Set) when the batch holds more than 1000 ids should record every id")
+    void saveIfAbsentBatch_whenBatchIsAboveOracleLimit_shouldRecordEveryId() {
+        // given
+        Set<UUID> ids = ids(2500);
+
+        // when
+        Set<UUID> inserted = tested.saveIfAbsent(ids);
+
+        // then
+        assertThat(inserted).containsExactlyInAnyOrderElementsOf(ids);
+        assertThat(countInboxRows()).isEqualTo(2500);
+    }
+
+    @Test
+    @DisplayName("IT saveIfAbsent(Set) when recorded ids are spread over a batch above 1000 should return only the new ones")
+    void saveIfAbsentBatch_whenRecordedIdsAreSpreadOverBatchAboveOracleLimit_shouldReturnOnlyNewOnes() {
+        // given
+        List<UUID> ids = new ArrayList<>(ids(2500));
+        Set<UUID> recorded = IntStream.range(0, ids.size())
+                .filter(i -> i % 5 == 0)
+                .mapToObj(ids::get)
+                .collect(Collectors.toSet());
+        tested.saveIfAbsent(recorded);
+        Set<UUID> expected = new HashSet<>(ids);
+        expected.removeAll(recorded);
+
+        // when
+        Set<UUID> inserted = tested.saveIfAbsent(new HashSet<>(ids));
+
+        // then
+        assertThat(inserted).containsExactlyInAnyOrderElementsOf(expected);
+        assertThat(countInboxRows()).isEqualTo(2500);
     }
 
     @Test
@@ -151,5 +201,13 @@ class OracleInboxRepositoryIntegrationTests extends BaseOracleIntegrationTests {
     @DisplayName("IT deleteBatchOlderThan() when the JVM runs in another time zone should still keep a fresh record")
     void deleteBatchOlderThan_whenJvmRunsInAnotherZone_shouldKeepFreshRecord() {
         delegate.deleteBatchOlderThan_whenJvmRunsInAnotherZone_shouldKeepFreshRecord();
+    }
+
+    private int countInboxRows() {
+        return tested.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM inbox_events", Integer.class);
+    }
+
+    private static Set<UUID> ids(int count) {
+        return IntStream.range(0, count).mapToObj(i -> UUID.randomUUID()).collect(Collectors.toSet());
     }
 }

@@ -146,4 +146,10 @@ public class MySqlOnceboxAutoConfigurationIntegrationTests {
     void shouldFailWhenDataSourceNotAvailable() {
         verifier.shouldFailWhenDataSourceNotAvailable();
     }
+
+    @Test
+    @DisplayName("IT context off Oracle when an event batch size is above 1000 should start without the Oracle check")
+    void context_whenNotOracleAndBatchSizeAbove1000_shouldStart() {
+        verifier.context_whenNotOracleAndBatchSizeAbove1000_shouldStart();
+    }
 }

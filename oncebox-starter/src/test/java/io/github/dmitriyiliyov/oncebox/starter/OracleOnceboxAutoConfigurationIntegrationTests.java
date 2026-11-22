@@ -145,4 +145,22 @@ class OracleOnceboxAutoConfigurationIntegrationTests {
     void shouldFailWhenDataSourceNotAvailable() {
         verifier.shouldFailWhenDataSourceNotAvailable();
     }
+
+    @Test
+    @DisplayName("IT context on Oracle accepting long IN lists when an event batch size is above 1000 should start")
+    void context_whenOracleAcceptsLongInListsAndBatchSizeAbove1000_shouldStart() {
+        verifier.context_whenOracleAcceptsLongInListsAndBatchSizeAbove1000_shouldStart();
+    }
+
+    @Test
+    @DisplayName("IT context on Oracle limiting IN lists to 1000 when an event batch size is above it should fail naming the property")
+    void context_whenOracleLimitsInListsTo1000AndBatchSizeAbove1000_shouldFailNamingProperty() {
+        verifier.context_whenOracleLimitsInListsTo1000AndBatchSizeAbove1000_shouldFailNamingProperty();
+    }
+
+    @Test
+    @DisplayName("IT context on Oracle limiting IN lists to 1000 when every batch size is within it should start")
+    void context_whenOracleLimitsInListsTo1000AndBatchSizeWithinLimit_shouldStart() {
+        verifier.context_whenOracleLimitsInListsTo1000AndBatchSizeWithinLimit_shouldStart();
+    }
 }

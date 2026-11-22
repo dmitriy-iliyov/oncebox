@@ -103,6 +103,7 @@ public class OnceboxAutoConfiguration {
     public OnceboxRepositoryFactory oracleOnceboxRepositoryFactory(
             @Qualifier("onceboxJdbcTemplate") JdbcTemplate jdbcTemplate
     ) {
+        OnceboxOracleBatchSizeCheck.check(jdbcTemplate, properties);
         return new OracleOnceboxRepositoryFactory(jdbcTemplate);
     }
 
