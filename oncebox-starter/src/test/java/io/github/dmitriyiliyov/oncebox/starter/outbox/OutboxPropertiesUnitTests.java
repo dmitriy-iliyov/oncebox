@@ -424,6 +424,7 @@ public class OutboxPropertiesUnitTests {
         OnceboxProperties.PollingProperties defaultPolling = new OnceboxProperties.PollingProperties();
         defaultPolling.setType(PollingType.FIXED);
         defaultPolling.setInitialDelay(Duration.ofSeconds(10));
+        defaultPolling.setFixedDelay(Duration.ofSeconds(5));
         defaults.setPolling(defaultPolling);
         OutboxProperties.BackoffProperties defaultBackoff = new OutboxProperties.BackoffProperties();
         defaultBackoff.setEnabled(true);
@@ -649,6 +650,7 @@ public class OutboxPropertiesUnitTests {
         OnceboxProperties.PollingProperties defaultPolling = new OnceboxProperties.PollingProperties();
         defaultPolling.setType(PollingType.FIXED);
         defaultPolling.setInitialDelay(Duration.ofSeconds(10));
+        defaultPolling.setFixedDelay(Duration.ofSeconds(5));
         defaults.setPolling(defaultPolling);
 
         OutboxProperties.BackoffProperties defaultBackoff = new OutboxProperties.BackoffProperties();

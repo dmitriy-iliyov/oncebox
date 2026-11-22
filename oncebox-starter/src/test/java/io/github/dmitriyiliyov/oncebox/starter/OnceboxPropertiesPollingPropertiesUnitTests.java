@@ -521,6 +521,63 @@ class OnceboxPropertiesPollingPropertiesUnitTests {
 
         @ParameterizedTest
         @ValueSource(longs = {0, -1})
+        @DisplayName("UT applyDefaults() on fixed polling when fixed-delay is 0 or negative should throw naming it")
+        void applyDefaults_whenFixedDelayIsNotPositive_shouldThrow(long millis) {
+            // given
+            PollingProperties tested = fixed(Duration.ofSeconds(1), Duration.ofMillis(millis));
+
+            // when / then
+            assertThatThrownBy(() -> tested.applyDefaults(FIXED_DEFAULTS))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("'fixed-delay' cannot be negative or 0");
+        }
+
+        @Test
+        @DisplayName("UT applyDefaults() on fixed polling when initial-delay is negative should throw naming it")
+        void applyDefaults_whenFixedInitialDelayIsNegative_shouldThrow() {
+            // given
+            PollingProperties tested = fixed(Duration.ofMillis(-1), Duration.ofSeconds(1));
+
+            // when / then
+            assertThatThrownBy(() -> tested.applyDefaults(FIXED_DEFAULTS))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("'initial-delay' cannot be negative");
+        }
+
+        @Test
+        @DisplayName("UT applyDefaults() on fixed polling when initial-delay is 0 should accept it")
+        void applyDefaults_whenFixedInitialDelayIsZero_shouldAccept() {
+            // given
+            PollingProperties tested = fixed(Duration.ZERO, Duration.ofSeconds(1));
+
+            // when / then
+            assertThatCode(() -> tested.applyDefaults(FIXED_DEFAULTS)).doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("UT applyDefaults() on adaptive polling when initial-delay is negative should throw naming it")
+        void applyDefaults_whenAdaptiveInitialDelayIsNegative_shouldThrow() {
+            // given
+            PollingProperties tested = adaptive(Duration.ofMillis(-1), Duration.ofMillis(100), 2.0);
+
+            // when / then
+            assertThatThrownBy(() -> tested.applyDefaults(ADAPTIVE_DEFAULTS))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("'initial-delay' cannot be negative");
+        }
+
+        @Test
+        @DisplayName("UT applyDefaults() on adaptive polling when initial-delay is 0 should accept it")
+        void applyDefaults_whenAdaptiveInitialDelayIsZero_shouldAccept() {
+            // given
+            PollingProperties tested = adaptive(Duration.ZERO, Duration.ofMillis(100), 2.0);
+
+            // when / then
+            assertThatCode(() -> tested.applyDefaults(ADAPTIVE_DEFAULTS)).doesNotThrowAnyException();
+        }
+
+        @ParameterizedTest
+        @ValueSource(longs = {0, -1})
         @DisplayName("UT applyDefaults() on adaptive polling when min-fixed-delay is 0 or negative should throw naming it")
         void applyDefaults_whenMinFixedDelayIsNotPositive_shouldThrow(long millis) {
             // given
@@ -556,6 +613,19 @@ class OnceboxPropertiesPollingPropertiesUnitTests {
         }
 
         @Test
+        @DisplayName("UT applyDefaults() when switching to fixed polling over adaptive defaults should not inherit their fixed-delay")
+        void applyDefaults_whenSwitchingToFixedOverAdaptiveDefaults_shouldRequireFixedDelay() {
+            // given
+            PollingProperties tested = new PollingProperties();
+            tested.setType(PollingType.FIXED);
+
+            // when / then
+            assertThatThrownBy(() -> tested.applyDefaults(ADAPTIVE_DEFAULTS))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessage("'fixed-delay' cannot be null");
+        }
+
+        @Test
         @DisplayName("UT applyDefaults() when switching to adaptive polling over fixed defaults should not inherit their placeholders")
         void applyDefaults_whenSwitchingToAdaptiveOverFixedDefaults_shouldRequireAdaptiveDelays() {
             // given
@@ -566,6 +636,14 @@ class OnceboxPropertiesPollingPropertiesUnitTests {
             assertThatThrownBy(() -> tested.applyDefaults(FIXED_DEFAULTS))
                     .isInstanceOf(NullPointerException.class)
                     .hasMessage("'min-fixed-delay' cannot be null");
+        }
+
+        @Test
+        @DisplayName("UT Defaults.ofFixed() when fixed-delay is 0 should throw naming it")
+        void ofFixed_whenFixedDelayIsZero_shouldThrow() {
+            assertThatThrownBy(() -> Defaults.ofFixed(PollingType.FIXED, Duration.ZERO, Duration.ZERO))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("'fixed-delay' cannot be negative or 0");
         }
 
         @Test
@@ -583,6 +661,14 @@ class OnceboxPropertiesPollingPropertiesUnitTests {
         private static final Defaults ADAPTIVE_DEFAULTS = Defaults.ofAdaptive(
                 PollingType.ADAPTIVE, Duration.ofSeconds(1), Duration.ofMillis(100), Duration.ofSeconds(10), 2.0
         );
+
+        private static PollingProperties fixed(Duration initialDelay, Duration fixedDelay) {
+            PollingProperties properties = new PollingProperties();
+            properties.setType(PollingType.FIXED);
+            properties.setInitialDelay(initialDelay);
+            properties.setFixedDelay(fixedDelay);
+            return properties;
+        }
 
         private static PollingProperties adaptive(Duration initialDelay, Duration minFixedDelay, double multiplier) {
             PollingProperties properties = new PollingProperties();

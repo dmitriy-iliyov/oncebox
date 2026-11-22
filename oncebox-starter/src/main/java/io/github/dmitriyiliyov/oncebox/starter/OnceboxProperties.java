@@ -422,19 +422,19 @@ public class OnceboxProperties implements OnceboxPropertiesHolder {
         public void applyDefaults(Defaults defaults) {
             type = type == null ? defaults.type() : type;
             initialDelay = initialDelay == null ? defaults.initialDelay() : initialDelay;
+            // Delays are inherited only from defaults of the same type: the others are placeholders, not settings
+            boolean sameType = type == defaults.type();
             switch (type) {
                 case FIXED -> {
-                    fixedDelay = fixedDelay == null ? defaults.fixedDelay() : fixedDelay;
+                    fixedDelay = fixedDelay == null && sameType ? defaults.fixedDelay() : fixedDelay;
                     minFixedDelay = Duration.ZERO;
                     maxFixedDelay = Duration.ZERO;
                     multiplier = Double.NaN;
                 }
                 case ADAPTIVE -> {
-                    // Fixed defaults carry placeholders for these, not settings: min-fixed-delay 0 and a NaN multiplier
-                    boolean adaptiveDefaults = defaults.type() == PollingType.ADAPTIVE;
-                    minFixedDelay = minFixedDelay == null && adaptiveDefaults ? defaults.minFixedDelay() : minFixedDelay;
-                    maxFixedDelay = maxFixedDelay == null && adaptiveDefaults ? defaults.maxFixedDelay() : maxFixedDelay;
-                    multiplier = multiplier == null && adaptiveDefaults ? defaults.multiplier() : multiplier;
+                    minFixedDelay = minFixedDelay == null && sameType ? defaults.minFixedDelay() : minFixedDelay;
+                    maxFixedDelay = maxFixedDelay == null && sameType ? defaults.maxFixedDelay() : maxFixedDelay;
+                    multiplier = multiplier == null && sameType ? defaults.multiplier() : multiplier;
                     fixedDelay = Duration.ZERO;
                 }
             }
@@ -442,27 +442,42 @@ public class OnceboxProperties implements OnceboxPropertiesHolder {
         }
 
         public void validate() {
+            Objects.requireNonNull(type, "type cannot be null");
             switch (type) {
-                case FIXED -> {
-                    Objects.requireNonNull(initialDelay, "'initial-delay' cannot be null");
-                    Objects.requireNonNull(fixedDelay, "'fixed-delay' cannot be null");
-                }
-                case ADAPTIVE -> {
-                    Objects.requireNonNull(type, "type cannot be null");
-                    Objects.requireNonNull(initialDelay, "'initial-delay' cannot be null");
-                    Objects.requireNonNull(minFixedDelay, "'min-fixed-delay' cannot be null");
-                    Objects.requireNonNull(maxFixedDelay, "'max-fixed-delay' cannot be null");
-                    if (minFixedDelay.isNegative() || minFixedDelay.isZero()) {
-                        throw new IllegalArgumentException("'min-fixed-delay' cannot be negative or 0");
-                    }
-                    if (minFixedDelay.compareTo(maxFixedDelay) > 0) {
-                        throw new IllegalArgumentException("'min-fixed-delay' cannot be greater than 'max-fixed-delay'");
-                    }
-                    Objects.requireNonNull(multiplier, "'multiplier' cannot be null");
-                    if (!(multiplier > 1)) {
-                        throw new IllegalArgumentException("'multiplier' must be greater than 1");
-                    }
-                }
+                case FIXED -> validateFixed(initialDelay, fixedDelay);
+                case ADAPTIVE -> validateAdaptive(initialDelay, minFixedDelay, maxFixedDelay, multiplier);
+            }
+        }
+
+        private static void validateFixed(Duration initialDelay, Duration fixedDelay) {
+            validateInitialDelay(initialDelay);
+            Objects.requireNonNull(fixedDelay, "'fixed-delay' cannot be null");
+            if (fixedDelay.isNegative() || fixedDelay.isZero()) {
+                throw new IllegalArgumentException("'fixed-delay' cannot be negative or 0");
+            }
+        }
+
+        private static void validateAdaptive(Duration initialDelay, Duration minFixedDelay, Duration maxFixedDelay,
+                                             Double multiplier) {
+            validateInitialDelay(initialDelay);
+            Objects.requireNonNull(minFixedDelay, "'min-fixed-delay' cannot be null");
+            Objects.requireNonNull(maxFixedDelay, "'max-fixed-delay' cannot be null");
+            if (minFixedDelay.isNegative() || minFixedDelay.isZero()) {
+                throw new IllegalArgumentException("'min-fixed-delay' cannot be negative or 0");
+            }
+            if (minFixedDelay.compareTo(maxFixedDelay) > 0) {
+                throw new IllegalArgumentException("'min-fixed-delay' cannot be greater than 'max-fixed-delay'");
+            }
+            Objects.requireNonNull(multiplier, "'multiplier' cannot be null");
+            if (!(multiplier > 1)) {
+                throw new IllegalArgumentException("'multiplier' must be greater than 1");
+            }
+        }
+
+        private static void validateInitialDelay(Duration initialDelay) {
+            Objects.requireNonNull(initialDelay, "'initial-delay' cannot be null");
+            if (initialDelay.isNegative()) {
+                throw new IllegalArgumentException("'initial-delay' cannot be negative");
             }
         }
 
@@ -556,25 +571,12 @@ public class OnceboxProperties implements OnceboxPropertiesHolder {
             private static void validateForAdaptive(PollingType type, Duration initialDelay, Duration minFixedDelay,
                                                     Duration maxFixedDelay, Double multiplier) {
                 Objects.requireNonNull(type, "type cannot be null");
-                Objects.requireNonNull(initialDelay, "'initial-delay' cannot be null");
-                Objects.requireNonNull(minFixedDelay, "'min-fixed-delay' cannot be null");
-                Objects.requireNonNull(maxFixedDelay, "'max-fixed-delay' cannot be null");
-                if (minFixedDelay.isNegative() || minFixedDelay.isZero()) {
-                    throw new IllegalArgumentException("'min-fixed-delay' cannot be negative or 0");
-                }
-                if (minFixedDelay.compareTo(maxFixedDelay) > 0) {
-                    throw new IllegalArgumentException("'min-fixed-delay' cannot be greater than 'max-fixed-delay'");
-                }
-                Objects.requireNonNull(multiplier, "'multiplier' cannot be null");
-                if (!(multiplier > 1)) {
-                    throw new IllegalArgumentException("'multiplier' must be greater than 1");
-                }
+                validateAdaptive(initialDelay, minFixedDelay, maxFixedDelay, multiplier);
             }
 
             private static void validateForFixed(PollingType type, Duration initialDelay, Duration fixedDelay) {
                 Objects.requireNonNull(type, "type cannot be null");
-                Objects.requireNonNull(initialDelay, "'initial-delay' cannot be null");
-                Objects.requireNonNull(fixedDelay, "'fixed-delay' cannot be null");
+                validateFixed(initialDelay, fixedDelay);
             }
 
             public static Defaults ofAdaptive(PollingType type, Duration initialDelay, Duration minFixedDelay,

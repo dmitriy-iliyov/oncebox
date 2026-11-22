@@ -12,6 +12,7 @@ import org.mockito.Mockito;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
 import org.springframework.boot.autoconfigure.transaction.TransactionAutoConfiguration;
+import org.springframework.core.NestedExceptionUtils;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
@@ -214,11 +215,26 @@ public class DlqDefaultsInheritanceIntegrationTests {
     }
 
     @Test
-    @DisplayName("IT Fixed Polling should not fallback to fixed-delay if not specified in YAML")
-    void fixedPolling_fallbackTo5sDefault() {
+    @DisplayName("IT context when a transfer switches to fixed polling without 'fixed-delay' should fail naming it")
+    void fixedPolling_whenFixedDelayMissingAndDefaultsAdaptive_shouldFailNamingFixedDelay() {
         getDlqPropertiesRunner()
                 .withPropertyValues(
                         "oncebox.outbox.dlq.transfer-to.polling.type=fixed"
+                )
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    assertThat(NestedExceptionUtils.getMostSpecificCause(context.getStartupFailure()))
+                            .hasMessage("'fixed-delay' cannot be null");
+                });
+    }
+
+    @Test
+    @DisplayName("IT context when a transfer switches to fixed polling with 'fixed-delay' should use it")
+    void fixedPolling_whenFixedDelaySet_shouldUseIt() {
+        getDlqPropertiesRunner()
+                .withPropertyValues(
+                        "oncebox.outbox.dlq.transfer-to.polling.type=fixed",
+                        "oncebox.outbox.dlq.transfer-to.polling.fixed-delay=5s"
                 )
                 .run(context -> {
                     assertThat(context).hasNotFailed();
@@ -227,8 +243,7 @@ public class DlqDefaultsInheritanceIntegrationTests {
                     var transferTo = properties.getOutbox().getDlq().getTransferTo();
 
                     assertThat(transferTo.getPolling().getType()).isEqualTo(PollingType.FIXED);
-                    assertThat(transferTo.getPolling().getFixedDelay()).isEqualTo(Duration.ofSeconds(0));
-
+                    assertThat(transferTo.getPolling().getFixedDelay()).isEqualTo(Duration.ofSeconds(5));
                     assertThat(transferTo.getPolling().getMinFixedDelay()).isZero();
                     assertThat(transferTo.getPolling().getMaxFixedDelay()).isZero();
                     assertThat(transferTo.getPolling().getMultiplier()).isNaN();
