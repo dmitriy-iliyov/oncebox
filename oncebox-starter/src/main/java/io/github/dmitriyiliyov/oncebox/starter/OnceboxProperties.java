@@ -158,7 +158,10 @@ public class OnceboxProperties implements OnceboxPropertiesHolder {
         public void applyDefaults() {
             if (enabled == null || enabled) {
                 enabled = true;
-                batchSize = (batchSize == null || batchSize <= 0) ? DEFAULT_BATCH_SIZE : batchSize;
+                if (batchSize != null && batchSize <= 0) {
+                    throw new IllegalArgumentException("'clean-up.batch-size' cannot be negative or 0");
+                }
+                batchSize = batchSize == null ? DEFAULT_BATCH_SIZE : batchSize;
                 ttl = ttl == null ? DEFAULT_TTL : ttl;
                 polling = polling == null ? new PollingProperties() : polling;
                 polling.applyDefaults(POLLING_DEFAULTS);

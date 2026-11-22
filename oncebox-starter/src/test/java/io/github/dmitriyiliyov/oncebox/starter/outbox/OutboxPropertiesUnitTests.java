@@ -1067,19 +1067,19 @@ public class OutboxPropertiesUnitTests {
     }
 
     @Test
-    @DisplayName("UT DlqProperties.applyDefaults() when batch size is zero or negative should use default")
-    public void applyDefaults_dlqWhenBatchSizeInvalid_shouldUseDefault() {
-        OutboxProperties.DlqProperties dlq1 = new OutboxProperties.DlqProperties();
-        dlq1.setEnabled(true);
-        dlq1.setBatchSize(0);
-        dlq1.applyDefaults();
-        assertEquals(500, dlq1.getBatchSize());
+    @DisplayName("UT DlqProperties.applyDefaults() when batch size is zero or negative should throw naming 'dlq.batch-size'")
+    public void applyDefaults_dlqWhenBatchSizeIsNotPositive_shouldThrow() {
+        for (int batchSize : new int[]{0, -10}) {
+            // given
+            OutboxProperties.DlqProperties dlq = new OutboxProperties.DlqProperties();
+            dlq.setEnabled(true);
+            dlq.setBatchSize(batchSize);
 
-        OutboxProperties.DlqProperties dlq2 = new OutboxProperties.DlqProperties();
-        dlq2.setEnabled(true);
-        dlq2.setBatchSize(-10);
-        dlq2.applyDefaults();
-        assertEquals(500, dlq2.getBatchSize());
+            // when / then
+            assertThatThrownBy(dlq::applyDefaults)
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("'dlq.batch-size' cannot be negative or 0");
+        }
     }
 
     @Test
@@ -1148,5 +1148,26 @@ public class OutboxPropertiesUnitTests {
         stuckRecovery.setMaxBatchProcessingTime(maxBatchProcessingTime);
         properties.setStuckRecovery(stuckRecovery);
         return properties;
+    }
+
+    @Test
+    @DisplayName("UT OutboxProperties.applyDefaults() when an event batch size is 0 or negative should throw naming the event")
+    public void applyDefaults_whenEventBatchSizeIsNotPositive_shouldThrowNamingEvent() {
+        for (int batchSize : new int[]{0, -1}) {
+            // given
+            OutboxProperties properties = new OutboxProperties();
+            OutboxProperties.SenderProperties sender = new OutboxProperties.SenderProperties();
+            sender.setType(TransportType.KAFKA);
+            properties.setSender(sender);
+            OutboxProperties.EventProperties event = new OutboxProperties.EventProperties();
+            event.setTopic("orders");
+            event.setBatchSize(batchSize);
+            properties.setEvents(new HashMap<>(Map.of("order-created", event)));
+
+            // when / then
+            assertThatThrownBy(properties::applyDefaults)
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("'events.order-created.batch-size' cannot be negative or 0");
+        }
     }
 }

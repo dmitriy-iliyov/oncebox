@@ -49,19 +49,18 @@ class OutboxPropertiesDefaultsUnitTests {
         }
 
         @Test
-        @DisplayName("UT applyDefaults() should fallback to default when batchSize is invalid (<= 0)")
-        void applyDefaults_whenBatchSizeInvalid_shouldAssignDefault() {
-            // given
-            OutboxProperties.EventProperties.Defaults defaults = new OutboxProperties.EventProperties.Defaults();
-            defaults.setBatchSize(0);
-            defaults.setMaxRetries(5);
+        @DisplayName("UT applyDefaults() when batchSize is 0 or negative should throw naming 'defaults.batch-size'")
+        void applyDefaults_whenBatchSizeIsNotPositive_shouldThrow() {
+            for (int batchSize : new int[]{0, -1}) {
+                // given
+                OutboxProperties.EventProperties.Defaults defaults = new OutboxProperties.EventProperties.Defaults();
+                defaults.setBatchSize(batchSize);
 
-            // when
-            defaults.applyDefaults();
-
-            // then
-            assertThat(defaults.getBatchSize()).isEqualTo(200);
-            assertThat(defaults.getMaxRetries()).isEqualTo(5);
+                // when / then
+                assertThatThrownBy(defaults::applyDefaults)
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessage("'defaults.batch-size' cannot be negative or 0");
+            }
         }
 
         @Test

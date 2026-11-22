@@ -99,7 +99,7 @@ public class OnceboxPropertiesCleanUpPropertiesUnitTests {
     }
 
     @Test
-    @DisplayName("UT applyDefaults() with enabled = true and partial null/invalid fields should fallback to defaults")
+    @DisplayName("UT applyDefaults() with enabled = true and partial null fields should fallback to defaults")
     public void applyDefaults_enabledTrue_partialNull_shouldUseDefaultsForNull() {
         // given
         PollingProperties partialPolling = new PollingProperties();
@@ -108,7 +108,7 @@ public class OnceboxPropertiesCleanUpPropertiesUnitTests {
 
         CleanUpProperties cleanup = new CleanUpProperties();
         cleanup.setEnabled(true);
-        cleanup.setBatchSize(-1);
+        cleanup.setBatchSize(null);
         cleanup.setTtl(null);
         cleanup.setPolling(partialPolling);
 

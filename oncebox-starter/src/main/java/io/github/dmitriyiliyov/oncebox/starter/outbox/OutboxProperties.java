@@ -375,6 +375,9 @@ public class OutboxProperties implements OutboxPropertiesHolder {
             if (topic.isBlank()) {
                 throw new IllegalArgumentException("'topic' cannot be blank");
             }
+            if (batchSize != null && batchSize <= 0) {
+                throw new IllegalArgumentException("'events.%s.batch-size' cannot be negative or 0".formatted(eventType));
+            }
             batchSize = batchSize == null ? defaults.getBatchSize() : batchSize;
             polling = polling == null ? defaults.getPolling() : polling;
             polling.applyDefaults(defaults.getPoolingDefaults());
@@ -537,7 +540,10 @@ public class OutboxProperties implements OutboxPropertiesHolder {
             }
 
             public void applyDefaults() {
-                batchSize = batchSize == null || batchSize <= 0 ? DEFAULT_BATCH_SIZE : batchSize;
+                if (batchSize != null && batchSize <= 0) {
+                    throw new IllegalArgumentException("'defaults.batch-size' cannot be negative or 0");
+                }
+                batchSize = batchSize == null ? DEFAULT_BATCH_SIZE : batchSize;
                 polling = polling == null ? new OnceboxProperties.PollingProperties() : polling;
                 polling.applyDefaults(POOLING_DEFAULTS);
                 maxRetries = maxRetries == null || maxRetries < 0 ? DEFAULT_MAX_RETRY : maxRetries;
@@ -621,7 +627,10 @@ public class OutboxProperties implements OutboxPropertiesHolder {
         }
 
         public void applyDefaults() {
-            batchSize = batchSize == null || batchSize <= 0 ? DEFAULT_BATCH_SIZE : batchSize;
+            if (batchSize != null && batchSize <= 0) {
+                throw new IllegalArgumentException("'stuck-recovery.batch-size' cannot be negative or 0");
+            }
+            batchSize = batchSize == null ? DEFAULT_BATCH_SIZE : batchSize;
             maxBatchProcessingTime = maxBatchProcessingTime == null ? DEFAULT_MAX_BATCH_PROCESSING_TIME : maxBatchProcessingTime;
             polling = polling == null ? new OnceboxProperties.PollingProperties() : polling;
             polling.applyDefaults(POLLING_DEFAULTS);
@@ -716,7 +725,10 @@ public class OutboxProperties implements OutboxPropertiesHolder {
             if (enabled != null && enabled) {
                 enabled = true;
 
-                batchSize = batchSize == null || batchSize <= 0 ? DEFAULTS.batchSize() : batchSize;
+                if (batchSize != null && batchSize <= 0) {
+                    throw new IllegalArgumentException("'dlq.batch-size' cannot be negative or 0");
+                }
+                batchSize = batchSize == null ? DEFAULTS.batchSize() : batchSize;
                 polling = polling == null ? new OnceboxProperties.PollingProperties() : polling;
                 polling.applyDefaults(DEFAULTS.pollingDefaults());
 
@@ -726,9 +738,9 @@ public class OutboxProperties implements OutboxPropertiesHolder {
                 );
 
                 transferTo = transferTo == null ? new TransferProperties() : transferTo;
-                transferTo.applyDefaults(currentDefaults);
+                transferTo.applyDefaults(currentDefaults, "dlq.transfer-to");
                 transferFrom = transferFrom == null ? new TransferProperties() : transferFrom;
-                transferFrom.applyDefaults(currentDefaults);
+                transferFrom.applyDefaults(currentDefaults, "dlq.transfer-from");
 
                 if (cleanUp == null) {
                     cleanUp = new OnceboxProperties.CleanUpProperties();
@@ -817,8 +829,11 @@ public class OutboxProperties implements OutboxPropertiesHolder {
             @NestedConfigurationProperty
             private OnceboxProperties.PollingProperties polling;
 
-            public void applyDefaults(Defaults defaults) {
-                batchSize = batchSize == null || batchSize <= 0 ? defaults.batchSize() : batchSize;
+            public void applyDefaults(Defaults defaults, String section) {
+                if (batchSize != null && batchSize <= 0) {
+                    throw new IllegalArgumentException("'%s.batch-size' cannot be negative or 0".formatted(section));
+                }
+                batchSize = batchSize == null ? defaults.batchSize() : batchSize;
                 polling = polling == null ? new OnceboxProperties.PollingProperties() : polling;
                 polling.applyDefaults(defaults.pollingDefaults());
             }

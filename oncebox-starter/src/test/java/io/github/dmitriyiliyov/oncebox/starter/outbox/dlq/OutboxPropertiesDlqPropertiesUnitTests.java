@@ -6,9 +6,12 @@ import io.github.dmitriyiliyov.oncebox.starter.outbox.OutboxProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.ParameterizedTest;
 
 import java.time.Duration;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
@@ -121,19 +124,17 @@ class OutboxPropertiesDlqPropertiesUnitTests {
         }
 
         @Test
-        @DisplayName("UT applyDefaults() should fallback to global default when sharedBatchSize is invalid (<= 0)")
-        void applyDefaults_whenSharedBatchSizeInvalid_shouldFallbackToGlobalDefault() {
+        @DisplayName("UT applyDefaults() when the shared batchSize is negative should throw naming 'dlq.batch-size'")
+        void applyDefaults_whenSharedBatchSizeIsNegative_shouldThrow() {
             // given
             OutboxProperties.DlqProperties dlq = new OutboxProperties.DlqProperties();
             dlq.setEnabled(true);
             dlq.setBatchSize(-15);
 
-            // when
-            dlq.applyDefaults();
-
-            // then
-            assertThat(dlq.getTransferTo().getBatchSize()).isEqualTo(500);
-            assertThat(dlq.getTransferFrom().getBatchSize()).isEqualTo(500);
+            // when / then
+            assertThatThrownBy(dlq::applyDefaults)
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("'dlq.batch-size' cannot be negative or 0");
         }
     }
 
@@ -175,23 +176,25 @@ class OutboxPropertiesDlqPropertiesUnitTests {
             );
         }
 
-        @Test
-        @DisplayName("UT applyDefaults() should fallback to shared batch size when transfer batch size is invalid (<= 0)")
-        void applyDefaults_whenTransferBatchSizeInvalid_shouldFallbackToShared() {
+        @ParameterizedTest
+        @ValueSource(strings = {"transfer-to", "transfer-from"})
+        @DisplayName("UT applyDefaults() when a transfer batchSize is 0 should throw naming that transfer")
+        void applyDefaults_whenTransferBatchSizeIsZero_shouldThrowNamingTransfer(String transfer) {
             // given
             OutboxProperties.DlqProperties dlq = new OutboxProperties.DlqProperties();
             dlq.setEnabled(true);
-            dlq.setBatchSize(777);
+            OutboxProperties.DlqProperties.TransferProperties properties = new OutboxProperties.DlqProperties.TransferProperties();
+            properties.setBatchSize(0);
+            if ("transfer-to".equals(transfer)) {
+                dlq.setTransferTo(properties);
+            } else {
+                dlq.setTransferFrom(properties);
+            }
 
-            OutboxProperties.DlqProperties.TransferProperties to = new OutboxProperties.DlqProperties.TransferProperties();
-            to.setBatchSize(0);
-            dlq.setTransferTo(to);
-
-            // when
-            dlq.applyDefaults();
-
-            // then
-            assertThat(dlq.getTransferTo().getBatchSize()).isEqualTo(777);
+            // when / then
+            assertThatThrownBy(dlq::applyDefaults)
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("'dlq.%s.batch-size' cannot be negative or 0".formatted(transfer));
         }
 
         @Test

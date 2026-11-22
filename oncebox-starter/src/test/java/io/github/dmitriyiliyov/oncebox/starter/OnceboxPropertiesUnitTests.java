@@ -7,6 +7,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.boot.context.properties.source.MapConfigurationPropertySource;
+import java.util.HashMap;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -221,18 +225,17 @@ class OnceboxPropertiesUnitTests {
     }
 
     @Test
-    @DisplayName("UT CleanUpProperties applyDefaults() when batchSize negative should reset to default")
-    void cleanUp_applyDefaults_whenBatchSizeNegative_shouldReset() {
+    @DisplayName("UT CleanUpProperties applyDefaults() when batchSize negative should throw naming 'clean-up.batch-size'")
+    void cleanUp_applyDefaults_whenBatchSizeNegative_shouldThrow() {
         // given
         CleanUpProperties cleanUp = new CleanUpProperties();
         cleanUp.setEnabled(true);
         cleanUp.setBatchSize(-10);
 
-        // when
-        cleanUp.applyDefaults();
-
-        // then
-        assertThat(cleanUp.getBatchSize()).isEqualTo(500);
+        // when / then
+        assertThatThrownBy(cleanUp::applyDefaults)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("'clean-up.batch-size' cannot be negative or 0");
     }
 
     @Test
@@ -277,18 +280,32 @@ class OnceboxPropertiesUnitTests {
     }
 
     @Test
-    @DisplayName("UT CleanUpProperties applyDefaults() when batchSize <= 0 should reset to default")
-    void cleanUp_applyDefaults_whenBatchSizeZero_shouldDefaultTo200() {
+    @DisplayName("UT CleanUpProperties applyDefaults() when batchSize is 0 should throw naming 'clean-up.batch-size'")
+    void cleanUp_applyDefaults_whenBatchSizeZero_shouldThrow() {
         // given
         CleanUpProperties cleanUp = new CleanUpProperties();
         cleanUp.setEnabled(true);
         cleanUp.setBatchSize(0);
 
+        // when / then
+        assertThatThrownBy(cleanUp::applyDefaults)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("'clean-up.batch-size' cannot be negative or 0");
+    }
+
+    @Test
+    @DisplayName("UT CleanUpProperties applyDefaults() when disabled should accept any batchSize")
+    void cleanUp_applyDefaults_whenDisabled_shouldAcceptAnyBatchSize() {
+        // given
+        CleanUpProperties cleanUp = new CleanUpProperties();
+        cleanUp.setEnabled(false);
+        cleanUp.setBatchSize(-10);
+
         // when
         cleanUp.applyDefaults();
 
         // then
-        assertThat(cleanUp.getBatchSize()).isEqualTo(500);
+        assertThat(cleanUp.getBatchSize()).isZero();
     }
 
     @Test
@@ -619,5 +636,55 @@ class OnceboxPropertiesUnitTests {
         assertThat(result).contains("lockAtLeastFor=PT2S");
         assertThat(result).contains("lockAtMostFor=PT5S");
         assertThat(result).contains("resolveByPollingProperties=false");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {
+            "oncebox.outbox.events.order-created.batch-size",
+            "oncebox.outbox.defaults.batch-size",
+            "oncebox.outbox.stuck-recovery.batch-size",
+            "oncebox.outbox.clean-up.batch-size",
+            "oncebox.outbox.dlq.batch-size",
+            "oncebox.outbox.dlq.transfer-to.batch-size",
+            "oncebox.outbox.dlq.transfer-from.batch-size",
+            "oncebox.outbox.dlq.clean-up.batch-size",
+            "oncebox.inbox.clean-up.batch-size"
+    })
+    @DisplayName("UT applyDefaults() when a batch size is 1 should accept and keep it")
+    void applyDefaults_whenBatchSizeIsOne_shouldAcceptAndKeepIt(String key) {
+        // given
+        Map<String, String> config = new HashMap<>(Map.of(
+                "oncebox.outbox.enabled", "true",
+                "oncebox.outbox.sender.type", "kafka",
+                "oncebox.outbox.events.order-created.topic", "orders",
+                "oncebox.outbox.dlq.enabled", "true",
+                "oncebox.inbox.enabled", "true",
+                "oncebox.inbox.source.type", "kafka"
+        ));
+        config.put(key, "1");
+        OnceboxProperties properties = new Binder(new MapConfigurationPropertySource(config))
+                .bind("oncebox", OnceboxProperties.class)
+                .get();
+
+        // when
+        properties.applyDefaults();
+
+        // then
+        assertThat(batchSizes(properties).get(key)).isEqualTo(1);
+    }
+
+    private static Map<String, Integer> batchSizes(OnceboxProperties properties) {
+        OutboxProperties outbox = properties.getOutbox();
+        return Map.of(
+                "oncebox.outbox.events.order-created.batch-size", outbox.getEvents().get("order-created").getBatchSize(),
+                "oncebox.outbox.defaults.batch-size", outbox.getDefaults().getBatchSize(),
+                "oncebox.outbox.stuck-recovery.batch-size", outbox.getStuckRecovery().getBatchSize(),
+                "oncebox.outbox.clean-up.batch-size", outbox.getCleanUp().getBatchSize(),
+                "oncebox.outbox.dlq.batch-size", outbox.getDlq().getBatchSize(),
+                "oncebox.outbox.dlq.transfer-to.batch-size", outbox.getDlq().getTransferTo().getBatchSize(),
+                "oncebox.outbox.dlq.transfer-from.batch-size", outbox.getDlq().getTransferFrom().getBatchSize(),
+                "oncebox.outbox.dlq.clean-up.batch-size", outbox.getDlq().getCleanUp().getBatchSize(),
+                "oncebox.inbox.clean-up.batch-size", properties.getInbox().getCleanUp().getBatchSize()
+        );
     }
 }

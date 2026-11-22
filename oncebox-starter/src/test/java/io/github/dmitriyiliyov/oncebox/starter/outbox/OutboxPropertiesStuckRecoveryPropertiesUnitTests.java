@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class OutboxPropertiesStuckRecoveryPropertiesUnitTests {
@@ -37,31 +38,18 @@ class OutboxPropertiesStuckRecoveryPropertiesUnitTests {
     }
 
     @Test
-    @DisplayName("UT applyDefaults() with negative batchSize should assign default batchSize and preserve pollingDefaults")
-    void applyDefaults_negativeBatchSize_shouldUseDefault() {
-        // given
-        OutboxProperties.StuckRecoveryProperties recovery = new OutboxProperties.StuckRecoveryProperties();
-        recovery.setBatchSize(-10);
+    @DisplayName("UT applyDefaults() when batchSize is 0 or negative should throw naming 'stuck-recovery.batch-size'")
+    void applyDefaults_whenBatchSizeIsNotPositive_shouldThrow() {
+        for (int batchSize : new int[]{0, -10}) {
+            // given
+            OutboxProperties.StuckRecoveryProperties recovery = new OutboxProperties.StuckRecoveryProperties();
+            recovery.setBatchSize(batchSize);
 
-        OnceboxProperties.PollingProperties polling = new OnceboxProperties.PollingProperties();
-        polling.setType(PollingType.FIXED);
-        polling.setInitialDelay(Duration.ofSeconds(100));
-        polling.setFixedDelay(Duration.ofSeconds(200));
-        recovery.setPolling(polling);
-
-        // when
-        recovery.applyDefaults();
-
-        // then
-        assertEquals(500, recovery.getBatchSize());
-        assertEquals(Duration.ofMinutes(5), recovery.getMaxBatchProcessingTime());
-
-        assertEquals(PollingType.FIXED, recovery.getPolling().getType());
-        assertEquals(Duration.ofSeconds(100), recovery.getInitialDelay());
-        assertEquals(Duration.ofSeconds(200), recovery.getFixedDelay());
-        assertEquals(Duration.ZERO, recovery.getMinFixedDelay());
-        assertEquals(Duration.ZERO, recovery.getMaxFixedDelay());
-        assertEquals(Double.NaN, recovery.getMultiplier());
+            // when / then
+            assertThatThrownBy(recovery::applyDefaults)
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("'stuck-recovery.batch-size' cannot be negative or 0");
+        }
     }
 
     @Test
