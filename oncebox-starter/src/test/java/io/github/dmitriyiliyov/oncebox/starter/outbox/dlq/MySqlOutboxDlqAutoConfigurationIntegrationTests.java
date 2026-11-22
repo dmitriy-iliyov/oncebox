@@ -135,4 +135,22 @@ class MySqlOutboxDlqAutoConfigurationIntegrationTests {
     void loadAndLockBatch_whenInsideTransaction_shouldRun() {
         verifier.loadAndLockBatch_whenInsideTransaction_shouldRun();
     }
+
+    @Test
+    @DisplayName("IT context when dlq clean-up is disabled should not register the dlq clean-up job")
+    void context_whenDlqCleanUpDisabled_shouldNotRegisterDlqCleanUpJob() {
+        verifier.context_whenDlqCleanUpDisabled_shouldNotRegisterDlqCleanUpJob();
+    }
+
+    @Test
+    @DisplayName("IT context when outbox clean-up is disabled and dlq clean-up enabled should register the dlq clean-up job")
+    void context_whenOutboxCleanUpDisabledAndDlqCleanUpEnabled_shouldRegisterDlqCleanUpJob() {
+        verifier.context_whenOutboxCleanUpDisabledAndDlqCleanUpEnabled_shouldRegisterDlqCleanUpJob();
+    }
+
+    @Test
+    @DisplayName("IT context when outbox and dlq clean-ups are disabled should start without clean-up jobs and lock repository")
+    void context_whenOutboxAndDlqCleanUpsDisabled_shouldStartWithoutCleanUpJobsAndLockRepository() {
+        verifier.context_whenOutboxAndDlqCleanUpsDisabled_shouldStartWithoutCleanUpJobsAndLockRepository();
+    }
 }

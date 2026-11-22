@@ -1,5 +1,6 @@
 package io.github.dmitriyiliyov.oncebox.starter.outbox.dlq;
 
+import io.github.dmitriyiliyov.oncebox.core.locks.DistributedLockRepository;
 import io.github.dmitriyiliyov.oncebox.core.outbox.dlq.*;
 import io.github.dmitriyiliyov.oncebox.dlq.api.*;
 import io.github.dmitriyiliyov.oncebox.metrics.outbox.dlq.OutboxDlqManagerMetricsDecorator;
@@ -112,6 +113,40 @@ public class OutboxDlqAutoConfigurationVerifier {
             assertThat(ctx).hasBean("outboxDlqTransferToScheduler");
             assertThat(ctx).hasBean("outboxDlqTransferFromScheduler");
         });
+    }
+
+    public void context_whenDlqCleanUpDisabled_shouldNotRegisterDlqCleanUpJob() {
+        getBaseContextRunner()
+                .withPropertyValues("oncebox.outbox.dlq.clean-up.enabled=false")
+                .run(ctx -> {
+                    assertThat(ctx).doesNotHaveBean("outboxDlqCleanUpScheduler");
+                    assertThat(ctx).doesNotHaveBean("outboxDlqCleanUpJobCreateCommand");
+                });
+    }
+
+    public void context_whenOutboxCleanUpDisabledAndDlqCleanUpEnabled_shouldRegisterDlqCleanUpJob() {
+        getBaseContextRunner()
+                .withPropertyValues(
+                        "oncebox.outbox.clean-up.enabled=false",
+                        "oncebox.outbox.dlq.clean-up.enabled=true"
+                )
+                .run(ctx -> {
+                    assertThat(ctx).hasBean("outboxDlqCleanUpScheduler");
+                    assertThat(ctx).hasBean("outboxDlqCleanUpJobCreateCommand");
+                });
+    }
+
+    public void context_whenOutboxAndDlqCleanUpsDisabled_shouldStartWithoutCleanUpJobsAndLockRepository() {
+        getBaseContextRunner()
+                .withPropertyValues(
+                        "oncebox.outbox.clean-up.enabled=false",
+                        "oncebox.outbox.dlq.clean-up.enabled=false"
+                )
+                .run(ctx -> {
+                    assertThat(ctx).hasNotFailed();
+                    assertThat(ctx).doesNotHaveBean("outboxDlqCleanUpScheduler");
+                    assertThat(ctx).doesNotHaveBean(DistributedLockRepository.class);
+                });
     }
 
     public void shouldRegisteredMetricsRelatedBeans_whenAllMetricsEnabled() {

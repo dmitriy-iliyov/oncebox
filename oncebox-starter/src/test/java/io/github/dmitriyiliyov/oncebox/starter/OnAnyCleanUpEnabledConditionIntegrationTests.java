@@ -106,7 +106,7 @@ class OnAnyCleanUpEnabledConditionIntegrationTests {
 
     @Test
     @DisplayName("IT should match when no clean-up properties specified")
-    void shouldNotMatch_whenNoPropertiesSpecified() {
+    void shouldMatch_whenNoPropertiesSpecified() {
         baseRunner()
                 .run(context -> {
                     assertThat(context).hasNotFailed();
@@ -116,7 +116,7 @@ class OnAnyCleanUpEnabledConditionIntegrationTests {
 
     @Test
     @DisplayName("IT should match when outbox absent and inbox explicitly disabled")
-    void shouldNotMatch_whenOutboxAbsentAndInboxDisabled() {
+    void shouldMatch_whenOutboxAbsentAndInboxDisabled() {
         baseRunner()
                 .withPropertyValues("oncebox.inbox.clean-up.enabled=false")
                 .run(context -> {
@@ -162,6 +162,80 @@ class OnAnyCleanUpEnabledConditionIntegrationTests {
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context).doesNotHaveBean("conditionalBean");
+                });
+    }
+
+    @Test
+    @DisplayName("IT should match when outbox clean-up is disabled but dlq clean-up runs by default")
+    void shouldMatch_whenOutboxCleanUpDisabledAndDlqEnabled() {
+        baseRunner()
+                .withPropertyValues(
+                        "oncebox.outbox.clean-up.enabled=false",
+                        "oncebox.outbox.dlq.enabled=true"
+                )
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).hasBean("conditionalBean");
+                });
+    }
+
+    @Test
+    @DisplayName("IT should not match when outbox clean-up is disabled and dlq clean-up explicitly disabled")
+    void shouldNotMatch_whenOutboxCleanUpDisabledAndDlqCleanUpDisabled() {
+        baseRunner()
+                .withPropertyValues(
+                        "oncebox.outbox.clean-up.enabled=false",
+                        "oncebox.outbox.dlq.enabled=true",
+                        "oncebox.outbox.dlq.clean-up.enabled=false"
+                )
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).doesNotHaveBean("conditionalBean");
+                });
+    }
+
+    @Test
+    @DisplayName("IT should match when outbox clean-up is disabled and dlq clean-up explicitly enabled")
+    void shouldMatch_whenOutboxCleanUpDisabledAndDlqCleanUpExplicitlyEnabled() {
+        baseRunner()
+                .withPropertyValues(
+                        "oncebox.outbox.clean-up.enabled=false",
+                        "oncebox.outbox.dlq.enabled=true",
+                        "oncebox.outbox.dlq.clean-up.enabled=true"
+                )
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).hasBean("conditionalBean");
+                });
+    }
+
+    @Test
+    @DisplayName("IT should not match when outbox clean-up is disabled and the dlq is disabled")
+    void shouldNotMatch_whenOutboxCleanUpDisabledAndDlqDisabled() {
+        baseRunner()
+                .withPropertyValues(
+                        "oncebox.outbox.clean-up.enabled=false",
+                        "oncebox.outbox.dlq.enabled=false"
+                )
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).doesNotHaveBean("conditionalBean");
+                });
+    }
+
+    @Test
+    @DisplayName("IT should match when outbox and dlq clean-ups are disabled but the inbox runs its clean-up by default")
+    void shouldMatch_whenOutboxAndDlqCleanUpsDisabledAndInboxEnabled() {
+        baseRunner()
+                .withPropertyValues(
+                        "oncebox.outbox.clean-up.enabled=false",
+                        "oncebox.outbox.dlq.enabled=true",
+                        "oncebox.outbox.dlq.clean-up.enabled=false",
+                        "oncebox.inbox.enabled=true"
+                )
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).hasBean("conditionalBean");
                 });
     }
 }

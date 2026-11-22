@@ -119,7 +119,7 @@ public class OutboxDlqAutoConfiguration {
 
     @Bean
     @ConditionalOnProperty(
-            prefix = "oncebox.outbox.clean-up",
+            prefix = "oncebox.outbox.dlq.clean-up",
             name = "enabled",
             havingValue = "true",
             matchIfMissing = true
@@ -150,7 +150,7 @@ public class OutboxDlqAutoConfiguration {
 
     @Bean
     @ConditionalOnProperty(
-            prefix = "oncebox.outbox.clean-up",
+            prefix = "oncebox.outbox.dlq.clean-up",
             name = "enabled",
             havingValue = "true",
             matchIfMissing = true
