@@ -117,6 +117,7 @@ Each path below is a short description of what the example does. The oncebox doc
 - **Batches.** The batch endpoints (`/api/orders/batch`) change several orders and store their outbox events in the same transaction. `create-order` events go to `orders.created` (a Kafka topic, or a RabbitMQ queue with the `rabbit` profile), where the consumer's batch listener receives them as a list; `update-order` and `delete-order` events go to `orders` and are handled one message at a time. See [Publishing Events](https://dmitriy-iliyov.github.io/oncebox-docs/docs/reference/publishing/) and [Inbox](https://dmitriy-iliyov.github.io/oncebox-docs/docs/reference/inbox/).
 
 ## Run
+
 From the `oncebox-example` directory (the build context is the repository root, so the library
 itself is built from source):
 
@@ -147,3 +148,84 @@ the dashboards in [`docs/grafana`](../docs/grafana) are loaded from disk on star
 The dashboards pick their datasource through a `datasource` variable instead of a hardcoded uid, so
 the same files can also be imported into any other Grafana; pick the Prometheus instance from the
 dropdown at the top of the dashboard.
+
+### Outbox Dashboard
+
+The outbox dashboard (`oncebox-outbox`) contains 5 panels displaying metrics from the producer application.
+
+| Panel | Title | Visualization | Queries |
+|-------|-------|---------------|---------|
+| 1 | **outbox** | Timeseries | `outbox_events` (total)<br>`outbox_events_by_status{status="pending"}`<br>`outbox_events_by_event_type_and_status{status="pending", event_type="create-order"}`<br>`outbox_events_by_action_type_rate_total{action_type="cleaned"}`<br>`outbox_events_rate_total{status="processed"}` |
+| 2 | **dlq** | Timeseries | `outbox_dlq_events_by_action_type_rate_total`<br>`outbox_dlq_transfer_to_duration_seconds_max` (hidden)<br>`outbox_dlq_transfer_from_duration_seconds_max` (hidden)<br>`outbox_dlq_events`<br>`outbox_dlq_events_by_status{status="moved"}`<br>`outbox_dlq_events_by_event_type_and_status{status="moved", event_type="create-order"}` |
+| 3 | **processing duration** | Timeseries | `oncebox_task_processing_duration_seconds_count` (count of timer observations) |
+| 4 | **polling delay** | Timeseries | `oncebox_polling_delay_milliseconds` |
+| 5 | **task details** | Pie chart | `oncebox_started_tasks_total{task_type="create-order"}`<br>`oncebox_succeeded_tasks_total{task_type="create-order"}`<br>`oncebox_skipped_tasks_total{task_type="create-order"}`<br>`oncebox_failed_tasks_total{task_type="create-order"}` |
+
+> **Screenshots**: Captured from live Grafana dashboards with producer traffic.
+> - ![Outbox Dashboard Overview](docs/outbox-dashboard.png)
+
+---
+
+### Inbox Dashboard
+
+The inbox dashboard (`oncebox-inbox`) contains 3 panels displaying metrics from the consumer application.
+
+| Panel | Title | Visualization | Queries |
+|-------|-------|---------------|---------|
+| 1 | **inbox** | Timeseries | `inbox_events_total`<br>`inbox_cache_action_total` |
+| 2 | **clean up details** | Pie chart | `oncebox_started_tasks_total{task_type="inbox-cleanup"}`<br>`oncebox_succeeded_tasks_total{task_type="inbox-cleanup"}`<br>`oncebox_skipped_tasks_total{task_type="inbox-cleanup"}`<br>`oncebox_failed_tasks_total{task_type="inbox-cleanup"}` |
+| 3 | **execution details** | Timeseries | `oncebox_polling_delay_milliseconds{task_type="inbox-cleanup"}`<br>`oncebox_task_processing_duration_seconds_count{task_type="inbox-cleanup"}` (count of timer observations) |
+
+> **Screenshots**: Captured from live Grafana dashboards with consumer traffic.
+> - ![Inbox Dashboard Overview](docs/inbox-dashboard.png)
+
+---
+
+## Observability Notes
+
+### Metrics Availability
+
+Metrics are exposed via Prometheus at:
+- Producer: `http://localhost:8080/actuator/prometheus` (outbox and DLQ metrics)
+- Consumer: `http://localhost:8081/actuator/prometheus` (inbox metrics)
+
+Each application exposes only the metrics relevant to its role.
+
+### Key Metrics Reference
+
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `outbox_events` | Gauge | — | Total number of outbox events |
+| `outbox_events_by_status` | Gauge | `status` (pending, in_process) | Number of outbox events by status |
+| `outbox_events_by_event_type_and_status` | Gauge | `event_type`, `status` | Number of outbox events by type and status |
+| `outbox_events_rate_total` | Counter | `event_type`, `status` | Outbox events processed (`processed`) |
+| `outbox_events_by_action_type_rate_total` | Counter | `action_type` (`attempt_move_to_dlq`, `recovered`, `cleaned`, `success_moved_to_dlq`) | Outbox action lifecycle |
+| `outbox_dlq_events` | Gauge | — | Total number of outbox DLQ events |
+| `outbox_dlq_events_by_status` | Gauge | `status` (moved, in_process, to_retry) | Number of DLQ events by status |
+| `outbox_dlq_events_by_event_type_and_status` | Gauge | `event_type`, `status` | Number of DLQ events by type and status |
+| `outbox_dlq_events_by_action_type_rate_total` | Counter | `action_type` (`attempt_move_to_outbox`, `success_moved_to_outbox`, `cleaned`) | DLQ action lifecycle |
+| `outbox_dlq_transfer_to_duration_seconds_max` | Timer | — | Max duration of transfer to DLQ |
+| `outbox_dlq_transfer_from_duration_seconds_max` | Timer | — | Max duration of transfer from DLQ |
+| `inbox_events_total` | Counter | `type` (`consumed`, `rejected_duplicates`, `cleaned`) | Inbox events by outcome |
+| `inbox_cache_action_total` | Counter | `action_type` (`hit`, `miss`) | Cache actions |
+| `oncebox_task_processing_duration` | Timer (seconds) | `task_type` | Task execution time |
+| `oncebox_started_tasks` | Counter | `task_type` | Tasks started |
+| `oncebox_succeeded_tasks` | Counter | `task_type` | Tasks completed successfully |
+| `oncebox_skipped_tasks` | Counter | `task_type` | Tasks skipped (no work or lock held) |
+| `oncebox_failed_tasks` | Counter | `task_type` | Tasks failed |
+| `oncebox_polling_delay_milliseconds` | Gauge (ms) | `task_type` | Current polling delay |
+
+### Troubleshooting Guide
+
+| Symptom | Dashboard Panel | Possible Cause | Action |
+|---------|-----------------|----------------|--------|
+| High pending outbox events | Outbox → outbox panel (`outbox_events_by_status`) | Broker connectivity issues, backpressure, or stuck recovery | Check broker health, DLQ status, recovery logs |
+| Growing DLQ count | Outbox → dlq panel (`outbox_dlq_events`) | Failed publishing attempts exhausted retries | Check DLQ action breakdown, resolve root cause |
+| High polling delay | Outbox → polling delay panel | Database contention or long transactions | Check DB connection pool, transaction boundaries |
+| Low cache hit rate | Inbox → inbox panel (`inbox_cache_action_total`) | Redis unreachable or cache warmup | Check Redis health, TTL settings |
+| High duplicate rejection | Inbox → inbox panel (`inbox_events_total{type="rejected_duplicates"}`) | Producer replay or broker misconfiguration | Check producer DLQ, broker delivery guarantees |
+| Consumer not processing | Inbox → inbox panel (`inbox_events_total` stagnant) | Listener not connected or broker auth | Check consumer logs, Kafka/RabbitMQ connectivity |
+
+---
+
+> *Generated with assistance from [Claude Code](https://claude.ai/code).*
