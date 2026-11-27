@@ -105,4 +105,37 @@ class IdempotentConsumerMetricsDecoratorUnitTests {
         assertThrows(RuntimeException.class, () -> tested.consume(messages, extractor, consumer));
         Mockito.verify(fails).increment(3.0);
     }
+
+    @Test
+    @DisplayName("UT consume(UUID, Runnable) when the delegate succeeds should not count a failure")
+    void consumeUUIDRunnable_whenDelegateSucceeds_shouldNotCountFailure() {
+        // given
+        tested = new IdempotentConsumerMetricsDecorator(registry, delegate);
+        UUID id = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        Runnable runnable = () -> {};
+
+        // when
+        tested.consume(id, runnable);
+
+        // then
+        Mockito.verify(delegate).consume(id, runnable);
+        Mockito.verifyNoInteractions(fails);
+    }
+
+    @Test
+    @DisplayName("UT consume(List<T>, Extractor, Consumer) when the delegate succeeds should not count a failure")
+    void consumeListExtractorConsumer_whenDelegateSucceeds_shouldNotCountFailure() {
+        // given
+        tested = new IdempotentConsumerMetricsDecorator(registry, delegate);
+        List<String> messages = List.of("msg1", "msg2", "msg3");
+        EventIdExtractor<String> extractor = m -> UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        Consumer<List<String>> consumer = m -> {};
+
+        // when
+        tested.consume(messages, extractor, consumer);
+
+        // then
+        Mockito.verify(delegate).consume(messages, extractor, consumer);
+        Mockito.verifyNoInteractions(fails);
+    }
 }
